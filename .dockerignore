@@ -1,0 +1,29 @@
+node_modules
+.next
+.git
+.gitignore
+npm-debug.log
+coverage
+postgres-data
+.pglite
+e2e
+test-results
+playwright-report
+backups
+*.md
+!README.md
+!CHANGELOG.md
+!USER_MANUAL.md
+.agent
+.cursor
+coverage
+test-results
+playwright-report
+
+# env (production 은 서버에서 별도 배치)
+.env
+.env*.local
+
+# docker build 컨텍스트에서 제외 (compose 에서 마운트)
+# nginx.conf 는 포함 필요 — 제외하지 않음
+

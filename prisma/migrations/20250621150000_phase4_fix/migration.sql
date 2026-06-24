@@ -1,0 +1,2 @@
+-- Phase 4 fix: DB was synced via db push before migrate deploy.
+-- Schema and database are aligned; no SQL changes required.

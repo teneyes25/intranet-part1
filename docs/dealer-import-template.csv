@@ -1,0 +1,7 @@
+code,name,region,rolloutGroupKey,rolloutActive
+GANGNAM001,강남대리점,서울,group-1,true
+SEOUL002,서초대리점,서울,group-1,false
+BUSAN001,부산대리점,부산,group-2,false
+DAEGU001,대구대리점,대구,group-3,false
+GWANGJU001,광주대리점,광주,group-4,false
+JEJU001,제주대리점,제주,group-5,false

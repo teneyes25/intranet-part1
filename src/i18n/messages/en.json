@@ -1,0 +1,22 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading…",
+    "search": "Search",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "nav": {
+    "home": "Home",
+    "approval": "Approval",
+    "aiAgent": "AI Agent",
+    "documents": "Documents"
+  },
+  "dashboard": {
+    "greeting": "Hello",
+    "recentPosts": "Recent posts",
+    "activityChart": "Weekly activity"
+  }
+}

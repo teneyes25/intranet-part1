@@ -1,0 +1,831 @@
+// Prisma schema - intranet-part1
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// 사용자 권한(Role)
+/// - HEADQUARTER: 본사
+/// - DEALER: 대리점
+/// - ADMIN: 시스템 관리자
+enum Role {
+  HEADQUARTER
+  DEALER
+  ADMIN
+}
+
+/// 회원가입 승인 상태
+enum UserApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(DEALER)
+  isActive     Boolean  @default(true)
+  /// 최초 로그인 또는 관리자 초기화 시 비밀번호 변경 강제
+  mustChangePassword Boolean @default(false)
+  passwordChangedAt  DateTime?
+  approvalStatus UserApprovalStatus @default(APPROVED)
+  // 대리점 소속 사용자만 연결됨 (본사/관리자는 null)
+  dealerId     String?
+  dealer       Dealer?  @relation(fields: [dealerId], references: [id])
+  posts        Post[]
+  comments     Comment[]
+  approvalDrafts ApprovalDocument[] @relation("ApprovalDrafter")
+  approvalSteps  ApprovalStep[]     @relation("ApprovalApprover")
+  downloadLogs   DownloadLog[]
+  fileVersions   AttachmentVersion[] @relation("VersionUploader")
+  notifications  Notification[]
+  preferences    UserPreference?
+  aiConversations AiConversation[]
+  pilotGroups     PilotGroupMember[]
+  pilotFeedbacks  PilotFeedback[]
+  ordersCreated   Order[]        @relation("OrderCreator")
+  rolloutFeedbacks RolloutFeedback[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([role])
+  @@index([dealerId])
+  @@map("users")
+}
+
+/// 게시판 정의. 하나의 베이스 시스템으로 여러 게시판을 운영한다.
+/// (예: notices=공지사항, general=일반게시판, pr=홍보실, products=상품자료실)
+model Board {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  name          String
+  description   String?
+  /// 선택 가능한 카테고리 목록 (필터/작성 시 사용)
+  categories    String[] @default([])
+  /// 작성 허용 권한. 비어 있으면 모든 인증 사용자가 작성 가능.
+  writeRoles    Role[]   @default([])
+  allowComments Boolean  @default(true)
+  posts         Post[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("boards")
+}
+
+/// 게시글
+model Post {
+  id          String       @id @default(cuid())
+  boardId     String
+  board       Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id])
+  title       String
+  /// 새니타이즈된 HTML (Rich Text)
+  content     String
+  category    String?
+  viewCount   Int          @default(0)
+  isPinned    Boolean      @default(false)
+  /// Pilot 데모 데이터 — 정식 배포 시 일반 사용자에게 숨김
+  isDemo      Boolean      @default(false)
+  attachments Attachment[]
+  comments    Comment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([boardId, isPinned, createdAt])
+  @@index([authorId])
+  @@index([title])
+  @@map("posts")
+}
+
+/// 게시글 첨부파일 (여러 개)
+model Attachment {
+  id             String              @id @default(cuid())
+  postId         String
+  post           Post                @relation(fields: [postId], references: [id], onDelete: Cascade)
+  filename       String
+  /// 디스크에 저장된 파일명 (uploads/ 하위)
+  storageKey     String
+  mimeType       String
+  size           Int
+  currentVersion Int                 @default(1)
+  versions       AttachmentVersion[]
+  downloadLogs   DownloadLog[]
+  createdAt      DateTime            @default(now())
+
+  @@index([postId])
+  @@map("attachments")
+}
+
+/// 첨부파일 버전 이력 (상품자료실 등)
+model AttachmentVersion {
+  id           String     @id @default(cuid())
+  attachmentId String
+  attachment   Attachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+  version      Int
+  filename     String
+  storageKey   String
+  mimeType     String
+  size         Int
+  note         String?
+  uploadedById String
+  uploadedBy   User       @relation("VersionUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime   @default(now())
+
+  @@unique([attachmentId, version])
+  @@index([attachmentId])
+  @@map("attachment_versions")
+}
+
+/// 파일 다운로드 로그
+model DownloadLog {
+  id           String     @id @default(cuid())
+  attachmentId String
+  attachment   Attachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  downloadedAt DateTime   @default(now())
+
+  @@index([attachmentId])
+  @@index([userId])
+  @@map("download_logs")
+}
+
+/// 상품자료실 등 계층형 카테고리
+model ProductCategory {
+  id        String            @id @default(cuid())
+  boardKey  String            @default("products")
+  name      String
+  slug      String
+  parentId  String?
+  parent    ProductCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  ProductCategory[] @relation("CategoryTree")
+  sortOrder Int               @default(0)
+  createdAt DateTime          @default(now())
+
+  @@unique([boardKey, slug])
+  @@index([boardKey, parentId])
+  @@map("product_categories")
+}
+
+/// 문서함 카테고리 (관리자 관리)
+model DocumentCategory {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  description String?
+  sortOrder   Int                @default(0)
+  documents   SharedDocument[]
+  approvals   ApprovalDocument[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("document_categories")
+}
+
+/// 사내 공용 문서함
+model SharedDocument {
+  id                 String            @id @default(cuid())
+  title              String
+  description        String?
+  /// 레거시 문자열 카테고리 (마이그레이션 호환)
+  category           String?
+  documentCategoryId String?
+  documentCategory   DocumentCategory? @relation(fields: [documentCategoryId], references: [id])
+  /// 외부 URL 또는 내부 게시글/결재 링크
+  url                String?
+  boardKey           String?
+  postId             String?
+  approvalDocumentId String?           @unique
+  approvalDocument   ApprovalDocument? @relation(fields: [approvalDocumentId], references: [id])
+  tags               String[]          @default([])
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([category])
+  @@index([documentCategoryId])
+  @@map("shared_documents")
+}
+
+/// 뉴스 자동수집 키워드 (관리자 관리, 최대 50개)
+model NewsKeyword {
+  id        String   @id @default(cuid())
+  keyword   String
+  /// AI | 경제 | 미래
+  category  String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([keyword])
+  @@index([isActive, sortOrder])
+  @@map("news_keywords")
+}
+
+/// 댓글
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+  @@map("comments")
+}
+
+/// RAG 벡터 청크 저장소(raw SQL/pgvector 로 관리). Prisma 가 삭제하지 않도록 모델로 등록만 해둔다.
+model DocumentChunk {
+  id         String                    @id
+  sourceType String                    @map("source_type")
+  sourceId   String                    @map("source_id")
+  chunkIndex Int                       @map("chunk_index")
+  title      String?
+  url        String?
+  content    String
+  embedding  Unsupported("vector(384)")
+  createdAt  DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([sourceType, sourceId], map: "document_chunks_source_idx")
+  @@map("document_chunks")
+}
+
+/// 전자결재 문서 상태
+enum ApprovalStatus {
+  DRAFT // 임시저장(상신 전)
+  IN_PROGRESS // 진행중
+  REJECTED // 반려
+  COMPLETED // 완료
+}
+
+/// 결재 단계(개별 결재자) 상태
+enum ApprovalStepStatus {
+  PENDING // 대기
+  APPROVED // 승인
+  REJECTED // 반려
+}
+
+/// 기안서 템플릿
+model ApprovalTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  /// 기본 본문(HTML)
+  content     String
+  documents   ApprovalDocument[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("approval_templates")
+}
+
+/// 전자결재 문서(기안서)
+model ApprovalDocument {
+  id                 String             @id @default(cuid())
+  title              String
+  content            String
+  status             ApprovalStatus     @default(DRAFT)
+  drafterId          String
+  drafter            User               @relation("ApprovalDrafter", fields: [drafterId], references: [id])
+  templateId         String?
+  template           ApprovalTemplate?  @relation(fields: [templateId], references: [id])
+  documentCategoryId String?
+  documentCategory   DocumentCategory?  @relation(fields: [documentCategoryId], references: [id])
+  archivedDocument   SharedDocument?
+  linkedOrder        Order?
+  /// 현재 진행 중인 결재 단계 순서(같은 순서=병렬)
+  currentOrder       Int                @default(1)
+  isDemo             Boolean            @default(false)
+  steps              ApprovalStep[]
+  submittedAt        DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([drafterId])
+  @@index([status])
+  @@index([documentCategoryId])
+  @@map("approval_documents")
+}
+
+/// 결재선의 개별 결재자 단계. stepOrder 가 같으면 병렬, 다르면 순차.
+model ApprovalStep {
+  id         String             @id @default(cuid())
+  documentId String
+  document   ApprovalDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  approverId String
+  approver   User               @relation("ApprovalApprover", fields: [approverId], references: [id])
+  stepOrder  Int
+  status     ApprovalStepStatus @default(PENDING)
+  comment    String?
+  actedAt    DateTime?
+  createdAt  DateTime           @default(now())
+
+  @@index([documentId])
+  @@index([approverId, status])
+  @@map("approval_steps")
+}
+
+/// 대리점 조직. 회원가입 시 대리점 코드로 사용자와 연결된다.
+model Dealer {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  name              String
+  region            String?
+  isActive          Boolean  @default(true)
+  /// 단계적 Rollout — false 이면 대리점 사용자 접근 제한
+  rolloutActive     Boolean  @default(false)
+  rolloutGroupId    String?
+  rolloutGroup      RolloutGroup? @relation(fields: [rolloutGroupId], references: [id])
+  appNameOverride   String?
+  logoStorageKey    String?
+  primaryColor      String?
+  sidebarColor      String?
+  sidebarForeground String?
+  users             User[]
+  inventoryItems    InventoryItem[]
+  buyerOrders       Order[]       @relation("BuyerOrders")
+  sellerOrders      Order[]       @relation("SellerOrders")
+  tradesFrom        DealerTrade[] @relation("TradeFrom")
+  tradesTo          DealerTrade[] @relation("TradeTo")
+  rolloutFeedbacks  RolloutFeedback[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([rolloutGroupId])
+  @@index([rolloutActive, isActive])
+  @@map("dealers")
+}
+
+/// 감사 로그 (로그인 실패, 전자결재, AI 호출 등)
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  APPROVAL_SUBMIT
+  APPROVAL_APPROVE
+  APPROVAL_REJECT
+  AI_CHAT
+  AI_DRAFT
+  AI_NEWS_COLLECT
+  FILE_UPLOAD
+  USER_APPROVE
+  USER_REJECT
+  SITE_CUSTOMIZE
+  AI_INGEST_RUN
+  APPROVAL_CUSTOMIZE
+  INTEGRATION_UPDATE
+  PILOT_FEEDBACK
+  SYSTEM_ERROR
+  USAGE_EVENT
+  PASSWORD_CHANGE
+  BULK_USER_IMPORT
+  EMERGENCY_NOTICE
+  DEALER_ROLLOUT
+  DEALER_IMPORT
+  ORDER_CREATE
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  action    AuditAction
+  userId    String?
+  userEmail String?
+  ip        String?
+  userAgent String?
+  resource  String?
+  detail    String?
+  success   Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  @@index([action, createdAt])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+/// 알림 유형
+enum NotificationType {
+  APPROVAL_REQUEST
+  APPROVAL_RESULT
+  NOTICE
+  COMMENT
+  AI_MENTION
+  SYSTEM
+  EMERGENCY
+}
+
+/// 사용자 알림 (In-app)
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read, createdAt])
+  @@map("notifications")
+}
+
+/// 사용자 설정 (프로필·알림·언어)
+model UserPreference {
+  userId      String  @id
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locale      String  @default("ko")
+  bio         String?
+  notifyPush  Boolean @default(true)
+  notifyEmail Boolean @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@map("user_preferences")
+}
+
+/// AI 대화 세션 (메모리)
+model AiConversation {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  messages  AiMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, updatedAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  sources        Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("ai_messages")
+}
+
+/// 포털 브랜딩·레이아웃 (singleton)
+model SiteSettings {
+  id                  String   @id @default("default")
+  appName             String   @default("Intranet")
+  logoStorageKey      String?
+  faviconStorageKey   String?
+  bannerStorageKey    String?
+  bannerMediaType     String?  /// image | video
+  primaryColor        String   @default("222.2 47.4% 11.2%")
+  sidebarColor        String   @default("222.2 47.4% 11.2%")
+  sidebarForeground   String   @default("210 40% 98%")
+  dashboardLayout     Json?
+  updatedAt           DateTime @updatedAt
+  updatedById         String?
+
+  @@map("site_settings")
+}
+
+/// AI 재학습 작업 이력
+model AiIngestJob {
+  id              String    @id @default(cuid())
+  triggeredById   String
+  scope           String    /// all | boards
+  boardKeys       String[]  @default([])
+  status          String    /// pending | running | completed | failed
+  postsProcessed  Int       @default(0)
+  chunksTotal     Int       @default(0)
+  errorMessage    String?
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  @@index([startedAt])
+  @@map("ai_ingest_jobs")
+}
+
+/// 결재선 기본 템플릿 (부서·직급별)
+model ApprovalLineTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  department  String?
+  targetRole  Role?
+  /// [{ approverId, stepOrder, label? }]
+  steps       Json
+  sortOrder   Int      @default(0)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([department])
+  @@map("approval_line_templates")
+}
+
+/// SNS·외부 연동 설정
+model IntegrationSetting {
+  id           String   @id @default(cuid())
+  provider     String   @unique /// instagram | company_web
+  displayName  String
+  apiKey       String?
+  apiSecret    String?
+  accessToken  String?
+  webhookUrl   String?
+  isEnabled    Boolean  @default(false)
+  metadata     Json?
+  updatedAt    DateTime @updatedAt
+
+  @@map("integration_settings")
+}
+
+/// Pilot 배포 설정 (singleton)
+model PilotSettings {
+  id              String   @id @default("default")
+  isActive        Boolean  @default(false)
+  bannerTitle     String   @default("Pilot 테스트 기간")
+  bannerMessage   String   @default("현재 파일럿(Pilot) 테스트 중입니다. 피드백을 남겨 주세요.")
+  feedbackEnabled Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+
+  @@map("pilot_settings")
+}
+
+/// Pilot 사용자 그룹 (예: 본사 영업팀, 관리팀)
+model PilotGroup {
+  id          String             @id @default(cuid())
+  key         String             @unique
+  name        String
+  description String?
+  isActive    Boolean            @default(true)
+  members     PilotGroupMember[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("pilot_groups")
+}
+
+model PilotGroupMember {
+  id           String     @id @default(cuid())
+  pilotGroupId String
+  pilotGroup   PilotGroup @relation(fields: [pilotGroupId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([pilotGroupId, userId])
+  @@index([userId])
+  @@map("pilot_group_members")
+}
+
+/// Pilot 피드백 (설문)
+model PilotFeedback {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String
+  rating    Int
+  message   String
+  pageUrl   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("pilot_feedbacks")
+}
+
+/// Pilot 기간 사용량 메트릭
+model UsageMetric {
+  id        String   @id @default(cuid())
+  userId    String?
+  event     String
+  resource  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([event, createdAt])
+  @@index([createdAt])
+  @@map("usage_metrics")
+}
+
+/// 시스템 에러 로그 (관리자 자동 알림)
+model SystemErrorLog {
+  id        String   @id @default(cuid())
+  source    String
+  message   String
+  stack     String?
+  notified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("system_error_logs")
+}
+
+/// 긴급 공지 (전체 사용자 강제 알림 + 배너)
+model EmergencyNotice {
+  id             String   @id @default(cuid())
+  title          String
+  body           String
+  isActive       Boolean  @default(true)
+  sentById       String
+  recipientCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime?
+
+  @@index([isActive, createdAt])
+  @@map("emergency_notices")
+}
+
+/// 대리점 Rollout 그룹 (지역·단계별 활성화)
+model RolloutGroup {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  dealers     Dealer[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("rollout_groups")
+}
+
+/// Rollout 피드백 (대리점 온보딩)
+model RolloutFeedback {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealerId  String?
+  dealer    Dealer?  @relation(fields: [dealerId], references: [id])
+  category  String
+  rating    Int
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([dealerId, createdAt])
+  @@map("rollout_feedbacks")
+}
+
+// ── Part 2: 주문·결제·배송·재고 ──
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ShipmentStatus {
+  PREPARING
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+}
+
+enum DealerTradeStatus {
+  PROPOSED
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+/// 상품 SKU (상품자료실 Post 와 연계 가능)
+model ProductSku {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  description String?
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  /// 상품자료실 게시글 ID (Part 1 연동)
+  productPostId String?
+  isActive    Boolean  @default(true)
+  inventory   InventoryItem[]
+  orderItems  OrderItem[]
+  trades      DealerTrade[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("product_skus")
+}
+
+model InventoryItem {
+  id        String     @id @default(cuid())
+  dealerId  String
+  dealer    Dealer     @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  skuId     String
+  sku       ProductSku @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  quantity  Int        @default(0)
+  reserved  Int        @default(0)
+  updatedAt DateTime   @updatedAt
+
+  @@unique([dealerId, skuId])
+  @@map("inventory_items")
+}
+
+model Order {
+  id                 String            @id @default(cuid())
+  orderNumber        String            @unique
+  buyerDealerId      String
+  buyerDealer        Dealer            @relation("BuyerOrders", fields: [buyerDealerId], references: [id])
+  sellerDealerId     String?
+  sellerDealer       Dealer?           @relation("SellerOrders", fields: [sellerDealerId], references: [id])
+  status             OrderStatus       @default(PENDING)
+  totalAmount        Decimal           @db.Decimal(12, 2)
+  approvalDocumentId String?           @unique
+  approvalDocument   ApprovalDocument? @relation(fields: [approvalDocumentId], references: [id])
+  createdById        String
+  createdBy          User              @relation("OrderCreator", fields: [createdById], references: [id])
+  items              OrderItem[]
+  payment            Payment?
+  shipment           Shipment?
+  dealerTrade        DealerTrade?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([buyerDealerId, status])
+  @@index([sellerDealerId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  skuId     String
+  sku       ProductSku @relation(fields: [skuId], references: [id])
+  quantity  Int
+  unitPrice Decimal    @db.Decimal(12, 2)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  orderId   String        @unique
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    PaymentStatus @default(PENDING)
+  amount    Decimal       @db.Decimal(12, 2)
+  method    String?
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+model Shipment {
+  id          String         @id @default(cuid())
+  orderId     String         @unique
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      ShipmentStatus @default(PREPARING)
+  trackingNo  String?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("shipments")
+}
+
+/// 대리점 간 물품거래 (Dealer-to-Dealer)
+model DealerTrade {
+  id           String            @id @default(cuid())
+  fromDealerId String
+  fromDealer   Dealer            @relation("TradeFrom", fields: [fromDealerId], references: [id])
+  toDealerId   String
+  toDealer     Dealer            @relation("TradeTo", fields: [toDealerId], references: [id])
+  skuId        String
+  sku          ProductSku        @relation(fields: [skuId], references: [id])
+  quantity     Int
+  status       DealerTradeStatus @default(PROPOSED)
+  orderId      String?           @unique
+  order        Order?            @relation(fields: [orderId], references: [id])
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([fromDealerId, status])
+  @@index([toDealerId, status])
+  @@map("dealer_trades")
+}

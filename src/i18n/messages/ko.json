@@ -1,0 +1,22 @@
+{
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "loading": "로딩 중…",
+    "search": "검색",
+    "notifications": "알림",
+    "settings": "설정",
+    "help": "도움말"
+  },
+  "nav": {
+    "home": "홈",
+    "approval": "전자결재",
+    "aiAgent": "AI 에이전트",
+    "documents": "문서함"
+  },
+  "dashboard": {
+    "greeting": "안녕하세요",
+    "recentPosts": "최근 게시글",
+    "activityChart": "주간 활동"
+  }
+}
