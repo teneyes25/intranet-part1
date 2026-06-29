@@ -92,9 +92,11 @@ const config: Config = {
         },
       },
       boxShadow: {
+        xs: "var(--shadow-xs)",
         soft: "var(--shadow-soft)",
         card: "var(--shadow-card)",
         elevated: "var(--shadow-elevated)",
+        glow: "var(--shadow-glow)",
       },
       borderRadius: {
         lg: "var(--radius)",

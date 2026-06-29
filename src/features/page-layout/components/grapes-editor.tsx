@@ -245,7 +245,7 @@ export function GrapesEditor({
           <span>본사 계정은 레이아웃을 조회·미리볼 수 있습니다. 저장·적용은 관리자(ADMIN)만 가능합니다.</span>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grapes-editor-toolbar-strip flex flex-wrap items-center gap-2">
         <Button asChild variant="outline" size="sm">
           <Link href={backHref}>
             <ArrowLeft className="h-4 w-4" />
@@ -361,7 +361,7 @@ export function GrapesEditor({
         />
       )}
 
-      <div className="relative flex-1 overflow-hidden rounded-xl border border-border/80 bg-background shadow-card">
+      <div className="relative flex-1 overflow-hidden rounded-xl border border-border/60 bg-muted/20 shadow-inner">
         {!ready && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

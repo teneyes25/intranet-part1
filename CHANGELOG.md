@@ -2,6 +2,25 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.2.0] — 2026-06-30 — UI/UX 대대적 개선 (Design System v4)
+
+### Design System v4 — Premium B2B SaaS
+- 컬러 팔레트 완성: Navy `#0F172A`, Blue `#2563EB`, Slate Gray 계열 CSS 변수 통일
+- Typography / Spacing / Shadow / Border 토큰 체계 (`--shadow-xs` ~ `--shadow-glow`, `--radius-*`)
+- `PageHero` 컴포넌트 — Navy 그라데이션 히어로 + Plain 변형
+- `app-canvas-bg` 미세 그리드 배경, `page-shell` / `b2b-*` 유틸 클래스
+
+### shadcn/ui 전면 리파인
+- Button, Card, Input, Badge, Sheet 스타일 업그레이드
+- Table 컴포넌트 신규 추가
+- StatCard KPI 카드 프리미엄 리디자인
+
+### 우선 화면 개선
+- **Dashboard**: PageHero, KPI strip, 카드 헤더·바로가기 polish
+- **Dealer Portal**: 히어로, 빠른 작업 그리드, 주문 Table
+- **Page Builder**: 히어로 + chrome 래퍼, GrapesJS Navy 패널·블록 UI
+- **상품 상세**: products 보드 전용 wide layout, 프리미엄 헤더
+
 ## [1.1.1] — 2026-06-29 — B2B 상용화 업그레이드
 
 ### Page Builder (GrapesJS Best Practices)

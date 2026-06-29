@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageHero } from "@/components/layout/page-hero";
 import { StatCard } from "@/features/dashboard/components/stat-card";
 import { ActivityChart } from "@/features/dashboard/components/activity-chart";
 import { getDashboardData } from "@/features/dashboard/queries";
@@ -68,18 +69,13 @@ export default async function DashboardPage() {
     .filter((g) => g.items.length > 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground">
-              안녕하세요, {user.name}님
-            </h2>
-            <Badge variant="secondary">{ROLE_LABELS[user.role]}</Badge>
-          </div>
-          <p className="text-muted-foreground">{today}</p>
-        </div>
-      </div>
+    <div className="page-shell">
+      <PageHero
+        eyebrow="Workspace"
+        title={`안녕하세요, ${user.name}님`}
+        description={today}
+        badge={ROLE_LABELS[user.role]}
+      />
 
       {dashboardLayout?.html && dashboardLayout.isPublished ? (
         <PageLayoutRenderer
@@ -134,7 +130,7 @@ export default async function DashboardPage() {
 
       {/* 실데이터 지표 */}
       {isWidgetVisible(layout, "stats") && (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="b2b-kpi-strip">
         <StatCard
           title="전체 게시글"
           value={`${data.postCount}건`}
@@ -178,10 +174,10 @@ export default async function DashboardPage() {
         {/* 좌측: 최근 게시글 (실데이터) */}
         <div className="space-y-6 lg:col-span-2">
           {isWidgetVisible(layout, "recentPosts") && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border/50 bg-muted/20 pb-4">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Megaphone className="h-4 w-4" />
+                <Megaphone className="h-4 w-4 text-primary" />
                 최근 게시글
               </CardTitle>
               <Button asChild variant="ghost" size="sm">
@@ -202,7 +198,7 @@ export default async function DashboardPage() {
                     <li key={p.id}>
                       <Link
                         href={`/boards/${p.board.key}/${p.id}`}
-                        className="flex items-center gap-3 px-6 py-3.5 text-sm transition-all duration-200 hover:bg-primary/5"
+                        className="flex items-center gap-3 px-6 py-3.5 text-sm transition-colors hover:bg-primary/[0.04]"
                       >
                         {p.isPinned && (
                           <Pin className="h-3.5 w-3.5 shrink-0 text-destructive" />
@@ -252,7 +248,7 @@ export default async function DashboardPage() {
                         <Link
                           key={item.href}
                           href={item.href}
-                          className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-3.5 text-sm shadow-soft transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-card"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-card p-3.5 text-sm shadow-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.04] hover:shadow-card"
                         >
                           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="truncate">{item.title}</span>
@@ -270,7 +266,7 @@ export default async function DashboardPage() {
         {/* 우측: AI 요약 + 내 정보 */}
         <div className="space-y-6">
           {isWidgetVisible(layout, "aiSummary") && (
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/8 via-card to-card shadow-card">
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Sparkles className="h-4 w-4 text-primary" />

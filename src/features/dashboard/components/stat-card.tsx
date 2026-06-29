@@ -1,12 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
@@ -15,30 +9,42 @@ interface StatCardProps {
   hint?: string;
   icon: LucideIcon;
   href?: string;
+  trend?: "up" | "down" | "neutral";
 }
 
-export function StatCard({ title, value, hint, icon: Icon, href }: StatCardProps) {
+export function StatCard({ title, value, hint, icon: Icon, href, trend = "neutral" }: StatCardProps) {
   const inner = (
-    <Card
+    <div
       className={cn(
-        "border-border/60 shadow-card transition-all duration-200",
-        href &&
-          "cursor-pointer hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-elevated",
+        "group relative overflow-hidden rounded-xl border border-border/70 bg-card p-5 shadow-card transition-all duration-200",
+        href && "cursor-pointer hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-elevated",
       )}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-          <Icon className="h-4 w-4 text-primary" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {title}
+          </p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+          {hint && (
+            <p
+              className={cn(
+                "text-xs",
+                trend === "up" && "text-emerald-600",
+                trend === "down" && "text-destructive",
+                trend === "neutral" && "text-muted-foreground",
+              )}
+            >
+              {hint}
+            </p>
+          )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      </CardContent>
-    </Card>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/10">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
   );
 
   if (href) {

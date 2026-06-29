@@ -1,11 +1,14 @@
-/* GrapesJS — shadcn/ui 전역 스타일과 격리 · Phase 3 상용 UI */
+/* GrapesJS — Design System v4 Premium Editor Chrome */
 .grapes-editor-shell {
   isolation: isolate;
   position: relative;
+  min-height: 520px;
 }
 
 .grapes-editor-shell .gjs-editor {
   font-family: Pretendard, var(--font-inter), system-ui, sans-serif;
+  border-radius: 1rem;
+  overflow: hidden;
 }
 
 .grapes-editor-shell .gjs-pn-panel,
@@ -14,57 +17,127 @@
   font-family: Pretendard, system-ui, sans-serif;
 }
 
-.grapes-editor-shell .gjs-cv-canvas {
-  background: linear-gradient(180deg, hsl(214 32% 97%) 0%, hsl(210 40% 98%) 100%);
+/* Top panels — navy chrome */
+.grapes-editor-shell .gjs-pn-panel.gjs-pn-views,
+.grapes-editor-shell .gjs-pn-panel.gjs-pn-options,
+.grapes-editor-shell .gjs-pn-panel.gjs-pn-commands {
+  background: #0f172a;
+  border-color: #1e293b;
 }
 
-.grapes-editor-shell .gjs-frame-wrapper {
-  transition: max-width 0.25s ease, box-shadow 0.25s ease;
+.grapes-editor-shell .gjs-pn-btn {
+  color: #94a3b8;
+  border-radius: 0.375rem;
+  margin: 2px;
+  transition: color 0.15s, background 0.15s;
 }
 
-.grapes-editor-shell .gjs-cv-canvas__frames {
-  padding: 12px;
-}
-
-.grapes-editor-shell .gjs-frame {
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.12);
-  border: 1px solid hsl(214 32% 91%);
-  overflow: hidden;
-}
-
-.grapes-editor-shell .gjs-block {
-  border-radius: 0.5rem;
-  border-color: hsl(214 32% 91%);
-  min-height: 72px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.grapes-editor-shell .gjs-block:hover {
-  border-color: hsl(221 83% 53% / 0.45);
-  box-shadow: 0 2px 8px hsl(221 83% 53% / 0.12);
-}
-
-.grapes-editor-shell .gjs-block__media {
-  color: hsl(221 83% 53%);
-}
-
-.grapes-editor-shell .gjs-block-category .gjs-title {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(215 16% 47%);
-  background: hsl(210 40% 98%);
-  border-bottom: 1px solid hsl(214 32% 91%);
-  padding: 10px 12px;
+.grapes-editor-shell .gjs-pn-btn:hover {
+  color: #f8fafc;
+  background: #1e293b;
 }
 
 .grapes-editor-shell .gjs-pn-btn.gjs-pn-active {
-  color: hsl(221 83% 53%);
+  color: #60a5fa;
+  background: rgb(37 99 235 / 0.15);
 }
 
-/* 저장된 레이아웃 렌더 — 모바일 대응 */
+/* Canvas area */
+.grapes-editor-shell .gjs-cv-canvas {
+  background:
+    radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background-size: 20px 20px, 100% 100%;
+}
+
+.grapes-editor-shell .gjs-frame-wrapper {
+  transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.grapes-editor-shell .gjs-cv-canvas__frames {
+  padding: 20px;
+}
+
+.grapes-editor-shell .gjs-frame {
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgb(15 23 42 / 0.06),
+    0 16px 40px -12px rgb(15 23 42 / 0.18);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+/* Block manager */
+.grapes-editor-shell .gjs-blocks-c {
+  padding: 8px;
+}
+
+.grapes-editor-shell .gjs-block {
+  border-radius: 0.625rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  min-height: 76px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.grapes-editor-shell .gjs-block:hover {
+  border-color: rgb(37 99 235 / 0.45);
+  box-shadow: 0 4px 12px rgb(37 99 235 / 0.12);
+  transform: translateY(-1px);
+}
+
+.grapes-editor-shell .gjs-block__media {
+  color: #2563eb;
+  padding-bottom: 4px;
+}
+
+.grapes-editor-shell .gjs-block-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.grapes-editor-shell .gjs-block-category .gjs-title {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 12px;
+}
+
+/* Style manager */
+.grapes-editor-shell .gjs-sm-sector-title {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: #0f172a;
+}
+
+.grapes-editor-shell .gjs-sm-property {
+  font-size: 0.8125rem;
+}
+
+.grapes-editor-shell .gjs-field {
+  border-radius: 0.5rem;
+  border-color: #e2e8f0;
+}
+
+.grapes-editor-shell .gjs-layer-title {
+  font-size: 0.8125rem;
+}
+
+/* Toolbar strip inside app */
+.grapes-editor-toolbar-strip {
+  @apply flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-2;
+}
+
+/* Saved layout render */
 .page-layout-content {
   max-width: 100%;
   overflow-x: auto;
@@ -116,6 +189,10 @@
   .page-layout-content .intranet-buy-btn {
     display: block !important;
     text-align: center;
+  }
+
+  .grapes-editor-shell .gjs-cv-canvas__frames {
+    padding: 10px;
   }
 }
 

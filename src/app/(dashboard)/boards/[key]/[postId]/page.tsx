@@ -56,9 +56,11 @@ export default async function PostDetailPage({
   await incrementViewCount(postId);
   const canManage = canManagePost(user, post.authorId);
 
+  const isProduct = key === "products";
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+    <div className={isProduct ? "mx-auto max-w-5xl page-shell" : "mx-auto max-w-3xl page-shell"}>
+      <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
         <Link href={`/boards/${key}`}>
           <ArrowLeft className="h-4 w-4" />
           {post.board.name} 목록
@@ -66,16 +68,21 @@ export default async function PostDetailPage({
       </Button>
 
       {detailLayout?.html && detailLayout.isPublished && (
-        <PageLayoutRenderer html={detailLayout.html} css={detailLayout.css} />
+        <div className={isProduct ? "overflow-hidden rounded-2xl border border-border/70 shadow-card" : ""}>
+          <PageLayoutRenderer html={detailLayout.html} css={detailLayout.css} />
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
+      <Card className={isProduct ? "overflow-hidden border-border/70 shadow-elevated" : ""}>
+        <CardHeader className={isProduct ? "border-b border-border/50 bg-gradient-to-br from-muted/40 to-card pb-6" : ""}>
           <div className="flex flex-wrap items-center gap-2">
             {post.isPinned && <Badge variant="destructive">중요</Badge>}
             {post.category && <Badge variant="secondary">{post.category}</Badge>}
+            {isProduct && <Badge className="bg-primary/10 text-primary hover:bg-primary/15">상품</Badge>}
           </div>
-          <CardTitle className="text-xl">{post.title}</CardTitle>
+          <CardTitle className={isProduct ? "text-2xl md:text-3xl" : "text-xl"}>
+            {post.title}
+          </CardTitle>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span>{post.author.name}</span>
             <span className="inline-flex items-center gap-1">
@@ -106,7 +113,7 @@ export default async function PostDetailPage({
                   <li key={a.id}>
                     <a
                       href={`/api/files/${a.id}`}
-                      className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                      className="flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2.5 text-sm shadow-xs transition-all hover:border-primary/25 hover:bg-muted/40"
                     >
                       <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate">{a.filename}</span>
