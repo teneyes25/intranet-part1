@@ -151,6 +151,7 @@ export function GrapesEditor({
     };
   }, [slug, dealerScope, themes]);
 
+  // 에디터는 1회만 초기화 (slug/scope 변경 시 loadLayoutIntoEditor만 호출)
   useEffect(() => {
     let editor: Editor | null = null;
     let cancelled = false;
@@ -189,7 +190,16 @@ export function GrapesEditor({
       editor?.destroy();
       editorRef.current = null;
     };
-  }, [slug, dealerScope, scopeLayout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 에디터 인스턴스는 마운트 시 1회만 생성
+  }, []);
+
+  // slug / dealerScope / layout 변경 시 에디터 내용만 갱신
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || !ready) return;
+    loadLayoutIntoEditor(editor, scopeLayout);
+    applyThemeToEditor(editor, themeRef.current);
+  }, [slug, dealerScope, scopeLayout, ready]);
 
   useEffect(() => {
     if (editorRef.current && ready) {

@@ -16,6 +16,7 @@ export default async function PageBuilderPage() {
   return (
     <div className="space-y-4">
       <PageHeader
+        eyebrow="Visual CMS"
         title="Visual Page Builder"
         description={
           access.isReadOnly

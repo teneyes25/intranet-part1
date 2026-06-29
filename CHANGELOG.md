@@ -2,6 +2,24 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.1.1] — 2026-06-29 — B2B 상용화 업그레이드
+
+### Page Builder (GrapesJS Best Practices)
+- 컴포넌트 타입 + Traits 기반 블록 (`grapes-component-types.ts`) — 히어로, 상품 헤더, 거래 위젯, 라이브 공지
+- 캔버스 디자인 토큰 앱 셸과 동기화 (`canvas-design-tokens.ts`)
+- 에디터 1회 초기화 + slug/scope 변경 시 증분 로드 (성능)
+- 블록 패널 UI·카테고리 상용 스타일
+
+### B2B Commerce & Self-Service
+- 거래 모듈 React 하이드레이션 (`layout-content-hydrator.tsx`, `commerce-module-card.tsx`)
+- `/commerce` 허브 + 발주서·세금계산서·결제·계약 Preview 페이지
+- 대리점 포털 실데이터 연동 (주문·재고·공지 KPI)
+- 네비: 대리점 포털, 거래 모듈, 페이지 편집
+
+### UI/UX
+- Modern B2B 유틸 클래스 (`b2b-kpi-strip`, `b2b-section-eyebrow`)
+- 상품 상세 전용 블록 (헤더, 갤러리, 스펙, CTA)
+
 ## [1.1.0] — 2026-06-28 — Page Builder 상용화 (MVP)
 
 ### Added — Visual Page Builder (GrapesJS)

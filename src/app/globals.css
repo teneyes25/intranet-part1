@@ -106,6 +106,12 @@
   .surface-muted {
     @apply rounded-xl border border-border/60 bg-muted/30;
   }
+  .b2b-kpi-strip {
+    @apply grid gap-3 rounded-xl border border-border/70 bg-gradient-to-br from-card to-muted/20 p-4 shadow-soft sm:grid-cols-2 lg:grid-cols-4;
+  }
+  .b2b-section-eyebrow {
+    @apply text-xs font-semibold uppercase tracking-widest text-primary/80;
+  }
   .mailbox-row {
     @apply flex items-center gap-2 border-b border-border/50 bg-card transition-all duration-150 last:border-b-0 hover:bg-primary/[0.03];
   }
