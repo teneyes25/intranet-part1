@@ -103,10 +103,10 @@ export default async function ApprovalPage({
               key={t.key}
               href={`/approval?box=${t.key}`}
               className={cn(
-                "flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-all duration-200",
                 active
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -121,7 +121,7 @@ export default async function ApprovalPage({
         })}
       </div>
 
-      <Card>
+      <Card className="overflow-hidden border-border/60 shadow-card">
         <CardContent className="p-0">
           <ApprovalList items={items} emptyText={emptyText} />
         </CardContent>

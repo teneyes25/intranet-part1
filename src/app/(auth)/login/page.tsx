@@ -25,19 +25,20 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Building2 className="h-6 w-6" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-navy-900 via-brand-dark to-brand p-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.15),transparent_50%)]" />
+      <div className="relative w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white shadow-elevated ring-1 ring-white/20 backdrop-blur">
+            <Building2 className="h-7 w-7" />
           </span>
-          <h1 className="text-xl font-bold tracking-tight">인트라넷 포털</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-white">인트라넷 포털</h1>
+          <p className="text-sm text-white/70">
             계정으로 로그인하세요
           </p>
         </div>
 
-        <Card>
+        <Card className="border-white/10 bg-white/95 shadow-elevated backdrop-blur">
           <CardHeader>
             <CardTitle>로그인</CardTitle>
             <CardDescription>
@@ -51,18 +52,18 @@ export default async function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-sm text-white/70">
           계정이 없으신가요?{" "}
           <Link
             href="/signup"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
+            className="font-medium text-white underline-offset-4 hover:underline"
           >
             회원가입
           </Link>
         </p>
 
-        <div className="mt-4 rounded-md border bg-background p-3 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground">데모 계정 (seed)</p>
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70 backdrop-blur">
+          <p className="font-medium text-white">데모 계정 (seed)</p>
           <ul className="mt-1 space-y-0.5">
             <li>admin@intranet.local · 관리자</li>
             <li>hq@intranet.local · 본사</li>

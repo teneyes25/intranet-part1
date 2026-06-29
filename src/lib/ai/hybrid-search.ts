@@ -65,5 +65,8 @@ export async function hybridSearch(
   return [...merged.values()]
     .sort((a, b) => b.rrf - a.rrf)
     .slice(0, k)
-    .map(({ rrf: _r, ...rest }) => rest);
+    .map(({ rrf, ...rest }) => {
+      void rrf;
+      return rest;
+    });
 }

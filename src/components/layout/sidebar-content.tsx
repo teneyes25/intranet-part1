@@ -37,7 +37,7 @@ export function SidebarContent({
           onClick={onNavigate}
           className="flex items-center gap-2 overflow-hidden"
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary-foreground/10">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary/15 ring-1 ring-sidebar-primary/20">
             {branding?.logoStorageKey ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -50,7 +50,7 @@ export function SidebarContent({
             )}
           </span>
           {!collapsed && (
-            <span className="truncate text-base font-bold tracking-tight">
+            <span className="truncate text-base font-semibold tracking-tight">
               {branding?.appName ?? "Intranet"}
             </span>
           )}

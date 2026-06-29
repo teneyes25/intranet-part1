@@ -41,7 +41,7 @@ export function ApprovalList({
         <li key={d.id}>
           <Link
             href={`/approval/${d.id}`}
-            className="flex items-center gap-3 px-6 py-3.5 text-sm transition-colors hover:bg-muted/40"
+            className="flex items-center gap-3 px-6 py-4 text-sm transition-all duration-200 hover:bg-primary/5"
           >
             <Badge
               variant={APPROVAL_STATUS_VARIANT[d.status as ApprovalStatusKey]}

@@ -44,8 +44,8 @@ export async function deleteNewsKeywordAction(id: string) {
 
 export async function triggerNewsCollectAction() {
   await requireRole(["ADMIN"]);
-  const { collectAndPublish } = await import("@/lib/news/collect");
-  const results = await collectAndPublish();
+  const { runNewsCollectionJob } = await import("@/lib/news/job");
+  const results = await runNewsCollectionJob("manual");
   revalidatePath("/boards/news");
   return { results };
 }

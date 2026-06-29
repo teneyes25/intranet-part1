@@ -1,0 +1,108 @@
+/* GrapesJS — shadcn/ui 전역 스타일과 격리 · Phase 3 상용 UI */
+.grapes-editor-shell {
+  isolation: isolate;
+  position: relative;
+}
+
+.grapes-editor-shell .gjs-editor {
+  font-family: Pretendard, var(--font-inter), system-ui, sans-serif;
+}
+
+.grapes-editor-shell .gjs-pn-panel,
+.grapes-editor-shell .gjs-sm-sector,
+.grapes-editor-shell .gjs-block {
+  font-family: Pretendard, system-ui, sans-serif;
+}
+
+.grapes-editor-shell .gjs-cv-canvas {
+  background: linear-gradient(180deg, hsl(214 32% 97%) 0%, hsl(210 40% 98%) 100%);
+}
+
+.grapes-editor-shell .gjs-frame-wrapper {
+  transition: max-width 0.25s ease, box-shadow 0.25s ease;
+}
+
+.grapes-editor-shell .gjs-cv-canvas__frames {
+  padding: 12px;
+}
+
+.grapes-editor-shell .gjs-frame {
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.12);
+  border: 1px solid hsl(214 32% 91%);
+  overflow: hidden;
+}
+
+.grapes-editor-shell .gjs-block {
+  border-radius: 0.5rem;
+  border-color: hsl(214 32% 91%);
+}
+
+.grapes-editor-shell .gjs-block:hover {
+  border-color: hsl(221 83% 53% / 0.45);
+}
+
+.grapes-editor-shell .gjs-pn-btn.gjs-pn-active {
+  color: hsl(221 83% 53%);
+}
+
+/* 저장된 레이아웃 렌더 — 모바일 대응 */
+.page-layout-content {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.page-layout-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.page-layout-content a {
+  word-break: break-word;
+}
+
+.page-layout-content .intranet-product-gallery {
+  display: grid;
+  gap: 8px;
+}
+
+.page-layout-content .intranet-spec-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+@media (max-width: 768px) {
+  .page-layout-content .intranet-gallery,
+  .page-layout-content .intranet-product-gallery {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .page-layout-content .intranet-banner,
+  .page-layout-content .intranet-hero {
+    padding: 24px 16px !important;
+  }
+
+  .page-layout-content .intranet-banner h1,
+  .page-layout-content .intranet-hero h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .page-layout-content .intranet-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-layout-content .intranet-spec-table {
+    font-size: 0.8125rem !important;
+  }
+
+  .page-layout-content .intranet-buy-btn {
+    display: block !important;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-layout-content .intranet-product-gallery {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}

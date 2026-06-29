@@ -33,7 +33,7 @@ async function main() {
   for (const u of usersSpec) {
     const row = await prisma.user.upsert({
       where: { email: u.email },
-      update: { name: u.name, role: u.role, dealerId: u.dealerId, isActive: true, approvalStatus: "APPROVED", mustChangePassword: true },
+      update: { name: u.name, role: u.role, dealerId: u.dealerId, isActive: true, approvalStatus: "APPROVED", mustChangePassword: false },
       create: {
         email: u.email,
         name: u.name,
@@ -42,7 +42,7 @@ async function main() {
         passwordHash: password,
         isActive: true,
         approvalStatus: "APPROVED",
-        mustChangePassword: true,
+        mustChangePassword: false,
       },
     });
     users[u.email] = row.id;

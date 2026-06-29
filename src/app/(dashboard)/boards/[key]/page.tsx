@@ -9,6 +9,9 @@ import { requireUser } from "@/lib/auth/session";
 import { canWriteBoard } from "@/features/board/permissions";
 import { canAccessBoard } from "@/lib/auth/access";
 import { getBoardByKey, listPosts } from "@/features/board/queries";
+import { getSiteSettings, parsePageBuilderConfig } from "@/features/customize/site-settings-service";
+import { PageLayoutRenderer } from "@/features/page-layout/components/layout-renderer";
+import { getBoardPageLayout } from "@/features/page-layout/service";
 import { BoardFilters } from "@/features/board/components/board-filters";
 import { PostList } from "@/features/board/components/post-list";
 import { BoardPagination } from "@/features/board/components/board-pagination";
@@ -42,7 +45,13 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
   const { key } = await params;
   const sp = await searchParams;
 
-  const [user, board] = await Promise.all([requireUser(), getBoardByKey(key)]);
+  const user = await requireUser();
+  const [board, settings, boardLayout] = await Promise.all([
+    getBoardByKey(key),
+    getSiteSettings(),
+    getBoardPageLayout(key, user.dealerId),
+  ]);
+  const pageBuilder = parsePageBuilderConfig(settings.pageBuilderConfig);
   if (!board) notFound();
   if (!canAccessBoard(user.role, key)) notFound();
 
@@ -99,16 +108,35 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
 
   return (
     <div className="space-y-4">
+      {boardLayout?.html && boardLayout.isPublished ? (
+        <PageLayoutRenderer html={boardLayout.html} css={boardLayout.css} />
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <PageHeader title={board.name} description={board.description ?? undefined} />
-        {canWrite && (
-          <Button asChild>
-            <Link href={`/boards/${board.key}/new`}>
-              <PenSquare className="h-4 w-4" />
-              글쓰기
-            </Link>
+        <PageHeader
+          title={
+            key === "pr" && !boardLayout?.html && pageBuilder.prHeader?.title
+              ? pageBuilder.prHeader.title
+              : board.name
+          }
+          description={
+            key === "pr" && !boardLayout?.html && pageBuilder.prHeader?.subtitle
+              ? pageBuilder.prHeader.subtitle
+              : board.description ?? undefined
+          }
+        />
+        <div className="flex flex-wrap gap-2">
+          {canWrite && (
+            <Button asChild>
+              <Link href={`/boards/${board.key}/new`}>
+                <PenSquare className="h-4 w-4" />
+                글쓰기
+              </Link>
+            </Button>
+          )}
+          <Button asChild variant="outline">
+            <Link href={`/boards/${board.key}/mailbox`}>📬 메일함 보기</Link>
           </Button>
-        )}
+        </div>
       </div>
 
       {isProducts && categoryTree.length > 0 ? (

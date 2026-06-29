@@ -42,6 +42,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BUILD_ID: ${BUILD_ID:-dev}
     container_name: intranet-app
     restart: unless-stopped
     env_file: .env.production
@@ -56,6 +58,8 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:8080}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-in-production}
       NODE_ENV: production
+      BUILD_ID: ${BUILD_ID:-dev}
+      NEXT_PUBLIC_BUILD_ID: ${BUILD_ID:-dev}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
@@ -66,10 +70,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PRISMA_MIGRATE_DEPLOY: ${PRISMA_MIGRATE_DEPLOY:-true}
       PRISMA_ACCEPT_DATA_LOSS: ${PRISMA_ACCEPT_DATA_LOSS:-false}
-      RUN_SEED: ${RUN_SEED:-false}
-      RUN_DEMO_SEED: ${RUN_DEMO_SEED:-false}
-      RUN_DEALER_DEMO_SEED: ${RUN_DEALER_DEMO_SEED:-false}
-      PILOT_MODE: ${PILOT_MODE:-false}
+      # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED, PILOT_MODE → .env.production (env_file)
       BEHIND_NGINX: "true"
       # CLAMAV_HOST: ${CLAMAV_HOST:-}
     volumes:
@@ -106,6 +107,7 @@ services:
       - "${HTTP_PORT:-8080}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/security-headers.conf:/etc/nginx/conf.d/security-headers.conf:ro
     deploy:
       resources:
         limits:

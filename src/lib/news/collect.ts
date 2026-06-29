@@ -5,17 +5,15 @@ import { sanitizeRichText } from "@/lib/sanitize";
 import { ingestPost } from "@/lib/ai/ingest";
 import { getActiveKeywords } from "@/features/news/keyword-service";
 import { selectKeywordsForToday } from "@/lib/news/select-keywords";
+import {
+  AUTO_COLLECT_POST_CATEGORY,
+  parseDefaultKeywordsFromEnv,
+} from "@/lib/news/config";
 import { fetchNews, type NewsItem } from "./sources";
 import { summarizeNews } from "./summarize";
 
 export const NEWS_BOARD_KEY = "news";
 const NEWS_BOT_EMAIL = "newsbot@intranet.local";
-
-const DEFAULT_KEYWORDS = [
-  { category: "AI", keyword: "AI 인공지능" },
-  { category: "경제", keyword: "경제" },
-  { category: "미래", keyword: "미래 기술" },
-];
 
 function escapeHtml(s: string): string {
   return s
@@ -25,14 +23,18 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-async function ensureNewsBoard(categories: string[]) {
+async function ensureNewsBoard(keywordCategories: string[]) {
+  const categories = [
+    AUTO_COLLECT_POST_CATEGORY,
+    ...new Set(keywordCategories),
+  ];
   return prisma.board.upsert({
     where: { key: NEWS_BOARD_KEY },
     update: { categories: [...new Set(categories)] },
     create: {
       key: NEWS_BOARD_KEY,
       name: "뉴스",
-      description: "매일 자동 수집되는 AI·경제·미래 분야 주요 뉴스",
+      description: "매일 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
       categories: [...new Set(categories)],
       writeRoles: ["ADMIN"],
       allowComments: true,
@@ -54,13 +56,18 @@ async function ensureNewsBotUser() {
   });
 }
 
-function buildContent(summaryLines: string[], item: NewsItem): string {
+function buildContent(
+  summaryLines: string[],
+  item: NewsItem,
+  keywordLabel: string,
+): string {
   const lines = summaryLines.map((l) => escapeHtml(l)).join("<br/>");
   const src = item.source ? ` (${escapeHtml(item.source)})` : "";
   const html = `
+    <p><strong>[${escapeHtml(keywordLabel)}]</strong></p>
     <p>${lines}</p>
     <p>🔗 <a href="${escapeHtml(item.link)}">원문 보기${src}</a></p>
-    <p><em>본 글은 등록 키워드 기반 자동 수집·요약입니다.</em></p>
+    <p><em>본 글은 등록 키워드 기반 자동 수집·AI 요약입니다. (카테고리: ${AUTO_COLLECT_POST_CATEGORY})</em></p>
   `;
   return sanitizeRichText(html);
 }
@@ -77,7 +84,7 @@ export async function collectAndPublish(): Promise<CollectResult[]> {
   let activeKeywords = await getActiveKeywords();
 
   if (activeKeywords.length === 0) {
-    for (const kw of DEFAULT_KEYWORDS) {
+    for (const kw of parseDefaultKeywordsFromEnv()) {
       await prisma.newsKeyword.upsert({
         where: { keyword: kw.keyword },
         update: { category: kw.category, isActive: true },
@@ -130,8 +137,8 @@ export async function collectAndPublish(): Promise<CollectResult[]> {
           boardId: board.id,
           authorId: bot.id,
           title: chosen.title,
-          content: buildContent(summary, chosen),
-          category: kw.category,
+          content: buildContent(summary, chosen, kw.keyword),
+          category: AUTO_COLLECT_POST_CATEGORY,
         },
         select: { id: true },
       });

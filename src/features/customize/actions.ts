@@ -19,9 +19,14 @@ import {
   getSiteSettings,
 } from "@/features/customize/site-settings-service";
 import {
+  stripPageBuilderGrids,
+  syncLegacyFromGrids,
+} from "@/features/customize/page-builder/migrate";
+import {
   DEFAULT_DASHBOARD_LAYOUT,
   type ApprovalLineStep,
   type DashboardLayoutConfig,
+  type PageBuilderConfig,
 } from "@/features/customize/types";
 import { writeAudit, getClientIp } from "@/lib/audit/service";
 import { requireRole } from "@/lib/auth/session";
@@ -110,6 +115,31 @@ export async function resetDashboardLayoutAction() {
   });
   await auditAdmin("SITE_CUSTOMIZE", user.id, user.email, "dashboard_layout", "reset_default");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function savePageBuilderConfigAction(json: string) {
+  const user = await requireRole(["ADMIN"]);
+  let config: PageBuilderConfig;
+  try {
+    const parsed = JSON.parse(json) as PageBuilderConfig;
+    config = stripPageBuilderGrids(syncLegacyFromGrids(parsed));
+  } catch {
+    return { error: "설정 JSON 형식이 올바르지 않습니다." };
+  }
+
+  await updateSiteSettings({
+    updatedById: user.id,
+    pageBuilderConfig: config,
+    dashboardLayout: {
+      showBanner: true,
+      widgets: config.dashboard?.widgets ?? DEFAULT_DASHBOARD_LAYOUT.widgets,
+    },
+  });
+  await auditAdmin("SITE_CUSTOMIZE", user.id, user.email, "page_builder", "saved");
+  revalidatePath("/dashboard");
+  revalidatePath("/boards/pr");
+  revalidatePath("/admin/customize");
   return { ok: true };
 }
 

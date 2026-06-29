@@ -24,19 +24,19 @@ export function PostList({
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-12 text-center text-sm text-muted-foreground">
+      <div className="surface-muted border-dashed p-12 text-center text-sm text-muted-foreground">
         게시글이 없습니다.
       </div>
     );
   }
 
   return (
-    <ul className="divide-y rounded-md border">
+    <ul className="surface-card overflow-hidden divide-y divide-border/50">
       {items.map((p) => (
         <li key={p.id}>
           <Link
             href={`/boards/${boardKey}/${p.id}`}
-            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
+            className="flex items-center gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-brand-light/5"
           >
             {p.isPinned && (
               <Pin className="h-4 w-4 shrink-0 text-destructive" />

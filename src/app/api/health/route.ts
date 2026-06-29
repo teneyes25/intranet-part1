@@ -8,6 +8,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // instrumentation 미기동 환경에서 cron 폴백 등록 (멱등)
+  try {
+    const { startNewsCron } = await import("@/lib/news/scheduler");
+    startNewsCron();
+  } catch {
+    /* non-blocking */
+  }
+
   const checks: Record<string, "ok" | "error"> = {
     app: "ok",
     database: "error",
@@ -42,10 +50,13 @@ export async function GET() {
       status: healthy ? "healthy" : "degraded",
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version ?? "0.1.0",
+      buildId: process.env.BUILD_ID ?? process.env.NEXT_PUBLIC_BUILD_ID ?? "dev",
       checks,
     },
     { status },
   );
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.headers.set("Pragma", "no-cache");
   applySecurityHeaders(res.headers);
   return res;
 }

@@ -110,8 +110,8 @@ async function main() {
     {
       key: "news",
       name: "뉴스",
-      description: "매일 자동 수집되는 AI·경제 분야 주요 뉴스",
-      categories: ["AI", "경제"],
+      description: "매일 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
+      categories: ["자동수집", "건설", "유통", "소비재", "프랜차이즈", "AI", "경제"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
     },
     {
@@ -219,14 +219,15 @@ async function main() {
   }
   console.log("✅ seeded document categories");
 
-  // 뉴스 키워드 (AI·경제·미래)
+  // 뉴스 키워드 (업종·분야)
   const newsKeywords = [
+    { keyword: "건설", category: "건설" },
+    { keyword: "유통", category: "유통" },
+    { keyword: "소비재", category: "소비재" },
+    { keyword: "프랜차이즈", category: "프랜차이즈" },
     { keyword: "AI 인공지능", category: "AI" },
-    { keyword: "생성형 AI", category: "AI" },
     { keyword: "경제", category: "경제" },
-    { keyword: "금리", category: "경제" },
     { keyword: "미래 기술", category: "미래" },
-    { keyword: "디지털 전환", category: "미래" },
   ];
   for (const [i, kw] of newsKeywords.entries()) {
     await prisma.newsKeyword.upsert({

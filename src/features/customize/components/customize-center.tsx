@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, FileCheck2, Palette, Share2 } from "lucide-react";
+import { Bot, FileCheck2, LayoutTemplate, Palette, Share2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { CustomizeTab } from "@/features/customize/types";
 import { DesignTab } from "./design-tab";
+import { PageBuilderTab } from "./page-builder-tab";
 import { AiLearningTab } from "./ai-learning-tab";
 import { ApprovalCustomizeTab } from "./approval-customize-tab";
 import { IntegrationTab } from "./integration-tab";
@@ -13,6 +14,7 @@ import type { getCustomizePageData } from "@/features/customize/queries";
 
 const TABS: { id: CustomizeTab; label: string; icon: typeof Palette }[] = [
   { id: "design", label: "화면 디자인", icon: Palette },
+  { id: "pageBuilder", label: "Page Builder", icon: LayoutTemplate },
   { id: "ai", label: "AI 학습", icon: Bot },
   { id: "approval", label: "전자결재", icon: FileCheck2 },
   { id: "integration", label: "SNS 연동", icon: Share2 },
@@ -55,6 +57,7 @@ export function CustomizeCenter({
       {tab === "design" && (
         <DesignTab settings={data.settings} layout={data.layout} />
       )}
+      {tab === "pageBuilder" && <PageBuilderTab />}
       {tab === "ai" && (
         <AiLearningTab jobs={data.ingestJobs} boards={data.boards} />
       )}

@@ -7,10 +7,12 @@ import type { Role } from "@/lib/auth/roles";
  */
 export function canWriteBoard(
   role: Role | undefined,
-  _writeRoles: Role[] = [],
+  writeRoles: Role[] = [],
 ): boolean {
   if (!role) return false;
-  return true;
+  if (role === "ADMIN") return true;
+  if (writeRoles.length === 0) return true;
+  return writeRoles.includes(role);
 }
 
 /**

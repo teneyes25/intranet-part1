@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Providers } from "@/components/providers";
 import { PwaRegister } from "@/components/pwa-register";
+import { inter } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className={`${inter.variable} min-h-screen bg-background font-sans antialiased`}>
         <Providers>
           {children}
           <PwaRegister />

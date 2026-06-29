@@ -2,8 +2,15 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import {
+  parsePageBuilderConfigWithGrids,
+  stripPageBuilderGrids,
+  syncLegacyFromGrids,
+} from "@/features/customize/page-builder/migrate";
+import {
   DEFAULT_DASHBOARD_LAYOUT,
+  DEFAULT_PAGE_BUILDER_CONFIG,
   type DashboardLayoutConfig,
+  type PageBuilderConfig,
 } from "@/features/customize/types";
 
 export async function getSiteSettings() {
@@ -26,18 +33,43 @@ export function parseDashboardLayout(raw: unknown): DashboardLayoutConfig {
   };
 }
 
+/** 런타임용 — grids 제외 (Phase 4) */
+export function parsePageBuilderConfig(raw: unknown): PageBuilderConfig {
+  if (!raw || typeof raw !== "object") {
+    return stripPageBuilderGrids(DEFAULT_PAGE_BUILDER_CONFIG);
+  }
+  const withGrids = parsePageBuilderConfigWithGrids(raw);
+  const synced = syncLegacyFromGrids(withGrids);
+  return stripPageBuilderGrids({
+    version: 2,
+    dashboard: synced.dashboard,
+    banner: synced.banner,
+    prHeader: synced.prHeader,
+  });
+}
+
+/** 레거시 마이그레이션 전용 — grids 포함 */
+export function parsePageBuilderConfigForMigration(raw: unknown): PageBuilderConfig {
+  return parsePageBuilderConfigWithGrids(raw);
+}
+
 export async function updateSiteSettings(data: {
   appName?: string;
   primaryColor?: string;
   sidebarColor?: string;
   sidebarForeground?: string;
   dashboardLayout?: DashboardLayoutConfig;
+  pageBuilderConfig?: PageBuilderConfig;
   logoStorageKey?: string | null;
   faviconStorageKey?: string | null;
   bannerStorageKey?: string | null;
   bannerMediaType?: string | null;
   updatedById: string;
 }) {
+  const pageBuilderConfig = data.pageBuilderConfig
+    ? stripPageBuilderGrids(data.pageBuilderConfig)
+    : undefined;
+
   return prisma.siteSettings.upsert({
     where: { id: "default" },
     create: {
@@ -48,6 +80,8 @@ export async function updateSiteSettings(data: {
       sidebarForeground: data.sidebarForeground ?? "210 40% 98%",
       dashboardLayout: (data.dashboardLayout ??
         DEFAULT_DASHBOARD_LAYOUT) as object,
+      pageBuilderConfig: (pageBuilderConfig ??
+        stripPageBuilderGrids(DEFAULT_PAGE_BUILDER_CONFIG)) as object,
       logoStorageKey: data.logoStorageKey,
       faviconStorageKey: data.faviconStorageKey,
       bannerStorageKey: data.bannerStorageKey,
@@ -63,6 +97,9 @@ export async function updateSiteSettings(data: {
       }),
       ...(data.dashboardLayout !== undefined && {
         dashboardLayout: data.dashboardLayout as object,
+      }),
+      ...(pageBuilderConfig !== undefined && {
+        pageBuilderConfig: pageBuilderConfig as object,
       }),
       ...(data.logoStorageKey !== undefined && { logoStorageKey: data.logoStorageKey }),
       ...(data.faviconStorageKey !== undefined && {

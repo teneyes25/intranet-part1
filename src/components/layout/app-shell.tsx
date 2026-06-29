@@ -57,7 +57,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
       {/* 데스크톱 사이드바 */}
       <aside
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:block",
+          "sticky top-0 hidden h-screen shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-elevated transition-[width] duration-300 ease-out md:block",
           collapsed ? "w-[72px]" : "w-64",
         )}
       >
@@ -86,7 +86,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 bg-muted/20 p-4 md:p-8">
           <div className="mx-auto w-full max-w-7xl">
             {emergencyNotice && (
               <EmergencyBanner

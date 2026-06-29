@@ -25,7 +25,9 @@ import { StatCard } from "@/features/dashboard/components/stat-card";
 import { ActivityChart } from "@/features/dashboard/components/activity-chart";
 import { getDashboardData } from "@/features/dashboard/queries";
 import { mergeDashboardLayoutForRole } from "@/lib/production/dashboard-defaults";
-import { getSiteSettings, parseDashboardLayout } from "@/features/customize/site-settings-service";
+import { getSiteSettings, parseDashboardLayout, parsePageBuilderConfig } from "@/features/customize/site-settings-service";
+import { PageLayoutRenderer } from "@/features/page-layout/components/layout-renderer";
+import { getPageLayout } from "@/features/page-layout/service";
 import type { DashboardLayoutConfig } from "@/features/customize/types";
 import { getVisibleNavGroups } from "@/config/navigation";
 import { formatDate } from "@/features/board/utils";
@@ -42,11 +44,17 @@ function isWidgetVisible(layout: DashboardLayoutConfig, id: string) {
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [data, settings] = await Promise.all([getDashboardData(), getSiteSettings()]);
+  const [data, settings, bannerLayout, dashboardLayout] = await Promise.all([
+    getDashboardData(),
+    getSiteSettings(),
+    getPageLayout("banner", user.dealerId),
+    getPageLayout("dashboard", user.dealerId),
+  ]);
   const layout = mergeDashboardLayoutForRole(
     user.role,
     parseDashboardLayout(settings.dashboardLayout),
   );
+  const pageBuilder = parsePageBuilderConfig(settings.pageBuilderConfig);
   const today = new Intl.DateTimeFormat("ko-KR", { dateStyle: "full" }).format(
     new Date(),
   );
@@ -64,7 +72,7 @@ export default async function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold tracking-tight">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground">
               안녕하세요, {user.name}님
             </h2>
             <Badge variant="secondary">{ROLE_LABELS[user.role]}</Badge>
@@ -73,8 +81,16 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {dashboardLayout?.html && dashboardLayout.isPublished ? (
+        <PageLayoutRenderer
+          html={dashboardLayout.html}
+          css={dashboardLayout.css}
+          className="mb-2"
+        />
+      ) : null}
+
       {layout.showBanner && settings.bannerStorageKey && (
-        <div className="overflow-hidden rounded-xl border bg-muted/30">
+        <div className="relative overflow-hidden rounded-xl border bg-muted/30">
           {settings.bannerMediaType === "video" ? (
             <video
               className="max-h-64 w-full object-cover"
@@ -92,6 +108,27 @@ export default async function DashboardPage() {
               className="max-h-64 w-full object-cover"
             />
           )}
+          {bannerLayout?.html && bannerLayout.isPublished ? (
+            <div className="absolute inset-0 flex items-center bg-navy-900/30 p-4 sm:p-6">
+              <PageLayoutRenderer
+                html={bannerLayout.html}
+                css={bannerLayout.css}
+                className="w-full"
+              />
+            </div>
+          ) : pageBuilder.banner?.title ? (
+            <div className="absolute inset-0 flex flex-col items-start justify-center bg-navy-900/50 p-6 text-white">
+              <p className="text-xl font-bold">{pageBuilder.banner.title}</p>
+              {pageBuilder.banner.subtitle && (
+                <p className="mt-1 text-sm text-white/80">{pageBuilder.banner.subtitle}</p>
+              )}
+              {pageBuilder.banner.buttonText && pageBuilder.banner.buttonLink && (
+                <Button asChild size="sm" className="mt-3">
+                  <Link href={pageBuilder.banner.buttonLink}>{pageBuilder.banner.buttonText}</Link>
+                </Button>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -129,7 +166,15 @@ export default async function DashboardPage() {
       </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div
+        className={
+          pageBuilder.dashboard?.columns === "1"
+            ? "grid gap-6"
+            : pageBuilder.dashboard?.columns === "3"
+              ? "grid gap-6 lg:grid-cols-3"
+              : "grid gap-6 lg:grid-cols-3"
+        }
+      >
         {/* 좌측: 최근 게시글 (실데이터) */}
         <div className="space-y-6 lg:col-span-2">
           {isWidgetVisible(layout, "recentPosts") && (
@@ -157,7 +202,7 @@ export default async function DashboardPage() {
                     <li key={p.id}>
                       <Link
                         href={`/boards/${p.board.key}/${p.id}`}
-                        className="flex items-center gap-3 px-6 py-3 text-sm transition-colors hover:bg-muted/40"
+                        className="flex items-center gap-3 px-6 py-3.5 text-sm transition-all duration-200 hover:bg-primary/5"
                       >
                         {p.isPinned && (
                           <Pin className="h-3.5 w-3.5 shrink-0 text-destructive" />
@@ -207,7 +252,7 @@ export default async function DashboardPage() {
                         <Link
                           key={item.href}
                           href={item.href}
-                          className="flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors hover:border-primary/40 hover:bg-muted/50"
+                          className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-3.5 text-sm shadow-soft transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-card"
                         >
                           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="truncate">{item.title}</span>
@@ -225,7 +270,7 @@ export default async function DashboardPage() {
         {/* 우측: AI 요약 + 내 정보 */}
         <div className="space-y-6">
           {isWidgetVisible(layout, "aiSummary") && (
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/8 via-card to-card shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Sparkles className="h-4 w-4 text-primary" />

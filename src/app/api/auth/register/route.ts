@@ -10,7 +10,7 @@ import {
   parseJsonBody,
 } from "@/lib/security/api-guard";
 
-export const POST = withApiGuard({ tier: "auth", requireAuth: false }, async (req, ctx) => {
+export const POST = withApiGuard({ tier: "auth", requireAuth: false }, async (req) => {
   const parsed = await parseJsonBody(req, registerSchema);
   if ("error" in parsed) return parsed.error;
 

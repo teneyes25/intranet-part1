@@ -1,34 +1,34 @@
-const CACHE = "intranet-v1";
-const PRECACHE = ["/", "/dashboard", "/manifest.webmanifest", "/icons/icon.svg"];
+/**
+ * Intranet SW — 캐시 비활성 (network-only)
+ * 배포 시 install/activate에서 기존 Cache Storage 전부 삭제.
+ * fetch 핸들러 없음 → 브라우저가 항상 네트워크에서 최신 리소스를 받음.
+ */
+const SW_VERSION = new URL(self.location.href).searchParams.get("v") || "0";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
   );
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-    ).then(() => self.clients.claim()),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
   );
 });
 
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((res) => {
-          if (res.ok && event.request.url.startsWith(self.location.origin)) {
-            const clone = res.clone();
-            caches.open(CACHE).then((c) => c.put(event.request, clone));
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || fetchPromise;
-    }),
-  );
+// 버전 확인용 (클라이언트에서 postMessage 가능)
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "GET_SW_VERSION") {
+    event.source?.postMessage({ type: "SW_VERSION", version: SW_VERSION });
+  }
+  if (event.data?.type === "CLEAR_CACHES") {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
+    );
+  }
 });

@@ -46,7 +46,7 @@ export async function selectKeywordsForToday(
           },
           {
             role: "user",
-            content: `오늘: ${today}\n\n키워드:\n${list}\n\nAI·경제·미래 균형으로 최대 8개 선택 → {"indices":[1,3,...]}`,
+            content: `오늘: ${today}\n\n키워드:\n${list}\n\n업종·분야 균형으로 최대 8개 선택 → {"indices":[1,3,...]}`,
           },
         ],
       }),
@@ -78,9 +78,10 @@ function fallbackSelect(keywords: NewsKeyword[]): NewsKeyword[] {
     byCat.set(k.category, arr);
   }
   const picked: NewsKeyword[] = [];
-  for (const cat of ["AI", "경제", "미래"]) {
+  for (const cat of byCat.keys()) {
     const arr = byCat.get(cat);
     if (arr?.[0]) picked.push(arr[0]);
+    if (picked.length >= 8) break;
   }
   return picked.length > 0 ? picked : keywords.slice(0, 3);
 }

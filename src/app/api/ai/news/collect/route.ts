@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSession } from "@/lib/auth/session";
-import { collectAndPublish } from "@/lib/news/collect";
+import { runNewsCollectionJob } from "@/lib/news/job";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const results = await collectAndPublish();
+    const results = await runNewsCollectionJob("api");
     return NextResponse.json({ results });
   } catch (e) {
     console.error("[api/ai/news/collect]", e);

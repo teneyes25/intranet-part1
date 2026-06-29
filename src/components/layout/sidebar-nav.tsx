@@ -36,7 +36,7 @@ export function SidebarNav({
       {groups.map((group) => (
         <div key={group.label} className="flex flex-col gap-1">
           {!collapsed && (
-            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
               {group.label}
             </p>
           )}
@@ -72,14 +72,15 @@ function NavLink({
   const Icon = item.icon;
 
   const linkClasses = cn(
-    "group relative flex items-center rounded-md text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
-    active && "bg-sidebar-accent text-sidebar-foreground",
-    collapsed ? "h-10 w-10 justify-center" : "gap-3 px-3 py-2",
+    "group relative flex items-center rounded-lg text-sm font-medium text-sidebar-foreground/75 transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:shadow-soft",
+    active &&
+      "bg-sidebar-accent text-sidebar-foreground shadow-soft before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-sidebar-primary",
+    collapsed ? "h-10 w-10 justify-center" : "gap-3 px-3 py-2.5",
   );
 
   const link = (
     <Link href={item.href} onClick={onNavigate} className={linkClasses}>
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className={cn("h-4 w-4 shrink-0 transition-colors", active && "text-sidebar-primary")} />
       {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
       {!collapsed && item.badge ? (
         <Badge

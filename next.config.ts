@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "onnxruntime-node",
     "sharp",
     "ioredis",
+    "node-cron",
   ],
   experimental: {
     serverActions: {
@@ -18,6 +19,13 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/((?!_next/static).*)",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
+          { key: "Pragma", value: "no-cache" },
+        ],
+      },
       {
         source: "/(.*)",
         headers: Object.entries(SECURITY_HEADERS)

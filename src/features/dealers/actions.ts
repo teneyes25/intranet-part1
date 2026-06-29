@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { writeAudit } from "@/lib/audit/service";
+import { syncDealerPageTheme } from "@/features/page-layout/dealer-themes";
 
 const brandingSchema = z.object({
   dealerId: z.string(),
@@ -36,12 +37,15 @@ export async function updateDealerBrandingAction(formData: FormData) {
     },
   });
 
+  await syncDealerPageTheme(parsed.data.dealerId);
+
   void writeAudit({
     action: "DEALER_ROLLOUT",
     detail: `branding dealer=${parsed.data.dealerId}`,
   });
 
   revalidatePath("/admin/dealers");
+  revalidatePath("/admin/customize/page-builder");
   return { ok: true };
 }
 

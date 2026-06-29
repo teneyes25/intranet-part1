@@ -17,6 +17,9 @@ FROM deps AS prod-deps
 RUN npm prune --omit=dev
 
 FROM base AS builder
+ARG BUILD_ID=dev
+ENV BUILD_ID=$BUILD_ID
+ENV NEXT_PUBLIC_BUILD_ID=$BUILD_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -24,6 +27,9 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM base AS runner
+ARG BUILD_ID=dev
+ENV BUILD_ID=$BUILD_ID
+ENV NEXT_PUBLIC_BUILD_ID=$BUILD_ID
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000

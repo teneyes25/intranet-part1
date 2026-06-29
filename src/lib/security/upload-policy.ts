@@ -70,7 +70,8 @@ export function validateUploadFile(file: File): UploadValidationResult {
  * ClamAV 연동 준비 (CLAMAV_HOST 설정 시 활성화)
  * docker-compose에 clamav 서비스 추가 후 CLAMAV_HOST=clamav:3310
  */
-export async function scanFileIfEnabled(_buffer: Buffer): Promise<UploadValidationResult> {
+export async function scanFileIfEnabled(buffer: Buffer): Promise<UploadValidationResult> {
+  void buffer;
   const host = process.env.CLAMAV_HOST;
   if (!host) return { ok: true };
 

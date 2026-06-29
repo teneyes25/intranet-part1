@@ -17,7 +17,39 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: [
+          "Pretendard",
+          "var(--font-inter)",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "system-ui",
+          "sans-serif",
+        ],
+      },
       colors: {
+        navy: {
+          DEFAULT: "#0F172A",
+          50: "#F8FAFC",
+          100: "#F1F5F9",
+          800: "#1E293B",
+          900: "#0F172A",
+        },
+        slate: {
+          custom: {
+            400: "#94A3B8",
+            500: "#64748B",
+            600: "#475569",
+            200: "#E2E8F0",
+            100: "#F1F5F9",
+          },
+        },
+        brand: {
+          DEFAULT: "#2563EB",
+          dark: "#1E293B",
+          mid: "#3B82F6",
+          light: "#60A5FA",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -56,7 +88,13 @@ const config: Config = {
           foreground: "hsl(var(--sidebar-foreground))",
           accent: "hsl(var(--sidebar-accent))",
           border: "hsl(var(--sidebar-border))",
+          primary: "hsl(var(--sidebar-primary))",
         },
+      },
+      boxShadow: {
+        soft: "var(--shadow-soft)",
+        card: "var(--shadow-card)",
+        elevated: "var(--shadow-elevated)",
       },
       borderRadius: {
         lg: "var(--radius)",

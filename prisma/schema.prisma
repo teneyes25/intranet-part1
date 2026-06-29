@@ -54,6 +54,9 @@ model User {
   pilotFeedbacks  PilotFeedback[]
   ordersCreated   Order[]        @relation("OrderCreator")
   rolloutFeedbacks RolloutFeedback[]
+  postFolders     PostFolder[]
+  postLabels      PostLabel[]
+  postMailItems   PostMailItem[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -75,6 +78,8 @@ model Board {
   writeRoles    Role[]   @default([])
   allowComments Boolean  @default(true)
   posts         Post[]
+  postFolders   PostFolder[]
+  postLabels    PostLabel[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -98,6 +103,7 @@ model Post {
   isDemo      Boolean      @default(false)
   attachments Attachment[]
   comments    Comment[]
+  mailItems   PostMailItem[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -105,6 +111,81 @@ model Post {
   @@index([authorId])
   @@index([title])
   @@map("posts")
+}
+
+/// 사용자별 게시판 커스텀 폴더 (Gmail 스타일)
+model PostFolder {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boardId   String
+  board     Board          @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name      String
+  slug      String
+  color     String?
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  mailItems PostMailItem[]
+
+  @@unique([userId, boardId, slug])
+  @@index([userId, boardId])
+  @@map("post_folders")
+}
+
+/// 사용자별 게시판 라벨
+model PostLabel {
+  id          String                @id @default(cuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boardId     String
+  board       Board                 @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name        String
+  color       String                @default("#3B82F6")
+  sortOrder   Int                   @default(0)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  assignments PostLabelAssignment[]
+
+  @@unique([userId, boardId, name])
+  @@index([userId, boardId])
+  @@map("post_labels")
+}
+
+/// 사용자별 게시글 메일함 상태 (폴더·중요·임시·휴지통)
+model PostMailItem {
+  id          String                @id @default(cuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId      String
+  post        Post                  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  boardId     String
+  folderId    String?
+  folder      PostFolder?           @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  isImportant Boolean               @default(false)
+  isDraft     Boolean               @default(false)
+  trashedAt   DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  labels      PostLabelAssignment[]
+
+  @@unique([userId, postId])
+  @@index([userId, boardId])
+  @@index([userId, boardId, folderId])
+  @@index([userId, boardId, trashedAt])
+  @@map("post_mail_items")
+}
+
+/// 게시글 ↔ 라벨 (다대다)
+model PostLabelAssignment {
+  id         String       @id @default(cuid())
+  mailItemId String
+  mailItem   PostMailItem @relation(fields: [mailItemId], references: [id], onDelete: Cascade)
+  labelId    String
+  label      PostLabel    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([mailItemId, labelId])
+  @@map("post_label_assignments")
 }
 
 /// 게시글 첨부파일 (여러 개)
@@ -363,6 +444,8 @@ model Dealer {
   tradesFrom        DealerTrade[] @relation("TradeFrom")
   tradesTo          DealerTrade[] @relation("TradeTo")
   rolloutFeedbacks  RolloutFeedback[]
+  pageThemes        PageTheme[]
+  pageTemplates     PageTemplate[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -495,10 +578,96 @@ model SiteSettings {
   sidebarColor        String   @default("222.2 47.4% 11.2%")
   sidebarForeground   String   @default("210 40% 98%")
   dashboardLayout     Json?
+  /// 페이지 빌더 설정 (대시보드·배너·홍보실 등)
+  pageBuilderConfig   Json?
   updatedAt           DateTime @updatedAt
   updatedById         String?
 
   @@map("site_settings")
+}
+
+/// GrapesJS 페이지 테마 (본사·대리점 브랜딩)
+model PageTheme {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  /// primary, accent, background 등 CSS 변수
+  cssVars     Json     @default("{}")
+  canvasCss   String?  @db.Text
+  isDefault   Boolean  @default(false)
+  dealerId    String?
+  dealer      Dealer?  @relation(fields: [dealerId], references: [id], onDelete: SetNull)
+  layouts     PageLayout[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([dealerId])
+  @@map("page_themes")
+}
+
+/// GrapesJS 페이지 템플릿 갤러리
+model PageTemplate {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  category    String   /// dashboard | banner | board | landing
+  targetSlug  String   /// dashboard | banner | pr
+  thumbnail   String?
+  projectData Json     @default("{}")
+  html        String?  @db.Text
+  css         String?  @db.Text
+  isBuiltIn   Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  dealerId    String?
+  dealer      Dealer?  @relation(fields: [dealerId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([targetSlug, sortOrder])
+  @@index([dealerId])
+  @@map("page_templates")
+}
+
+/// GrapesJS 시각적 페이지 레이아웃 (slug: dashboard | banner | board:{key} 등)
+model PageLayout {
+  id           String   @id @default(cuid())
+  slug         String
+  name         String
+  /// "global" = 본사, 대리점 ID = 대리점 전용 오버라이드
+  dealerId     String   @default("global")
+  projectData  Json     @default("{}")
+  html         String?  @db.Text
+  css          String?  @db.Text
+  isPublished  Boolean  @default(true)
+  versionCount Int      @default(0)
+  themeId      String?
+  theme        PageTheme? @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  versions     PageLayoutVersion[]
+  updatedAt    DateTime @updatedAt
+  updatedById  String?
+
+  @@unique([slug, dealerId])
+  @@index([dealerId])
+  @@map("page_layouts")
+}
+
+/// 레이아웃 저장 이력 (버전 관리)
+model PageLayoutVersion {
+  id          String     @id @default(cuid())
+  layoutId    String
+  layout      PageLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  version     Int
+  projectData Json
+  html        String?    @db.Text
+  css         String?    @db.Text
+  note        String?
+  createdById String?
+  createdAt   DateTime   @default(now())
+
+  @@index([layoutId, version])
+  @@map("page_layout_versions")
 }
 
 /// AI 재학습 작업 이력

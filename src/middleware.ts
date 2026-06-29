@@ -7,6 +7,7 @@ import { applySecurityHeaders } from "@/lib/security/headers";
  * 가장 구체적인 경로가 먼저 매칭되도록 정렬되어 있다.
  */
 const ROUTE_MIN_ROLE: { prefix: string; min: Role }[] = [
+  { prefix: "/admin/customize/page-builder", min: "DEALER" },
   { prefix: "/admin", min: "ADMIN" },
   { prefix: "/headquarter", min: "HEADQUARTER" },
 ];

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { listApprovalLineTemplates, listApprovalTemplates } from "./approval-service";
 import { listIngestJobs } from "./ai-ingest-service";
 import { listIntegrations } from "./integration-service";
-import { getSiteSettings, parseDashboardLayout } from "./site-settings-service";
+import { getSiteSettings, parseDashboardLayout, parsePageBuilderConfig } from "./site-settings-service";
 
 export async function getCustomizePageData() {
   const [settings, templates, lineTemplates, ingestJobs, integrations, boards, users] =
@@ -25,6 +25,7 @@ export async function getCustomizePageData() {
   return {
     settings,
     layout: parseDashboardLayout(settings.dashboardLayout),
+    pageBuilder: parsePageBuilderConfig(settings.pageBuilderConfig),
     templates,
     lineTemplates,
     ingestJobs,

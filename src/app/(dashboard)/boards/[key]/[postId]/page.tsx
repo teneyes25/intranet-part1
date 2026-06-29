@@ -29,6 +29,8 @@ import {
   deleteCommentAction,
 } from "@/features/board/actions";
 import { RichTextContent } from "@/features/board/components/rich-text-content";
+import { PageLayoutRenderer } from "@/features/page-layout/components/layout-renderer";
+import { getPostDetailPageLayoutForView } from "@/features/page-layout/service";
 import { CommentForm } from "@/features/board/components/comment-form";
 import { ConfirmDeleteForm } from "@/features/board/components/confirm-delete-form";
 import { formatDateTime, formatFileSize } from "@/features/board/utils";
@@ -45,11 +47,13 @@ export default async function PostDetailPage({
   params: Promise<{ key: string; postId: string }>;
 }) {
   const { key, postId } = await params;
+  const user = await requireUser();
   const post = await getPostDetail(postId);
   if (!post || post.board.key !== key) notFound();
 
+  const detailLayout = await getPostDetailPageLayoutForView(postId, key, user.dealerId);
+
   await incrementViewCount(postId);
-  const user = await requireUser();
   const canManage = canManagePost(user, post.authorId);
 
   return (
@@ -60,6 +64,10 @@ export default async function PostDetailPage({
           {post.board.name} 목록
         </Link>
       </Button>
+
+      {detailLayout?.html && detailLayout.isPublished && (
+        <PageLayoutRenderer html={detailLayout.html} css={detailLayout.css} />
+      )}
 
       <Card>
         <CardHeader>

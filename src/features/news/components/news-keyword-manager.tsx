@@ -23,7 +23,7 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          등록 {keywords.length}/{MAX_NEWS_KEYWORDS} · AI·경제·미래 · 매일 09:00 자동 수집
+          등록 {keywords.length}/{MAX_NEWS_KEYWORDS} · 게시 카테고리: 자동수집 · 매일 09:00 KST
         </p>
         <Button
           variant="outline"
@@ -35,7 +35,15 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
               const r = await triggerNewsCollectAction();
               const published =
                 r.results?.filter((x) => x.status === "published").length ?? 0;
-              setCollectMsg(`수집 완료: ${published}건 게시`);
+              const errors =
+                r.results?.filter((x) => x.status === "error").length ?? 0;
+              const skipped =
+                r.results?.filter((x) => x.status === "skipped").length ?? 0;
+              const noResult =
+                r.results?.filter((x) => x.status === "no-result").length ?? 0;
+              setCollectMsg(
+                `수집 완료 — 게시 ${published}건 · 오류 ${errors} · 중복 ${skipped} · 결과없음 ${noResult}`,
+              );
             })
           }
         >
@@ -48,7 +56,7 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
         </Button>
       </div>
       {collectMsg && (
-        <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+        <p className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
           {collectMsg}
         </p>
       )}
@@ -70,7 +78,7 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
         <select
           name="category"
           className="h-10 rounded-md border bg-background px-3 text-sm"
-          defaultValue="AI"
+          defaultValue="건설"
         >
           {NEWS_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -86,9 +94,9 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
         </Button>
       </form>
 
-      <div className="overflow-hidden rounded-lg border">
+      <div className="overflow-hidden rounded-xl border border-border/60 shadow-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/50 text-left text-muted-foreground">
+          <thead className="border-b bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">키워드</th>
               <th className="px-4 py-3">분야</th>

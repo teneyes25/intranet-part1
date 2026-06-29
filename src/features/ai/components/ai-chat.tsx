@@ -138,14 +138,14 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-13rem)] flex-col rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-            <Bot className="h-4 w-4 text-primary" />
+    <div className="flex h-[calc(100vh-13rem)] flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
+      <div className="flex items-center justify-between border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
+            <Bot className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold">인트라넷 AI 어시스턴트</p>
+            <p className="text-sm font-semibold text-foreground">인트라넷 AI 어시스턴트</p>
             <p className="text-xs text-muted-foreground">
               Hybrid RAG · 대화 메모리 · 마크다운
             </p>
@@ -185,7 +185,7 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
                   key={s}
                   type="button"
                   onClick={() => send(s)}
-                  className="rounded-full border bg-background px-3 py-1.5 text-xs transition-all hover:border-primary/40 hover:bg-muted hover:scale-105"
+                  className="rounded-full border border-border/60 bg-background px-3.5 py-2 text-xs font-medium shadow-soft transition-all duration-200 hover:border-primary/40 hover:bg-primary/5 hover:shadow-card"
                 >
                   {s}
                 </button>

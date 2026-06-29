@@ -1,6 +1,7 @@
 "use client";
 
 import type { SiteSettings } from "@prisma/client";
+import Image from "next/image";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ImageIcon, Layout, Palette } from "lucide-react";
@@ -107,10 +108,13 @@ export function DesignTab({
                 <Label htmlFor="logo">로고</Label>
                 <Input id="logo" name="logo" type="file" accept="image/*" />
                 {settings.logoStorageKey && (
-                  <img
+                  <Image
                     src="/api/branding/asset?asset=logo"
                     alt="logo"
-                    className="mt-1 h-10 object-contain"
+                    width={160}
+                    height={40}
+                    unoptimized
+                    className="mt-1 h-10 w-auto object-contain"
                   />
                 )}
               </div>

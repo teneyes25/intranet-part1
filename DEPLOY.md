@@ -1,6 +1,7 @@
 # 온프레미스(본사 서버) Production 배포 가이드
 
-> **Phase 6 완료 — Pilot 배포 준비 완료** (Day 32: 본사 내부 Pilot 테스트)
+> **v1.1.0 — Page Builder 상용화 · MVP 배포 준비 완료** (Phase 5)  
+> 체크리스트: [docs/MVP_DEPLOYMENT_CHECKLIST.md](docs/MVP_DEPLOYMENT_CHECKLIST.md)
 
 ---
 

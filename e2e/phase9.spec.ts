@@ -56,6 +56,19 @@ test.describe("Phase 9 Full integration", () => {
   test("health + security baseline", async ({ request }) => {
     const res = await request.get("/api/health");
     expect(res.ok()).toBeTruthy();
-    expect(res.headers()["x-frame-options"]).toBeTruthy();
+    const headers = res.headers();
+    const xfo =
+      headers["x-frame-options"] ??
+      headers["X-Frame-Options"] ??
+      Object.entries(headers).find(([k]) => k.toLowerCase() === "x-frame-options")?.[1];
+    expect(xfo).toBeTruthy();
+    const login = await request.get("/login");
+    expect(login.ok()).toBeTruthy();
+    const loginHeaders = login.headers();
+    const loginXfo =
+      loginHeaders["x-frame-options"] ??
+      loginHeaders["X-Frame-Options"] ??
+      Object.entries(loginHeaders).find(([k]) => k.toLowerCase() === "x-frame-options")?.[1];
+    expect(loginXfo).toBeTruthy();
   });
 });

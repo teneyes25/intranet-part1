@@ -54,4 +54,6 @@ if [ "${RUN_DEALER_DEMO_SEED}" = "true" ]; then
 fi
 
 echo "[entrypoint] starting server on port ${PORT:-3000}..."
+# health 체크로 cron 폴백 등록 (instrumentation 보조)
+( sleep 8 && wget -q -O- "http://127.0.0.1:${PORT:-3000}/api/health" >/dev/null 2>&1 || true ) &
 exec node /app/server.js
