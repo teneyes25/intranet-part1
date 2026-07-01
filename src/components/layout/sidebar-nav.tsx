@@ -32,13 +32,11 @@ export function SidebarNav({
   const groups = getVisibleNavGroups(role);
 
   return (
-    <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+    <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-2.5 py-4">
       {groups.map((group) => (
-        <div key={group.label} className="flex flex-col gap-1">
+        <div key={group.label} className="flex flex-col gap-0.5">
           {!collapsed && (
-            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
-              {group.label}
-            </p>
+            <p className="app-sidebar-group-label">{group.label}</p>
           )}
           {group.items.map((item) => {
             const active = isActiveHref(pathname, item.href);
@@ -72,15 +70,19 @@ function NavLink({
   const Icon = item.icon;
 
   const linkClasses = cn(
-    "group relative flex items-center rounded-lg text-sm font-medium text-sidebar-foreground/75 transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:shadow-soft",
-    active &&
-      "bg-sidebar-accent text-sidebar-foreground shadow-soft before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-sidebar-primary",
-    collapsed ? "h-10 w-10 justify-center" : "gap-3 px-3 py-2.5",
+    "app-sidebar-nav-item group",
+    active && "app-sidebar-nav-item-active",
+    collapsed ? "mx-auto h-10 w-10 justify-center" : "gap-3 px-3 py-2.5",
   );
 
   const link = (
     <Link href={item.href} onClick={onNavigate} className={linkClasses}>
-      <Icon className={cn("h-4 w-4 shrink-0 transition-colors", active && "text-sidebar-primary")} />
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0 transition-colors",
+          active ? "text-sidebar-primary" : "text-sidebar-foreground/55 group-hover:text-sidebar-foreground/80",
+        )}
+      />
       {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
       {!collapsed && item.badge ? (
         <Badge

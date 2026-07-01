@@ -2,15 +2,8 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AuthShell } from "@/components/layout/auth-shell";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { getSession } from "@/lib/auth/session";
 
@@ -25,53 +18,43 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-navy-900 via-brand-dark to-brand p-4">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.15),transparent_50%)]" />
-      <div className="relative w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white shadow-elevated ring-1 ring-white/20 backdrop-blur">
-            <Building2 className="h-7 w-7" />
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight text-white">인트라넷 포털</h1>
-          <p className="text-sm text-white/70">
-            계정으로 로그인하세요
-          </p>
-        </div>
-
-        <Card className="border-white/10 bg-white/95 shadow-elevated backdrop-blur">
-          <CardHeader>
-            <CardTitle>로그인</CardTitle>
-            <CardDescription>
-              사내 계정 이메일과 비밀번호를 입력하세요.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={null}>
-              <LoginForm />
-            </Suspense>
-          </CardContent>
-        </Card>
-
-        <p className="mt-4 text-center text-sm text-white/70">
+    <AuthShell
+      title="로그인"
+      subtitle="사내 계정 이메일과 비밀번호를 입력하세요."
+      footer={
+        <>
           계정이 없으신가요?{" "}
           <Link
             href="/signup"
-            className="font-medium text-white underline-offset-4 hover:underline"
+            className="font-medium text-primary underline-offset-4 hover:underline"
           >
             회원가입
           </Link>
-        </p>
-
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70 backdrop-blur">
-          <p className="font-medium text-white">데모 계정 (seed)</p>
-          <ul className="mt-1 space-y-0.5">
-            <li>admin@intranet.local · 관리자</li>
-            <li>hq@intranet.local · 본사</li>
-            <li>dealer@intranet.local · 대리점</li>
-            <li>비밀번호: password1234</li>
+        </>
+      }
+      demoHint={
+        <>
+          <p className="font-semibold text-foreground">데모 계정 (seed)</p>
+          <ul className="mt-2 space-y-1">
+            <li>
+              <span className="font-medium text-foreground/80">admin@intranet.local</span>{" "}
+              · 관리자
+            </li>
+            <li>
+              <span className="font-medium text-foreground/80">hq@intranet.local</span> · 본사
+            </li>
+            <li>
+              <span className="font-medium text-foreground/80">dealer@intranet.local</span> ·
+              대리점
+            </li>
+            <li className="pt-1 text-muted-foreground">비밀번호: password1234</li>
           </ul>
-        </div>
-      </div>
-    </main>
+        </>
+      }
+    >
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
+    </AuthShell>
   );
 }

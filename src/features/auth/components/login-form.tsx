@@ -42,9 +42,11 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="email">이메일</Label>
+        <Label htmlFor="email" className="text-sm font-medium">
+          이메일
+        </Label>
         <Input
           id="email"
           type="email"
@@ -53,10 +55,13 @@ export function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          className="h-11"
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">비밀번호</Label>
+        <Label htmlFor="password" className="text-sm font-medium">
+          비밀번호
+        </Label>
         <Input
           id="password"
           type="password"
@@ -65,16 +70,20 @@ export function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          className="h-11"
         />
       </div>
 
       {error && (
-        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="h-11 w-full shadow-glow" disabled={loading}>
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         로그인
       </Button>

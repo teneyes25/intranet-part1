@@ -57,8 +57,8 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
       {/* 데스크톱 사이드바 */}
       <aside
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-elevated transition-[width] duration-300 ease-out md:block",
-          collapsed ? "w-[72px]" : "w-64",
+          "app-sidebar sticky top-0 hidden h-screen shrink-0 border-r border-sidebar-border/80 shadow-elevated transition-[width] duration-300 ease-out md:block",
+          collapsed ? "w-[72px]" : "w-[17rem]",
         )}
       >
         <SidebarContent
@@ -73,7 +73,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="left"
-          className="w-72 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
+          className="app-sidebar w-72 border-sidebar-border/80 p-0"
         >
           <SheetTitle className="sr-only">메뉴</SheetTitle>
           <SidebarContent

@@ -24,35 +24,45 @@ export function SidebarContent({
   onToggleCollapse,
   onNavigate,
 }: SidebarContentProps) {
+  const appName = branding?.appName ?? "Intranet";
+
   return (
     <div className="flex h-full flex-col">
       <div
         className={cn(
-          "flex h-16 items-center border-b border-sidebar-border",
+          "flex h-[4.25rem] shrink-0 items-center border-b border-sidebar-border/80",
           collapsed ? "justify-center px-2" : "justify-between px-4",
         )}
       >
         <Link
           href="/dashboard"
           onClick={onNavigate}
-          className="flex items-center gap-2 overflow-hidden"
+          className={cn(
+            "group flex items-center overflow-hidden transition-opacity hover:opacity-90",
+            collapsed ? "justify-center" : "gap-3",
+          )}
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary/15 ring-1 ring-sidebar-primary/20">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sidebar-primary/15 shadow-glow ring-1 ring-sidebar-primary/25 transition-transform group-hover:scale-[1.02]">
             {branding?.logoStorageKey ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src="/api/branding/asset?asset=logo"
                 alt=""
-                className="h-full w-full object-contain"
+                className="h-full w-full object-contain p-1"
               />
             ) : (
-              <Building2 className="h-5 w-5" />
+              <Building2 className="h-5 w-5 text-sidebar-primary" />
             )}
           </span>
           {!collapsed && (
-            <span className="truncate text-base font-semibold tracking-tight">
-              {branding?.appName ?? "Intranet"}
-            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
+                {appName}
+              </p>
+              <p className="truncate text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/35">
+                Workspace
+              </p>
+            </div>
           )}
         </Link>
         {onToggleCollapse && !collapsed && (
@@ -61,31 +71,34 @@ export function SidebarContent({
             size="icon"
             onClick={onToggleCollapse}
             aria-label="사이드바 접기"
-            className="hidden text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground md:inline-flex"
+            className="hidden h-8 w-8 text-sidebar-foreground/50 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground md:inline-flex"
           >
-            <PanelLeftClose className="h-5 w-5" />
+            <PanelLeftClose className="h-4 w-4" />
           </Button>
         )}
       </div>
 
       <SidebarNav role={role} collapsed={collapsed} onNavigate={onNavigate} />
 
-      <div className="border-t border-sidebar-border p-2">
+      <div className="shrink-0 border-t border-sidebar-border/80 p-2">
         {onToggleCollapse && collapsed ? (
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleCollapse}
             aria-label="사이드바 펼치기"
-            className="mx-auto hidden text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground md:flex"
+            className="mx-auto hidden h-9 w-9 text-sidebar-foreground/50 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground md:flex"
           >
-            <PanelLeftOpen className="h-5 w-5" />
+            <PanelLeftOpen className="h-4 w-4" />
           </Button>
         ) : (
           !collapsed && (
-            <p className="px-3 py-1 text-xs text-sidebar-foreground/40">
-              intranet-part1 · v0.1.0
-            </p>
+            <div className="px-3 py-2">
+              <p className="text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/30">
+                intranet-part1
+              </p>
+              <p className="mt-0.5 text-xs text-sidebar-foreground/45">v0.1.0 · B2B SaaS</p>
+            </div>
           )
         )}
       </div>

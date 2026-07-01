@@ -175,6 +175,64 @@
     @apply overflow-hidden rounded-2xl border border-border/70 bg-card shadow-elevated;
   }
 
+  /* App sidebar — Design System v4 */
+  .app-sidebar {
+    @apply bg-sidebar text-sidebar-foreground;
+    background-image:
+      linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(222 47% 9%) 100%),
+      radial-gradient(ellipse 80% 50% at 0% 0%, hsl(var(--sidebar-primary) / 0.12), transparent 55%);
+  }
+
+  .app-sidebar-nav-item {
+    @apply relative flex items-center rounded-xl text-sm font-medium text-sidebar-foreground/70 transition-all duration-200;
+  }
+
+  .app-sidebar-nav-item:hover {
+    @apply bg-sidebar-accent/80 text-sidebar-foreground shadow-soft;
+  }
+
+  .app-sidebar-nav-item-active {
+    @apply bg-sidebar-accent text-sidebar-foreground shadow-soft;
+    box-shadow:
+      var(--shadow-soft),
+      inset 3px 0 0 0 hsl(var(--sidebar-primary));
+  }
+
+  .app-sidebar-group-label {
+    @apply px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/30;
+  }
+
+  /* Auth pages — split layout */
+  .auth-page-shell {
+    @apply min-h-screen bg-background;
+  }
+
+  .auth-page-grid {
+    @apply grid min-h-screen lg:grid-cols-2;
+  }
+
+  .auth-brand-panel {
+    @apply relative overflow-hidden bg-gradient-to-br from-navy-900 via-[#1a2744] to-navy-800;
+  }
+
+  .auth-brand-panel::before {
+    content: "";
+    @apply pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/25 blur-3xl;
+  }
+
+  .auth-brand-panel::after {
+    content: "";
+    @apply pointer-events-none absolute -bottom-24 -left-12 h-56 w-56 rounded-full bg-brand-light/10 blur-3xl;
+  }
+
+  .auth-form-card {
+    @apply overflow-hidden rounded-2xl border border-border/70 bg-card shadow-elevated;
+  }
+
+  .auth-demo-hint {
+    @apply rounded-xl border border-border/60 bg-muted/50 p-4 text-xs text-muted-foreground;
+  }
+
   .mailbox-row {
     @apply flex items-center gap-2 border-b border-border/50 bg-card transition-all duration-150 last:border-b-0 hover:bg-primary/[0.03];
   }
