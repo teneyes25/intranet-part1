@@ -4,6 +4,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
+import { deleteFromFirebaseStorage, isFirebaseStorageKey } from "@/lib/firebase/storage-server";
+import { trySaveToFirebaseStorage } from "@/lib/storage/hybrid";
+
 const BRANDING_DIR = path.join(process.cwd(), "uploads", "branding");
 
 const ALLOWED = new Set([
@@ -29,9 +32,19 @@ export async function saveBrandingFile(
 
   await fs.mkdir(BRANDING_DIR, { recursive: true });
   const ext = path.extname(file.name) || (file.type.includes("video") ? ".mp4" : ".png");
-  const storageKey = `${kind}-${randomUUID()}${ext}`;
   const buf = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(BRANDING_DIR, storageKey), buf);
+
+  const firebaseSaved = await trySaveToFirebaseStorage({
+    buffer: buf,
+    contentType: file.type,
+    filename: `${kind}${ext}`,
+    folder: "branding",
+  });
+
+  const storageKey = firebaseSaved?.storageKey ?? `${kind}-${randomUUID()}${ext}`;
+  if (!firebaseSaved) {
+    await fs.writeFile(path.join(BRANDING_DIR, storageKey), buf);
+  }
 
   const mediaType = file.type.startsWith("video/") ? "video" : "image";
   return { storageKey, mediaType };
@@ -44,6 +57,10 @@ export function resolveBrandingPath(storageKey: string): string {
 
 export async function deleteBrandingFile(storageKey: string | null | undefined) {
   if (!storageKey) return;
+  if (isFirebaseStorageKey(storageKey)) {
+    await deleteFromFirebaseStorage(storageKey);
+    return;
+  }
   try {
     await fs.unlink(resolveBrandingPath(storageKey));
   } catch {

@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { loadPageLayoutAction, savePageLayoutAction } from "@/features/page-layout/actions";
+import { usePageBuilderCollaboration } from "@/features/firebase/hooks/use-page-builder-collaboration";
+import { useSession } from "next-auth/react";
 import { PageBuilderToolbar } from "@/features/page-layout/components/page-builder-toolbar";
 import {
   applyThemeToEditor,
@@ -86,6 +88,7 @@ export function GrapesEditor({
   postLayoutPosts,
 }: GrapesEditorProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const layoutSlugs = useMemo(
     () =>
       sortLayoutSlugs([
@@ -131,6 +134,15 @@ export function GrapesEditor({
   const refreshPage = useCallback(() => {
     router.refresh();
   }, [router]);
+
+  usePageBuilderCollaboration({
+    slug,
+    dealerScope,
+    userId: session?.user?.id,
+    userName: session?.user?.name ?? "사용자",
+    editorRef,
+    readOnly: access.isReadOnly,
+  });
 
   useEffect(() => {
     if (access.lockedDealerId) {

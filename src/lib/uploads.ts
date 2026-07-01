@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { mkdir, unlink, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, unlink, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -14,6 +14,8 @@ import {
   isImageMime,
 } from "@/lib/security/upload-policy";
 import { writeAudit } from "@/lib/audit/service";
+import { deleteFromFirebaseStorage, isFirebaseStorageKey } from "@/lib/firebase/storage-server";
+import { readHybridStorageFile, trySaveToFirebaseStorage } from "@/lib/storage/hybrid";
 
 export { MAX_FILE_SIZE, MAX_FILES };
 
@@ -87,11 +89,22 @@ export async function saveUploadedFile(
     if (!scan.ok) throw new Error(scan.error ?? "바이러스 검사 실패");
 
     const compressed = await compressImageBuffer(raw, mime);
-    storageKey = `${randomUUID()}${compressed.ext}`;
-    const target = path.join(UPLOAD_DIR, storageKey);
-    await writeFile(target, compressed.buffer);
     finalMime = compressed.mime;
     finalSize = compressed.buffer.length;
+
+    const firebaseSaved = await trySaveToFirebaseStorage({
+      buffer: compressed.buffer,
+      contentType: compressed.mime,
+      filename: `image${compressed.ext}`,
+      folder: "uploads",
+    });
+    if (firebaseSaved) {
+      storageKey = firebaseSaved.storageKey;
+    } else {
+      storageKey = `${randomUUID()}${compressed.ext}`;
+      const target = path.join(UPLOAD_DIR, storageKey);
+      await writeFile(target, compressed.buffer);
+    }
   } else {
     storageKey = `${randomUUID()}${safeExt(file.name)}`;
     const target = path.join(UPLOAD_DIR, storageKey);
@@ -108,6 +121,17 @@ export async function saveUploadedFile(
       throw new Error(scan.error ?? "바이러스 검사 실패");
     }
     finalSize = saved.length;
+
+    const firebaseSaved = await trySaveToFirebaseStorage({
+      buffer: saved,
+      contentType: mime,
+      filename: file.name,
+      folder: "uploads",
+    });
+    if (firebaseSaved) {
+      await unlink(target).catch(() => {});
+      storageKey = firebaseSaved.storageKey;
+    }
   }
 
   if (auditContext?.userId) {
@@ -129,6 +153,10 @@ export async function saveUploadedFile(
 }
 
 export async function deleteStoredFile(storageKey: string) {
+  if (isFirebaseStorageKey(storageKey)) {
+    await deleteFromFirebaseStorage(storageKey);
+    return;
+  }
   try {
     await unlink(path.join(UPLOAD_DIR, storageKey));
   } catch {
@@ -141,11 +169,13 @@ export function resolveStoredFilePath(storageKey: string) {
   return path.join(UPLOAD_DIR, safe);
 }
 
-export async function storedFileExists(storageKey: string) {
+export async function readStoredFileBuffer(storageKey: string): Promise<Buffer | null> {
+  if (isFirebaseStorageKey(storageKey)) {
+    return readHybridStorageFile(storageKey);
+  }
   try {
-    await stat(resolveStoredFilePath(storageKey));
-    return true;
+    return await readFile(resolveStoredFilePath(storageKey));
   } catch {
-    return false;
+    return null;
   }
 }

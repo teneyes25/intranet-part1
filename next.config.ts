@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "sharp",
     "ioredis",
     "node-cron",
+    "firebase-admin",
   ],
   experimental: {
     serverActions: {

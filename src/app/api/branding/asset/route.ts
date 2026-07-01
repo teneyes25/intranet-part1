@@ -3,6 +3,9 @@ import fs from "node:fs";
 
 import { getSiteSettings } from "@/features/customize/site-settings-service";
 import { resolveBrandingPath } from "@/lib/branding/storage";
+import { isFirebaseStorageKey } from "@/lib/firebase/storage-server";
+import { getFirebaseSignedUrl } from "@/lib/firebase/storage-server";
+import { readHybridStorageFile } from "@/lib/storage/hybrid";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +37,22 @@ export async function GET(req: Request) {
         : settings.bannerStorageKey;
 
   if (!key) return new NextResponse(null, { status: 404 });
+
+  if (isFirebaseStorageKey(key)) {
+    const signed = await getFirebaseSignedUrl(key, 120);
+    if (signed) {
+      return NextResponse.redirect(signed, { status: 302 });
+    }
+    const buf = await readHybridStorageFile(key);
+    if (!buf) return new NextResponse(null, { status: 404 });
+    const ext = key.slice(key.lastIndexOf(".")).toLowerCase();
+    return new NextResponse(new Uint8Array(buf), {
+      headers: {
+        "Content-Type": MIME[ext] ?? "application/octet-stream",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  }
 
   const filePath = resolveBrandingPath(key);
   if (!fs.existsSync(filePath)) return new NextResponse(null, { status: 404 });

@@ -1,8 +1,6 @@
-import { readFile } from "node:fs/promises";
-
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
-import { resolveStoredFilePath } from "@/lib/uploads";
+import { readStoredFileBuffer } from "@/lib/uploads";
 
 export async function GET(
   _request: Request,
@@ -26,10 +24,8 @@ export async function GET(
     })
     .catch((e) => console.error("[files] download log failed:", e));
 
-  let data: Buffer;
-  try {
-    data = await readFile(resolveStoredFilePath(attachment.storageKey));
-  } catch {
+  const data = await readStoredFileBuffer(attachment.storageKey);
+  if (!data) {
     return new Response("File missing", { status: 404 });
   }
 

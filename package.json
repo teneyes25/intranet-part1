@@ -59,6 +59,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.8.0",
+    "firebase": "^12.15.0",
+    "firebase-admin": "^14.1.0",
     "grapesjs": "^0.23.2",
     "grapesjs-blocks-basic": "^1.0.2",
     "grapesjs-preset-webpage": "^1.0.3",

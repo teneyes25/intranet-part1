@@ -11,7 +11,27 @@ export async function createNotification(data: {
   body?: string;
   link?: string;
 }) {
-  return prisma.notification.create({ data });
+  const created = await prisma.notification.create({ data });
+
+  void import("@/lib/firebase/firestore-server").then(({ syncNotificationToFirestore, sendPushToUser }) => {
+    syncNotificationToFirestore(data.userId, {
+      id: created.id,
+      type: created.type,
+      title: created.title,
+      body: created.body,
+      link: created.link,
+      read: created.read,
+      createdAt: created.createdAt,
+    }).catch((e) => console.error("[firebase] notification sync:", e));
+
+    sendPushToUser(data.userId, {
+      title: created.title,
+      body: created.body ?? undefined,
+      link: created.link ?? undefined,
+    }).catch((e) => console.error("[firebase] push:", e));
+  });
+
+  return created;
 }
 
 export async function notifyUsers(

@@ -5,6 +5,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit/service";
 
+import { resolvePrismaUserFromFirebaseToken } from "@/lib/firebase/auth-server";
+
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -89,6 +91,19 @@ export const authOptions: NextAuthOptions = {
           dealerRolloutActive: user.dealer?.rolloutActive ?? true,
           mustChangePassword: user.mustChangePassword,
         };
+      },
+    }),
+    CredentialsProvider({
+      id: "firebase",
+      name: "Firebase",
+      credentials: {
+        idToken: { label: "Firebase ID Token", type: "text" },
+      },
+      async authorize(rawCredentials) {
+        const idToken =
+          typeof rawCredentials?.idToken === "string" ? rawCredentials.idToken : "";
+        if (!idToken) return null;
+        return resolvePrismaUserFromFirebaseToken(idToken);
       },
     }),
   ],

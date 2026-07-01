@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Bell, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useFirebase } from "@/features/firebase/components/firebase-provider";
+import { useFirestoreNotifications } from "@/features/firebase/hooks/use-firestore-notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,10 +41,37 @@ function timeAgo(iso: string) {
 }
 
 export function NotificationBell() {
+  const { data: session } = useSession();
+  const { flags } = useFirebase();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+
+  const onFirestoreUpdate = useCallback(
+    (firestoreItems: { id: string; type: string; title: string; body: string | null; link: string | null; read: boolean; createdAt: string }[], count: number) => {
+      setItems(
+        firestoreItems.map((n) => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          link: n.link,
+          read: n.read,
+          createdAt: n.createdAt,
+        })),
+      );
+      setUnread(count);
+      setLoading(false);
+    },
+    [],
+  );
+
+  useFirestoreNotifications({
+    userId: session?.user?.id,
+    enabled: flags.firestore,
+    onUpdate: onFirestoreUpdate,
+  });
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -56,10 +86,16 @@ export function NotificationBell() {
   }, []);
 
   useEffect(() => {
+    if (flags.firestore) return;
     fetchNotifications();
     const id = setInterval(fetchNotifications, 60_000);
     return () => clearInterval(id);
-  }, [fetchNotifications]);
+  }, [fetchNotifications, flags.firestore]);
+
+  useEffect(() => {
+    if (!flags.firestore) return;
+    fetchNotifications();
+  }, [flags.firestore, fetchNotifications]);
 
   async function markRead(id: string) {
     await fetch("/api/notifications", {

@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FirebaseAuthButtons } from "@/features/firebase/components/firebase-auth-buttons";
 
 export function LoginForm() {
   const router = useRouter();
@@ -87,6 +88,8 @@ export function LoginForm() {
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         로그인
       </Button>
+
+      <FirebaseAuthButtons callbackUrl={callbackUrl} />
     </form>
   );
 }
