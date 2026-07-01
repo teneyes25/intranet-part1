@@ -45,6 +45,7 @@ export function parsePageBuilderConfig(raw: unknown): PageBuilderConfig {
     dashboard: synced.dashboard,
     banner: synced.banner,
     prHeader: synced.prHeader,
+    companyTheme: (raw as PageBuilderConfig).companyTheme ?? synced.companyTheme,
   });
 }
 

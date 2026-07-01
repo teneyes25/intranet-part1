@@ -4,6 +4,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AuthShell } from "@/components/layout/auth-shell";
+import { CompanyThemeStyles } from "@/features/company-theme/components/company-theme-styles";
+import { getResolvedCompanyTheme } from "@/features/company-theme/server";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { getSession } from "@/lib/auth/session";
 
@@ -17,10 +19,24 @@ export default async function LoginPage() {
     redirect("/dashboard");
   }
 
+  const companyTheme = await getResolvedCompanyTheme();
+
   return (
-    <AuthShell
-      title="로그인"
-      subtitle="사내 계정 이메일과 비밀번호를 입력하세요."
+    <>
+      {companyTheme && <CompanyThemeStyles theme={companyTheme} />}
+      <AuthShell
+        title="로그인"
+        subtitle="사내 계정 이메일과 비밀번호를 입력하세요."
+        brand={
+          companyTheme
+            ? {
+                name: companyTheme.companyNameKo ?? companyTheme.companyName,
+                tagline: companyTheme.tagline,
+                subTagline: companyTheme.subTagline,
+                logoSrc: companyTheme.logoPath,
+              }
+            : undefined
+        }
       footer={
         <>
           계정이 없으신가요?{" "}
@@ -56,5 +72,6 @@ export default async function LoginPage() {
         <LoginForm />
       </Suspense>
     </AuthShell>
+    </>
   );
 }

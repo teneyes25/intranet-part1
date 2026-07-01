@@ -225,6 +225,15 @@
     @apply pointer-events-none absolute -bottom-24 -left-12 h-56 w-56 rounded-full bg-brand-light/10 blur-3xl;
   }
 
+  .auth-brand-panel-company {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--sidebar)) 0%,
+      hsl(var(--primary) / 0.9) 45%,
+      hsl(var(--accent) / 0.75) 100%
+    );
+  }
+
   .auth-form-card {
     @apply overflow-hidden rounded-2xl border border-border/70 bg-card shadow-elevated;
   }

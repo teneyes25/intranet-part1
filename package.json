@@ -15,6 +15,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-demo": "tsx prisma/seed-demo.ts",
     "db:seed-dealer-demo": "tsx prisma/seed-dealer-demo.ts",
+    "db:seed-company-theme": "tsx prisma/seed-company-theme.ts",
     "db:studio": "prisma studio",
     "smoke": "node scripts/smoke-test.mjs",
     "pilot:check": "node scripts/pilot-checklist.mjs",

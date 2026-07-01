@@ -90,6 +90,15 @@ export interface PageBuilderConfig {
     title: string;
     subtitle: string;
   };
+  /** Part 2 — 회사 홈페이지 디자인 테마 (pageBuilderConfig JSON 내, 스키마 변경 없음) */
+  companyTheme?: {
+    enabled: boolean;
+    presetId: string;
+    overrides?: {
+      tagline?: string;
+      subTagline?: string;
+    };
+  };
   grids?: {
     /** @deprecated Phase 4 — GrapesJS 마이그레이션 후 제거. parse 시 strip 됨 */
     dashboard?: PageBuilderGridSection;
@@ -113,4 +122,13 @@ export const DEFAULT_PAGE_BUILDER_CONFIG: PageBuilderConfig = {
     title: "홍보실",
     subtitle: "브랜드와 캠페인 소식",
   },
+  companyTheme: {
+    enabled: true,
+    presetId: "french-maison",
+  },
 };
+
+export const DEFAULT_COMPANY_THEME_CONFIG = {
+  enabled: true,
+  presetId: "french-maison",
+} as const;

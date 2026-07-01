@@ -1,7 +1,15 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Building2, ShieldCheck, Sparkles, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+
+interface AuthShellBrand {
+  name: string;
+  tagline: string;
+  subTagline?: string;
+  logoSrc?: string;
+}
 
 interface AuthShellProps {
   title: string;
@@ -9,6 +17,7 @@ interface AuthShellProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   demoHint?: React.ReactNode;
+  brand?: AuthShellBrand;
 }
 
 const FEATURES = [
@@ -23,30 +32,43 @@ export function AuthShell({
   children,
   footer,
   demoHint,
+  brand,
 }: AuthShellProps) {
+  const brandName = brand?.name ?? "인트라넷 포털";
+  const brandTagline = brand?.tagline ?? "B2B 운영을 위한\n통합 업무 플랫폼";
+  const brandDesc =
+    brand?.subTagline ??
+    "대리점 포털, 거래 모듈, 게시판·페이지 빌더를 하나의 워크스페이스에서 관리하세요.";
+
   return (
     <main className="auth-page-shell">
       <div className="auth-page-grid">
         {/* 브랜드 패널 — 데스크톱 */}
-        <aside className="auth-brand-panel hidden lg:flex">
+        <aside
+          className={cn(
+            "auth-brand-panel hidden lg:flex",
+            brand && "auth-brand-panel-company",
+          )}
+        >
           <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-12">
             <div>
               <Link href="/login" className="inline-flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 shadow-glow ring-1 ring-white/20 backdrop-blur">
-                  <Building2 className="h-6 w-6 text-white" />
+                <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/10 shadow-glow ring-1 ring-white/20 backdrop-blur">
+                  {brand?.logoSrc ? (
+                    <Image src={brand.logoSrc} alt="" width={44} height={44} className="object-contain p-1.5" />
+                  ) : (
+                    <Building2 className="h-6 w-6 text-white" />
+                  )}
                 </span>
                 <span className="text-lg font-semibold tracking-tight text-white">
-                  인트라넷 포털
+                  {brandName}
                 </span>
               </Link>
-              <p className="mt-8 max-w-sm text-balance text-2xl font-bold leading-snug tracking-tight text-white xl:text-3xl">
-                B2B 운영을 위한
-                <br />
-                통합 업무 플랫폼
+              <p className="mt-8 max-w-sm whitespace-pre-line text-balance text-2xl font-bold leading-snug tracking-tight text-white xl:text-3xl">
+                {brandTagline}
               </p>
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/65">
-                대리점 포털, 거래 모듈, 게시판·페이지 빌더를 하나의 워크스페이스에서
-                관리하세요.
+                {brandDesc}
               </p>
             </div>
 
@@ -71,8 +93,12 @@ export function AuthShell({
           <div className="w-full max-w-[420px]">
             {/* 모바일 로고 */}
             <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-glow ring-1 ring-primary/20">
-                <Building2 className="h-7 w-7" />
+              <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 shadow-glow ring-1 ring-primary/20">
+                {brand?.logoSrc ? (
+                  <Image src={brand.logoSrc} alt="" width={56} height={56} className="object-contain p-2" />
+                ) : (
+                  <Building2 className="h-7 w-7 text-primary" />
+                )}
               </span>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">

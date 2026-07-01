@@ -25,6 +25,10 @@ import { PageHero } from "@/components/layout/page-hero";
 import { StatCard } from "@/features/dashboard/components/stat-card";
 import { ActivityChart } from "@/features/dashboard/components/activity-chart";
 import { getDashboardData } from "@/features/dashboard/queries";
+import { CompanyBrandShowcase } from "@/features/company-theme/components/company-brand-showcase";
+import { CompanyDashboardHero } from "@/features/company-theme/components/company-dashboard-hero";
+import { CompanyPortalHub } from "@/features/company-theme/components/company-portal-hub";
+import { parseCompanyThemeConfig, resolveCompanyTheme } from "@/features/company-theme/resolve";
 import { mergeDashboardLayoutForRole } from "@/lib/production/dashboard-defaults";
 import { getSiteSettings, parseDashboardLayout, parsePageBuilderConfig } from "@/features/customize/site-settings-service";
 import { PageLayoutRenderer } from "@/features/page-layout/components/layout-renderer";
@@ -56,6 +60,7 @@ export default async function DashboardPage() {
     parseDashboardLayout(settings.dashboardLayout),
   );
   const pageBuilder = parsePageBuilderConfig(settings.pageBuilderConfig);
+  const companyTheme = resolveCompanyTheme(parseCompanyThemeConfig(pageBuilder.companyTheme));
   const today = new Intl.DateTimeFormat("ko-KR", { dateStyle: "full" }).format(
     new Date(),
   );
@@ -70,12 +75,25 @@ export default async function DashboardPage() {
 
   return (
     <div className="page-shell">
-      <PageHero
-        eyebrow="Workspace"
-        title={`안녕하세요, ${user.name}님`}
-        description={today}
-        badge={ROLE_LABELS[user.role]}
-      />
+      {companyTheme ? (
+        <>
+          <CompanyDashboardHero
+            theme={companyTheme}
+            userName={user.name ?? "사용자"}
+            roleLabel={ROLE_LABELS[user.role]}
+            today={today}
+          />
+          <CompanyBrandShowcase theme={companyTheme} />
+          <CompanyPortalHub theme={companyTheme} />
+        </>
+      ) : (
+        <PageHero
+          eyebrow="Workspace"
+          title={`안녕하세요, ${user.name}님`}
+          description={today}
+          badge={ROLE_LABELS[user.role]}
+        />
+      )}
 
       {dashboardLayout?.html && dashboardLayout.isPublished ? (
         <PageLayoutRenderer

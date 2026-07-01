@@ -324,6 +324,51 @@ async function main() {
     });
   }
   console.log("✅ seeded pilot group members");
+
+  // French Maison 회사 테마 (Part 2 — pageBuilderConfig JSON, 스키마 변경 없음)
+  await prisma.siteSettings.upsert({
+    where: { id: "default" },
+    update: {
+      appName: "프렌치메종",
+      primaryColor: "10 32% 38%",
+      sidebarColor: "25 22% 14%",
+      sidebarForeground: "40 28% 96%",
+      pageBuilderConfig: {
+        version: 2,
+        companyTheme: {
+          enabled: true,
+          presetId: "french-maison",
+        },
+        banner: {
+          title: "French Maison",
+          subtitle: "Romantic & Modern & Classic",
+          buttonText: "인트라넷 시작",
+          buttonLink: "/dashboard",
+        },
+      },
+    },
+    create: {
+      id: "default",
+      appName: "프렌치메종",
+      primaryColor: "10 32% 38%",
+      sidebarColor: "25 22% 14%",
+      sidebarForeground: "40 28% 96%",
+      pageBuilderConfig: {
+        version: 2,
+        companyTheme: {
+          enabled: true,
+          presetId: "french-maison",
+        },
+        banner: {
+          title: "French Maison",
+          subtitle: "Romantic & Modern & Classic",
+          buttonText: "인트라넷 시작",
+          buttonLink: "/dashboard",
+        },
+      },
+    },
+  });
+  console.log("✅ seeded French Maison company theme");
 }
 
 main()

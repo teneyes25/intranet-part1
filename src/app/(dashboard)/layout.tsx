@@ -1,5 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { BrandingStyles } from "@/components/branding/branding-styles";
+import { CompanyThemeStyles } from "@/features/company-theme/components/company-theme-styles";
+import { getResolvedCompanyTheme } from "@/features/company-theme/server";
 import { PilotUsageTracker } from "@/components/pilot/pilot-usage-tracker";
 import { getPilotBannerForUser } from "@/features/pilot/pilot-service";
 import { getActiveEmergencyNotice } from "@/features/system/system-service";
@@ -12,15 +14,17 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
-  const [pilotBanner, emergency, branding] = await Promise.all([
+  const [pilotBanner, emergency, branding, companyTheme] = await Promise.all([
     getPilotBannerForUser(user.id),
     getActiveEmergencyNotice(),
     getEffectiveBranding(user.dealerId),
+    getResolvedCompanyTheme(),
   ]);
 
   return (
     <>
       <BrandingStyles branding={branding} />
+      {companyTheme && <CompanyThemeStyles theme={companyTheme} />}
       <PilotUsageTracker enabled={pilotBanner.show} />
       <AppShell
         user={{
