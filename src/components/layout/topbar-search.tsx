@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Search } from "lucide-react";
+import { isNavModuleVisible } from "@/config/nav-modules";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +18,9 @@ export function TopbarSearch() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const searchVisible = isNavModuleVisible("search");
+
+  if (!searchVisible) return null;
 
   function go(query: string) {
     const trimmed = query.trim();

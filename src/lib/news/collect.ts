@@ -33,7 +33,7 @@ async function ensureNewsBoard(keywordCategories: string[]) {
     update: { categories: [...new Set(categories)] },
     create: {
       key: NEWS_BOARD_KEY,
-      name: "뉴스",
+      name: "업계 뉴스",
       description: "매일 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
       categories: [...new Set(categories)],
       writeRoles: ["ADMIN"],
