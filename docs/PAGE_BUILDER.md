@@ -94,5 +94,7 @@ GrapesJS 기반 Visual Page Builder는 **현재 페이지를 수정·커스터�
 - [x] Backlog 7항목 (E2E, read-only, JSON strip, docs, projectData, 검색, 썸네일)
 - [x] 거래 기능 Part 2 분리 (플레이스홀더 블록만)
 - [x] 전체 E2E + production-check
-- [x] CHANGELOG v1.1.0
-- [x] MVP 배포 체크리스트 (`docs/MVP_DEPLOYMENT_CHECKLIST.md`)
+- [x] CHANGELOG v1.2.1 (Phase 5 상용화 MVP)
+- [x] MVP·본사 배포 체크리스트 (`HQ_DEPLOYMENT_FINAL_CHECKLIST.md`)
+- [x] Firebase 하이브리드 (기본 `FIREBASE_ENABLED=false`)
+- [x] 게시판·네비 상용화 (프렌치메종 테마)

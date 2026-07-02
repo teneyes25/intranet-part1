@@ -29,8 +29,18 @@ export function isFirebaseConfigured(): boolean {
 }
 
 export function getFirebaseFeatureFlags(): FirebaseFeatureFlags {
+  if (env("FIREBASE_ENABLED") === "false") {
+    return {
+      auth: false,
+      storage: false,
+      firestore: false,
+      messaging: false,
+      analytics: false,
+    };
+  }
+
   const configured = isFirebaseConfigured();
-  const enabled = env("FIREBASE_ENABLED") !== "false" && configured;
+  const enabled = configured;
 
   return {
     auth: enabled && env("FIREBASE_AUTH_ENABLED") !== "false",

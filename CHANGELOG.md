@@ -2,6 +2,24 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.2.1] — 2026-06-30 — Phase 5 상용화 MVP 마무리 (Firebase 제외)
+
+### Phase 5 완료
+- **Backlog 정리**: E2E(read-only/dealer scope), `grids` JSON strip, PAGE_BUILDER·배포 문서 완성
+- **게시판·네비 재구성**: 공지 · 일정 · 업계 뉴스 · 홍보실 · 상품자료실 · 매장 찾기
+- **모듈 숨김 토글** (`nav-modules.ts`): 문서함·근태·전자결재·통합검색 — 라우트 유지, 메뉴만 off
+- **French Maison 회사 테마** (`company-theme`) — `pageBuilderConfig` JSON, DB 스키마 변경 없음
+- **Firebase 하이브리드 통합** (Auth·Storage·Firestore·FCM) — **`FIREBASE_ENABLED=false` 기본**, PostgreSQL 중심 운영
+- **본사 배포 문서**: `docs/HQ_DEPLOYMENT_FINAL_CHECKLIST.md`, `MVP_DEPLOYMENT_CHECKLIST.md` v1.2.1
+
+### 안정화
+- `npm run typecheck` · `lint` · `production-check` · `smoke` 기준 정리
+- Firebase 미설정 시 기존 Credentials 로그인·로컬 업로드·알림 폴링 100% 유지
+
+### Docs
+- `docs/HQ_DEPLOYMENT_FINAL_CHECKLIST.md` — 본사 서버 배포 최종 체크리스트
+- `docs/FIREBASE_HYBRID.md` — 배포 후 Firebase 활성화 가이드
+
 ## [1.2.0] — 2026-06-30 — UI/UX 대대적 개선 (Design System v4)
 
 ### Design System v4 — Premium B2B SaaS

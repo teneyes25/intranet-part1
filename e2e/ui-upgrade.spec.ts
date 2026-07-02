@@ -87,6 +87,23 @@ test.describe("UI upgrade — design system smoke", () => {
   });
 });
 
+test.describe("UI upgrade — navigation (Phase 5)", () => {
+  test("admin: sidebar shows commercial board menu", async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/dashboard");
+    await expect(page.getByRole("link", { name: "공지사항" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("link", { name: "일정 게시판" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "업계 뉴스" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "매장 찾기" })).toBeVisible();
+  });
+
+  test("login: no Google button when Firebase disabled", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Google로 로그인" })).toHaveCount(0);
+  });
+});
+
 test.describe("UI upgrade — existing features regression", () => {
   test("approval + AI agent still accessible for HQ", async ({ page }) => {
     await loginAs(page, HQ);

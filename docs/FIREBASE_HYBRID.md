@@ -38,3 +38,5 @@ Prisma `User.email`과 Firebase 이메일이 일치해야 합니다.
 ## 4. 기능 플래그
 
 `FIREBASE_ENABLED=false` 시 전체 비활성. 개별 `FIREBASE_*_ENABLED`로 세부 제어.
+
+**Phase 5 기본값:** `.env.production`에 `FIREBASE_ENABLED=false` — PostgreSQL 중심 배포 후 필요 시 활성화.
