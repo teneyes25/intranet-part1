@@ -29,6 +29,7 @@ import {
   deleteCommentAction,
 } from "@/features/board/actions";
 import { RichTextContent } from "@/features/board/components/rich-text-content";
+import { PostReadModeToggle } from "@/features/board/components/post-read-mode";
 import { PageLayoutRenderer } from "@/features/page-layout/components/layout-renderer";
 import { getPostDetailPageLayoutForView } from "@/features/page-layout/service";
 import { CommentForm } from "@/features/board/components/comment-form";
@@ -100,7 +101,9 @@ export default async function PostDetailPage({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <RichTextContent html={post.content} className="min-h-24" />
+          <PostReadModeToggle>
+            <RichTextContent html={post.content} className="min-h-24" />
+          </PostReadModeToggle>
 
           {post.attachments.length > 0 && (
             <div className="space-y-2">

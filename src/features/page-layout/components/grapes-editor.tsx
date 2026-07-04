@@ -22,6 +22,13 @@ import { useSession } from "next-auth/react";
 import { PageBuilderToolbar } from "@/features/page-layout/components/page-builder-toolbar";
 import { PageBuilderPreviewSheet } from "@/features/page-layout/components/page-builder-preview-sheet";
 import {
+  clearPageBuilderDraft,
+  formatDraftTime,
+  loadPageBuilderDraft,
+  savePageBuilderDraft,
+  type PageBuilderDraft,
+} from "@/features/page-layout/page-builder-draft";
+import {
   applyThemeToEditor,
   getGrapesEditorOptions,
   registerAllPageBuilderBlocks,
@@ -115,6 +122,7 @@ export function GrapesEditor({
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewCss, setPreviewCss] = useState("");
+  const [localDraft, setLocalDraft] = useState<PageBuilderDraft | null>(null);
   const savedSnapshotRef = useRef<string>("");
 
   const filteredPostLayouts = useMemo(() => {
@@ -168,6 +176,29 @@ export function GrapesEditor({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
+
+  useEffect(() => {
+    if (!ready || access.isReadOnly || isDirty) {
+      if (!isDirty) setLocalDraft(null);
+      return;
+    }
+    const draft = loadPageBuilderDraft(slug, dealerScope);
+    setLocalDraft(draft);
+  }, [ready, slug, dealerScope, access.isReadOnly, isDirty]);
+
+  useEffect(() => {
+    if (!ready || !isDirty || access.isReadOnly) return;
+    const id = window.setInterval(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      savePageBuilderDraft(slug, dealerScope, {
+        html: editor.getHtml(),
+        css: editor.getCss() ?? "",
+        projectData: editor.getProjectData() as Record<string, unknown>,
+      });
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [ready, isDirty, slug, dealerScope, access.isReadOnly]);
 
   usePageBuilderCollaboration({
     slug,
@@ -282,12 +313,39 @@ export function GrapesEditor({
       if (r.error) toast.error(r.error);
       else {
         toast.success(`${dealerScopeLabel} · ${slugLabels[slug] ?? slug} 저장 완료`);
+        clearPageBuilderDraft(slug, dealerScope);
+        setLocalDraft(null);
         markSaved(editor);
         refreshPage();
         const reload = await loadPageLayoutAction(slug, dealerScope);
         if (reload.ok) setScopeLayout(reload.layout ?? null);
       }
     });
+  }
+
+  function restoreLocalDraft() {
+    const editor = editorRef.current;
+    if (!editor || !localDraft) return;
+    try {
+      const pd = localDraft.projectData;
+      if (pd && Object.keys(pd).length > 0) {
+        editor.loadProjectData(pd);
+        editor.setStyle(localDraft.css);
+      } else {
+        editor.setComponents(localDraft.html);
+        editor.setStyle(localDraft.css);
+      }
+      setIsDirty(true);
+      setLocalDraft(null);
+      toast.success("로컬 초안을 복원했습니다.");
+    } catch {
+      toast.error("초안 복원에 실패했습니다.");
+    }
+  }
+
+  function dismissLocalDraft() {
+    clearPageBuilderDraft(slug, dealerScope);
+    setLocalDraft(null);
   }
 
   function openPreview() {
@@ -323,6 +381,23 @@ export function GrapesEditor({
           <span>본사 계정은 레이아웃을 조회·미리볼 수 있습니다. 저장·적용은 관리자(ADMIN)만 가능합니다.</span>
         </div>
       )}
+      {localDraft && !access.isReadOnly && (
+        <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/[0.04] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">로컬 초안</strong> (
+            {formatDraftTime(localDraft.savedAt)})이 있습니다.
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={dismissLocalDraft}>
+              무시
+            </Button>
+            <Button type="button" size="sm" onClick={restoreLocalDraft}>
+              복원
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="grapes-editor-toolbar-strip flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/15 p-2">
         <Button
           type="button"
@@ -464,6 +539,7 @@ export function GrapesEditor({
           versionCount={scopeLayout?.versionCount ?? 0}
           editorRef={editorRef}
           readOnly={access.isReadOnly}
+          confirmIfDirty={confirmDiscard}
           onThemeApplied={setThemeId}
           onTemplateApplied={refreshPage}
           onVersionRestored={refreshPage}

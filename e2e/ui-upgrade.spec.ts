@@ -17,6 +17,7 @@ test.describe("UI upgrade — Page Builder (GrapesJS)", () => {
       timeout: 15000,
     });
     await expect(page.getByRole("button", { name: "저장" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "미리보기" })).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole("button", { name: "대시보드" })).toBeVisible();
     await expect(page.getByText("에디터 로딩 중…")).toBeHidden({ timeout: 30000 });
     const builder = page.locator(".grapes-editor-shell");
@@ -54,7 +55,7 @@ test.describe("UI upgrade — Page Builder (GrapesJS)", () => {
       timeout: 15000,
     });
     await expect(page.getByText("자사 대리점 전용 편집")).toBeVisible();
-    await expect(page.getByRole("button", { name: "저장" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "저장" })).toBeDisabled();
     await expect(page.getByText("에디터 로딩 중…")).toBeHidden({ timeout: 30000 });
   });
 
@@ -72,6 +73,15 @@ test.describe("UI upgrade — Board mailbox", () => {
       timeout: 10000,
     });
     await expect(page.getByText("시스템", { exact: true }).first()).toBeVisible();
+  });
+
+  test("HQ: mobile folder move control visible on small viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAs(page, HQ);
+    await page.goto("/boards/notices/mailbox");
+    await expect(page.getByRole("button", { name: "폴더로 이동" }).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 
@@ -101,6 +111,17 @@ test.describe("UI upgrade — navigation (Phase 5)", () => {
     await page.goto("/login");
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Google로 로그인" })).toHaveCount(0);
+  });
+});
+
+test.describe("UI upgrade — approval & read mode", () => {
+  test("HQ: approval form shows step wizard", async ({ page }) => {
+    await loginAs(page, HQ);
+    await page.goto("/approval/new");
+    await expect(page.getByRole("navigation", { name: "작성 단계" })).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByRole("button", { name: /다음: 본문·AI/ })).toBeVisible();
   });
 });
 

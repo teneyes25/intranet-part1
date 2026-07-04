@@ -326,6 +326,14 @@
   .notif-item-unread {
     @apply bg-primary/[0.04] dark:bg-primary/[0.08];
   }
+
+  .post-read-mode {
+    @apply rounded-xl bg-muted/30 px-1 py-2;
+  }
+
+  .post-read-mode > div {
+    @apply text-base leading-[1.85] sm:text-[1.0625rem];
+  }
 }
 
 @layer utilities {

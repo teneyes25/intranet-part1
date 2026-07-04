@@ -38,6 +38,7 @@ interface TemplateGalleryProps {
   templates: PageTemplateRecord[];
   editorRef: React.RefObject<Editor | null>;
   readOnly?: boolean;
+  confirmIfDirty?: () => boolean;
   onApplied: () => void;
 }
 
@@ -49,12 +50,14 @@ export function TemplateGallery({
   templates,
   editorRef,
   readOnly = false,
+  confirmIfDirty,
   onApplied,
 }: TemplateGalleryProps) {
   const [pending, startTransition] = useTransition();
   const slugTemplates = templates.filter((t) => t.targetSlug === slug);
 
   function previewTemplate(template: PageTemplateRecord) {
+    if (confirmIfDirty && !confirmIfDirty()) return;
     const editor = editorRef.current;
     if (!editor) return;
     loadTemplateIntoEditor(editor, template);
@@ -66,6 +69,7 @@ export function TemplateGallery({
       toast.error("미리보기 전용 계정은 저장할 수 없습니다.");
       return;
     }
+    if (confirmIfDirty && !confirmIfDirty()) return;
     const scopeLabel = dealerScope === GLOBAL_LAYOUT_SCOPE ? "본사" : dealerScopeLabel;
     if (
       !confirm(

@@ -54,6 +54,7 @@ interface PageBuilderToolbarProps {
   versionCount: number;
   editorRef: React.RefObject<Editor | null>;
   readOnly?: boolean;
+  confirmIfDirty?: () => boolean;
   onThemeApplied: (themeId: string) => void;
   onTemplateApplied: () => void;
   onVersionRestored: () => void;
@@ -128,6 +129,7 @@ export function PageBuilderToolbar({
   versionCount,
   editorRef,
   readOnly = false,
+  confirmIfDirty,
   onThemeApplied,
   onTemplateApplied,
   onVersionRestored,
@@ -175,6 +177,7 @@ export function PageBuilderToolbar({
   }
 
   function applyTheme(themeId: string) {
+    if (confirmIfDirty && !confirmIfDirty()) return;
     if (readOnly) {
       const theme = themes.find((t) => t.id === themeId) ?? null;
       if (editorRef.current) applyThemeToEditor(editorRef.current, theme);
@@ -196,6 +199,7 @@ export function PageBuilderToolbar({
 
   function restoreVersion(versionId: string) {
     if (readOnly) return;
+    if (confirmIfDirty && !confirmIfDirty()) return;
     if (!confirm("이 버전으로 복원할까요? 현재 내용은 새 백업으로 저장됩니다.")) return;
     startTransition(async () => {
       const r = await restorePageLayoutVersionAction(slug, versionId, dealerScope);
@@ -241,6 +245,7 @@ export function PageBuilderToolbar({
         templates={templates}
         editorRef={editorRef}
         readOnly={readOnly}
+        confirmIfDirty={confirmIfDirty}
         onApplied={onTemplateApplied}
       />
 

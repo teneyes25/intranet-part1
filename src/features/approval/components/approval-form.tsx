@@ -10,14 +10,18 @@ import {
   X,
   Save,
   Send,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { FormSteps } from "@/components/ui/form-steps";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/features/board/components/rich-text-editor";
 import { ROLE_LABELS, type Role } from "@/lib/auth/roles";
+import { toast } from "sonner";
 import { saveDocumentAction, type ActionState } from "../actions";
 
 interface Template {
@@ -49,6 +53,12 @@ interface Initial {
 }
 
 const initialState: ActionState = {};
+
+const APPROVAL_STEPS = [
+  { id: "meta", label: "양식·제목" },
+  { id: "body", label: "본문·AI" },
+  { id: "line", label: "결재·제출" },
+] as const;
 
 export function ApprovalForm({
   templates,
@@ -82,6 +92,7 @@ export function ApprovalForm({
   const [liveHints, setLiveHints] = useState<string[]>([]);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [picker, setPicker] = useState("");
+  const [step, setStep] = useState(0);
 
   const candidateMap = useMemo(
     () => new Map(candidates.map((c) => [c.id, c])),
@@ -226,12 +237,25 @@ export function ApprovalForm({
       <input type="hidden" name="content" value={content} />
       <input type="hidden" name="steps" value={JSON.stringify(steps)} />
 
+      <FormSteps
+        steps={[...APPROVAL_STEPS]}
+        currentStep={step}
+        onStepClick={(i) => {
+          if (i < step || (i === 1 && title.trim()) || (i === 2 && title.trim())) {
+            setStep(i);
+          }
+        }}
+        className="rounded-xl border border-border/60 bg-muted/20 p-3"
+      />
+
       {state?.error && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
         </p>
       )}
 
+      {step === 0 && (
+      <>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-1">
           <Label htmlFor="tpl">문서 양식</Label>
@@ -282,6 +306,26 @@ export function ApprovalForm({
         </p>
       </div>
 
+      <div className="flex justify-end border-t pt-4">
+        <Button
+          type="button"
+          onClick={() => {
+            if (!title.trim()) {
+              toast.error("제목을 입력한 뒤 다음 단계로 이동하세요.");
+              return;
+            }
+            setStep(1);
+          }}
+        >
+          다음: 본문·AI
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+      </>
+      )}
+
+      {step === 1 && (
+      <>
       {/* AI 작성 지원 */}
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-medium">
@@ -333,6 +377,21 @@ export function ApprovalForm({
         </div>
       </div>
 
+      <div className="flex justify-between border-t pt-4">
+        <Button type="button" variant="outline" onClick={() => setStep(0)}>
+          <ChevronLeft className="h-4 w-4" />
+          이전
+        </Button>
+        <Button type="button" onClick={() => setStep(2)}>
+          다음: 결재선
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+      </>
+      )}
+
+      {step === 2 && (
+      <>
       {/* 결재선 */}
       <div>
         <Label>결재선 지정</Label>
@@ -417,7 +476,12 @@ export function ApprovalForm({
         )}
       </div>
 
-      <div className="flex justify-end gap-2 border-t pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+        <Button type="button" variant="outline" onClick={() => setStep(1)}>
+          <ChevronLeft className="h-4 w-4" />
+          이전
+        </Button>
+        <div className="flex gap-2">
         <Button
           type="submit"
           name="intent"
@@ -436,7 +500,10 @@ export function ApprovalForm({
           )}
           상신(제출)
         </Button>
+        </div>
       </div>
+      </>
+      )}
     </form>
   );
 }

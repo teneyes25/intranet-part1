@@ -2,6 +2,22 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.3.2] — 2026-07-05 — Frontend UX/UI Upgrade Phase 3
+
+### Page Builder
+- localStorage 초안 30초 autosave · 복원 배너 · 저장 시 초안 삭제
+- 템플릿 적용·테마/버전 복원 시 `confirmIfDirty` 확인
+
+### 전자결재
+- 3단계 FormSteps (양식·제목 → 본문·AI → 결재·제출)
+- 단계 이동 시 제목 미입력 toast 안내
+
+### 게시판
+- 게시글 상세 모바일 읽기 모드 토글 (`.post-read-mode`)
+
+### E2E
+- Page Builder 미리보기·저장 disabled, 메일함 모바일 폴더 이동, 결재 단계 위저드
+
 ## [1.3.1] — 2026-07-05 — Frontend UX/UI Upgrade Phase 2
 
 ### 접근성 (a11y)
