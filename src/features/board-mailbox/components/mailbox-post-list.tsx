@@ -30,6 +30,7 @@ import {
   toggleImportantAction,
 } from "@/features/board-mailbox/actions";
 import { DraggablePostRow } from "@/features/board-mailbox/components/draggable-post-row";
+import { MobileFolderMove } from "@/features/board-mailbox/components/mobile-folder-move";
 import type { CustomFolder, MailboxPostRow, UserLabel } from "@/features/board-mailbox/types";
 
 interface MailboxPostListProps {
@@ -262,6 +263,7 @@ export function MailboxPostList({
                     toast.success("중요 표시를 변경했습니다.");
                   })
                 }
+                aria-label={p.mail?.isImportant ? "중요 해제" : "중요 표시"}
               >
                 <Star
                   className={
@@ -271,6 +273,13 @@ export function MailboxPostList({
                   }
                 />
               </Button>
+              {useDndKit && (
+                <MobileFolderMove
+                  boardKey={boardKey}
+                  postId={p.id}
+                  customFolders={customFolders}
+                />
+              )}
             </>
           );
 

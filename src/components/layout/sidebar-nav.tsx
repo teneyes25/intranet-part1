@@ -32,7 +32,7 @@ export function SidebarNav({
   const groups = getVisibleNavGroups(role);
 
   return (
-    <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-2.5 py-4">
+    <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-2.5 py-4" aria-label="주 메뉴">
       {groups.map((group) => (
         <div key={group.label} className="flex flex-col gap-0.5">
           {!collapsed && (
@@ -76,7 +76,12 @@ function NavLink({
   );
 
   const link = (
-    <Link href={item.href} onClick={onNavigate} className={linkClasses}>
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={linkClasses}
+      aria-current={active ? "page" : undefined}
+    >
       <Icon
         className={cn(
           "h-4 w-4 shrink-0 transition-colors",

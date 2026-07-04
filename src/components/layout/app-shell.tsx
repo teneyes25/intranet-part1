@@ -8,6 +8,7 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { SkipToContent } from "@/components/layout/skip-to-content";
 import { SidebarContent } from "@/components/layout/sidebar-content";
 import { Topbar } from "@/components/layout/topbar";
 import { PilotBanner } from "@/components/pilot/pilot-banner";
@@ -54,6 +55,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
 
   return (
     <div className="flex min-h-screen">
+      <SkipToContent />
       {/* 데스크톱 사이드바 */}
       <aside
         className={cn(
@@ -86,7 +88,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} onMenuClick={() => setMobileOpen(true)} />
-        <main className="app-main safe-pb">
+        <main id="main-content" className="app-main safe-pb" tabIndex={-1}>
           <div className="app-main-inner">
             {emergencyNotice && (
               <EmergencyBanner

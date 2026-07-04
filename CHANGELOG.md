@@ -2,6 +2,27 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.3.1] — 2026-07-05 — Frontend UX/UI Upgrade Phase 2
+
+### 접근성 (a11y)
+- Skip to content 링크, `#main-content` 포커스 타겟
+- 사이드바 `aria-label` · `aria-current="page"`
+- 메일함 DnD `aria-live` 스크린리더 안내
+
+### 메일함 UX
+- 드래그 핸들 분리(데스크톱) — 링크 클릭과 DnD 충돌 해소
+- TouchSensor(280ms) · KeyboardSensor, 드롭 타겟 glow 애니메이션
+- 모바일 `MobileFolderMove` 폴더 이동 메뉴
+
+### Page Builder UX
+- 저장 전 미리보기 Sheet(데스크톱/태블릿/모바일)
+- 미저장 변경 감지 · 페이지/범위 이동 confirm · beforeunload
+- 「저장되지 않음」 배지, 변경 없을 때 저장 비활성
+
+### Dark Mode v5
+- muted·sidebar-accent·shadow-glow 다크 토큰 정교화
+- 채팅·알림·캔버스 그리드 다크 대응
+
 ## [1.3.0] — 2026-07-04 — Frontend UX/UI Upgrade Phase 1 (Design System v5)
 
 ### Design System v5

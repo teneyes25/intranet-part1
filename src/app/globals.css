@@ -78,8 +78,8 @@
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 68%;
 
     --accent: 224 64% 48%;
     --accent-foreground: 0 0% 100%;
@@ -93,13 +93,14 @@
 
     --sidebar: 222 47% 8%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-accent: 224 50% 12%;
+    --sidebar-accent: 224 50% 14%;
     --sidebar-border: 217 33% 18%;
     --sidebar-primary: 213 94% 68%;
 
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 8px 24px -8px rgb(0 0 0 / 0.35);
-    --shadow-elevated: 0 16px 40px -12px rgb(0 0 0 / 0.4);
-    --shadow-topbar: 0 1px 0 0 rgb(255 255 255 / 0.04);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.25), 0 8px 24px -8px rgb(0 0 0 / 0.4);
+    --shadow-elevated: 0 16px 40px -12px rgb(0 0 0 / 0.45);
+    --shadow-topbar: 0 1px 0 0 rgb(255 255 255 / 0.05);
+    --shadow-glow: 0 0 0 1px rgb(96 165 250 / 0.12), 0 8px 24px -6px rgb(37 99 235 / 0.25);
   }
 }
 
@@ -283,10 +284,19 @@
     @apply flex items-center gap-2 border-b border-border/50 bg-card transition-all duration-150 last:border-b-0 hover:bg-primary/[0.03];
   }
   .mailbox-row-dragging {
-    @apply opacity-50 ring-2 ring-accent/40;
+    @apply opacity-60 ring-2 ring-primary/30;
   }
   .folder-drop-target {
-    @apply ring-2 ring-accent bg-accent/10 scale-[1.02];
+    @apply scale-[1.02] bg-primary/10 ring-2 ring-primary shadow-glow;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+
+  .mailbox-drag-overlay {
+    @apply border-primary/30;
+  }
+
+  .skip-to-content {
+    @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-elevated;
   }
 
   .board-list-row {
@@ -302,7 +312,7 @@
   }
 
   .chat-bubble-assistant {
-    @apply rounded-2xl rounded-tl-md bg-muted/80 px-4 py-2.5 text-sm shadow-xs;
+    @apply rounded-2xl rounded-tl-md bg-muted/80 px-4 py-2.5 text-sm shadow-xs dark:bg-muted/50;
   }
 
   .source-card {
@@ -314,7 +324,7 @@
   }
 
   .notif-item-unread {
-    @apply bg-primary/[0.04];
+    @apply bg-primary/[0.04] dark:bg-primary/[0.08];
   }
 }
 
@@ -389,4 +399,9 @@
   .app-canvas-bg {
     background-size: 20px 20px;
   }
+}
+
+.dark .app-canvas-bg {
+  background-image:
+    radial-gradient(circle at 1px 1px, hsl(var(--border) / 0.25) 1px, transparent 0);
 }

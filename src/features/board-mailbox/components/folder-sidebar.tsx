@@ -89,9 +89,13 @@ export function FolderSidebar({
     else toast.success("라벨이 생성되었습니다.");
   }
 
-  function wrapDrop(id: string, node: React.ReactNode) {
+  function wrapDrop(id: string, node: React.ReactNode, label?: string) {
     if (!useDndKit) return node;
-    return <DroppableFolder id={id}>{node}</DroppableFolder>;
+    return (
+      <DroppableFolder id={id} label={label}>
+        {node}
+      </DroppableFolder>
+    );
   }
 
   function folderBtn(
@@ -122,15 +126,15 @@ export function FolderSidebar({
     );
 
     return (
-      <div key={key}>{wrapDrop(folderDropId(dropKey), btn)}</div>
+      <div key={key}>{wrapDrop(folderDropId(dropKey), btn, label)}</div>
     );
   }
 
   return (
     <aside className="surface-card flex flex-col gap-5 p-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-      <div className="rounded-lg bg-navy-900 px-3 py-2.5 text-white">
+      <div className="rounded-lg bg-navy-900 px-3 py-2.5 text-white dark:bg-sidebar-accent dark:ring-1 dark:ring-sidebar-border">
         <p className="text-xs font-medium text-white/70">게시판 메일함</p>
-        <p className="text-sm font-semibold">폴더 · 라벨 · @dnd-kit 이동</p>
+        <p className="text-sm font-semibold">드래그 이동 · 모바일 폴더 메뉴</p>
       </div>
 
       <div>
@@ -180,7 +184,7 @@ export function FolderSidebar({
             );
             return (
               <div key={f.id} className="group flex items-center gap-0.5">
-                {wrapDrop(folderDropId(f.id), btn)}
+                {wrapDrop(folderDropId(f.id), btn, f.name)}
                 <Button
                   type="button"
                   variant="ghost"
