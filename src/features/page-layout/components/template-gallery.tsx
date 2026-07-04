@@ -89,7 +89,7 @@ export function TemplateGallery({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button type="button" size="sm" variant="outline" disabled={pending}>
+        <Button type="button" size="sm" variant="default" className="shadow-soft" disabled={pending}>
           템플릿 갤러리
         </Button>
       </SheetTrigger>
@@ -98,8 +98,13 @@ export function TemplateGallery({
           <SheetTitle>템플릿 갤러리</SheetTitle>
           <SheetDescription>
             {slugLabel} · {dealerScope === GLOBAL_LAYOUT_SCOPE ? "본사" : dealerScopeLabel}
+            {" · "}미리보기는 저장 전 캔버스에만 반영됩니다.
           </SheetDescription>
         </SheetHeader>
+        <div className="mt-3 rounded-lg border border-primary/15 bg-primary/[0.04] px-3 py-2 text-xs text-muted-foreground">
+          <strong className="text-foreground">권장 흐름:</strong> 미리보기 → 확인 →{" "}
+          <strong className="text-foreground">적용 후 저장</strong>
+        </div>
         <div className="mt-4 grid gap-3">
           {slugTemplates.length === 0 && (
             <p className="text-sm text-muted-foreground">이 페이지용 템플릿이 없습니다.</p>
@@ -107,7 +112,7 @@ export function TemplateGallery({
           {slugTemplates.map((tpl) => (
             <div
               key={tpl.id}
-              className="rounded-xl border border-border/80 bg-card p-4 shadow-soft transition hover:border-brand/30"
+              className="rounded-xl border border-border/80 bg-card p-4 shadow-soft transition hover:border-primary/30 hover:shadow-card"
             >
               <div className="flex items-start gap-3">
                 <TemplateHtmlPreview html={tpl.html} css={tpl.css} emoji={tpl.thumbnail} />

@@ -209,24 +209,26 @@ export function PageBuilderToolbar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/20 p-2">
-      <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
-        <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={undo} disabled={!canUndo} title="실행 취소 (Ctrl+Z)">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-gradient-to-r from-muted/40 to-muted/10 p-2 shadow-xs">
+      <div className="flex items-center gap-0.5 rounded-lg border border-border/70 bg-background p-0.5 shadow-xs">
+        <Button type="button" size="sm" variant="ghost" className="h-9 px-2.5" onClick={undo} disabled={!canUndo} title="실행 취소 (Ctrl+Z)">
           <Undo2 className="h-4 w-4" />
+          <span className="sr-only sm:not-sr-only sm:ml-1 sm:text-xs">실행 취소</span>
         </Button>
-        <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={redo} disabled={!canRedo} title="다시 실행">
+        <Button type="button" size="sm" variant="ghost" className="h-9 px-2.5" onClick={redo} disabled={!canRedo} title="다시 실행">
           <Redo2 className="h-4 w-4" />
+          <span className="sr-only sm:not-sr-only sm:ml-1 sm:text-xs">다시 실행</span>
         </Button>
       </div>
 
-      <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
-        <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => setDevice("desktop")} title="데스크톱">
+      <div className="flex items-center gap-0.5 rounded-lg border border-border/70 bg-background p-0.5 shadow-xs" role="group" aria-label="기기 미리보기">
+        <Button type="button" size="sm" variant="ghost" className="h-9 px-2.5" onClick={() => setDevice("desktop")} title="데스크톱">
           <Monitor className="h-4 w-4" />
         </Button>
-        <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => setDevice("tablet")} title="태블릿 820px">
+        <Button type="button" size="sm" variant="ghost" className="h-9 px-2.5" onClick={() => setDevice("tablet")} title="태블릿 820px">
           <Tablet className="h-4 w-4" />
         </Button>
-        <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => setDevice("mobile")} title="모바일 390px">
+        <Button type="button" size="sm" variant="ghost" className="h-9 px-2.5" onClick={() => setDevice("mobile")} title="모바일 390px">
           <Smartphone className="h-4 w-4" />
         </Button>
       </div>

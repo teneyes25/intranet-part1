@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PenSquare } from "lucide-react";
+import { Inbox, PenSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/layout/page-header";
+import { PageHero } from "@/components/layout/page-hero";
 import { requireUser } from "@/lib/auth/session";
 import { canWriteBoard } from "@/features/board/permissions";
 import { canAccessBoard } from "@/lib/auth/access";
@@ -107,12 +107,14 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
   );
 
   return (
-    <div className="space-y-4">
+    <div className="page-shell">
       {boardLayout?.html && boardLayout.isPublished ? (
         <PageLayoutRenderer html={boardLayout.html} css={boardLayout.css} />
       ) : null}
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <PageHeader
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <PageHero
+          variant="plain"
+          eyebrow="게시판"
           title={
             key === "pr" && !boardLayout?.html && pageBuilder.prHeader?.title
               ? pageBuilder.prHeader.title
@@ -126,15 +128,18 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
         />
         <div className="flex flex-wrap gap-2">
           {canWrite && (
-            <Button asChild>
+            <Button asChild className="min-h-10">
               <Link href={`/boards/${board.key}/new`}>
                 <PenSquare className="h-4 w-4" />
                 글쓰기
               </Link>
             </Button>
           )}
-          <Button asChild variant="outline">
-            <Link href={`/boards/${board.key}/mailbox`}>📬 메일함 보기</Link>
+          <Button asChild variant="outline" className="min-h-10">
+            <Link href={`/boards/${board.key}/mailbox`}>
+              <Inbox className="h-4 w-4" />
+              메일함 보기
+            </Link>
           </Button>
         </div>
       </div>

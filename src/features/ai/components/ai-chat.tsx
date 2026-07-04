@@ -138,23 +138,24 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-13rem)] flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
-      <div className="flex items-center justify-between border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent px-5 py-4">
+    <div className="flex h-[min(72vh,calc(100dvh-11rem))] flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-elevated sm:h-[calc(100dvh-12rem)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-gradient-to-r from-primary/[0.06] via-transparent to-transparent px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow">
             <Bot className="h-5 w-5" />
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">인트라넷 AI 어시스턴트</p>
             <p className="text-xs text-muted-foreground">
-              Hybrid RAG · 대화 메모리 · 마크다운
+              Hybrid RAG · 마크다운 · 출처 · 파일 첨부
             </p>
           </div>
         </div>
         {canSync && (
-          <Button variant="outline" size="sm" onClick={runSync} disabled={syncing}>
+          <Button variant="outline" size="sm" className="min-h-9" onClick={runSync} disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            지식 동기화
+            <span className="hidden sm:inline">지식 동기화</span>
+            <span className="sm:hidden">동기화</span>
           </Button>
         )}
       </div>
@@ -207,13 +208,8 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
             >
               {m.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
             </div>
-            <div className={cn("max-w-[85%] space-y-2", m.role === "user" ? "text-right" : "text-left")}>
-              <div
-                className={cn(
-                  "rounded-2xl px-4 py-2.5 text-sm",
-                  m.role === "user" ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-muted",
-                )}
-              >
+            <div className={cn("max-w-[min(100%,28rem)] space-y-2 sm:max-w-[85%]", m.role === "user" ? "text-right" : "text-left")}>
+              <div className={m.role === "user" ? "chat-bubble-user" : "chat-bubble-assistant"}>
                 {m.role === "assistant" ? (
                   <MarkdownContent content={m.content} />
                 ) : (
@@ -235,10 +231,10 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
               )}
 
               {m.sources && m.sources.length > 0 && (
-                <div className="space-y-1 text-left">
-                  <p className="text-xs font-medium text-muted-foreground">참고 자료 (출처)</p>
+                <div className="space-y-1.5 text-left">
+                  <p className="text-xs font-semibold text-muted-foreground">참고 자료 (출처)</p>
                   {m.sources.map((s, i) => (
-                    <div key={i} className="rounded-lg border bg-background p-2 text-xs transition-colors hover:bg-muted/50">
+                    <div key={i} className="source-card">
                       {s.url ? (
                         <Link href={s.url} className="flex items-center gap-1 font-medium text-primary hover:underline">
                           [{i + 1}] {s.title ?? "자료"}
@@ -270,9 +266,10 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
       </div>
 
       {attachment && (
-        <div className="border-t bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          📎 첨부: {attachment.slice(0, 80)}…
-          <button type="button" className="ml-2 text-primary" onClick={() => setAttachment(null)}>
+        <div className="flex items-center gap-2 border-t border-border/50 bg-primary/[0.04] px-3 py-2 text-xs text-muted-foreground">
+          <Paperclip className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 truncate">첨부: {attachment.slice(0, 80)}…</span>
+          <button type="button" className="shrink-0 font-medium text-primary" onClick={() => setAttachment(null)}>
             제거
           </button>
         </div>
@@ -283,7 +280,7 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
           e.preventDefault();
           send(input);
         }}
-        className="flex items-center gap-2 border-t p-3"
+        className="chat-composer safe-pb"
       >
         <input
           ref={fileRef}
@@ -296,6 +293,7 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
           type="button"
           variant="ghost"
           size="icon"
+          className="touch-target shrink-0"
           aria-label="파일 첨부"
           onClick={() => fileRef.current?.click()}
         >
@@ -307,8 +305,15 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
           placeholder="질문을 입력하세요…"
           disabled={loading}
           aria-label="AI 질문 입력"
+          className="min-h-11 flex-1"
         />
-        <Button type="submit" disabled={loading || !input.trim()} aria-label="전송">
+        <Button
+          type="submit"
+          size="icon"
+          className="touch-target shrink-0"
+          disabled={loading || !input.trim()}
+          aria-label="전송"
+        >
           <Send className="h-4 w-4" />
         </Button>
       </form>

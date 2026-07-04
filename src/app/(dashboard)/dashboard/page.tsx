@@ -192,7 +192,7 @@ export default async function DashboardPage() {
         {/* 좌측: 최근 게시글 (실데이터) */}
         <div className="space-y-6 lg:col-span-2">
           {isWidgetVisible(layout, "recentPosts") && (
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden shadow-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border/50 bg-muted/20 pb-4">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Megaphone className="h-4 w-4 text-primary" />
@@ -266,7 +266,7 @@ export default async function DashboardPage() {
                         <Link
                           key={item.href}
                           href={item.href}
-                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-card p-3.5 text-sm shadow-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.04] hover:shadow-card"
+                          className="b2b-quick-action p-3 text-sm sm:p-3.5"
                         >
                           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="truncate">{item.title}</span>

@@ -248,16 +248,16 @@ export function GrapesEditor({
   const backLabel = access.isHqAdmin ? "커스터마이징" : "홈";
 
   return (
-    <div className="grapes-editor-shell flex min-h-[480px] flex-col gap-3 sm:min-h-[640px] sm:h-[calc(100vh-12rem)]">
+    <div className="grapes-editor-shell flex min-h-[480px] flex-col gap-3 p-2 sm:min-h-[640px] sm:h-[calc(100dvh-14rem)] sm:p-3">
       {access.isReadOnly && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-          <Badge variant="outline" className="border-amber-500/40">
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-900 dark:text-amber-100 sm:flex-row sm:items-center">
+          <Badge variant="outline" className="w-fit border-amber-500/40">
             미리보기 전용
           </Badge>
           <span>본사 계정은 레이아웃을 조회·미리볼 수 있습니다. 저장·적용은 관리자(ADMIN)만 가능합니다.</span>
         </div>
       )}
-      <div className="grapes-editor-toolbar-strip flex flex-wrap items-center gap-2">
+      <div className="grapes-editor-toolbar-strip flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/15 p-2">
         <Button asChild variant="outline" size="sm">
           <Link href={backHref}>
             <ArrowLeft className="h-4 w-4" />
@@ -305,7 +305,7 @@ export function GrapesEditor({
         <Button
           type="button"
           size="sm"
-          className="ml-auto shrink-0"
+          className="ml-auto min-h-9 shrink-0 shadow-soft"
           onClick={save}
           disabled={pending || !ready || access.isReadOnly}
           title={access.isReadOnly ? "미리보기 전용 — 저장 불가" : undefined}

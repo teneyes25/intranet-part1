@@ -95,9 +95,9 @@ export function SidebarContent({
           !collapsed && (
             <div className="px-3 py-2">
               <p className="text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/30">
-                intranet-part1
+                Ten Eyes Intranet
               </p>
-              <p className="mt-0.5 text-xs text-sidebar-foreground/45">v0.1.0 · B2B SaaS</p>
+              <p className="mt-0.5 text-xs text-sidebar-foreground/45">v1.3.0 · Design v5</p>
             </div>
           )
         )}

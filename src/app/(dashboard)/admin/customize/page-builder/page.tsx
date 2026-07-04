@@ -41,7 +41,22 @@ export default async function PageBuilderPage() {
         </div>
       </PageHero>
 
-      <div className="page-builder-chrome p-1">
+      {!access.isReadOnly && (
+        <div className="page-builder-step-hint">
+          <span className="font-semibold text-primary">편집 흐름</span>
+          <span>1. 페이지·범위 선택</span>
+          <span className="text-border">→</span>
+          <span>2. 템플릿 미리보기 / 적용</span>
+          <span className="text-border">→</span>
+          <span>3. 블록 편집 · 기기 미리보기</span>
+          <span className="text-border">→</span>
+          <span>
+            <strong>4. 저장</strong> (자동 버전 백업)
+          </span>
+        </div>
+      )}
+
+      <div className="page-builder-chrome p-1 sm:p-1.5">
         <GrapesEditor {...data} />
       </div>
     </div>

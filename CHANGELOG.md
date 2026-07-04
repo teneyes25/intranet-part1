@@ -2,6 +2,25 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.3.0] — 2026-07-04 — Frontend UX/UI Upgrade Phase 1 (Design System v5)
+
+### Design System v5
+- Navy / Blue / Slate 토큰 정리, Pretendard 타이포, focus-visible, safe-area
+- `app-topbar` · `app-main` · `board-list-row` · `chat-*` · `notif-item` 공통 유틸
+- Mobile-first spacing (`clamp`, KPI 2열, touch-target)
+
+### Page Builder UX
+- 편집 흐름 힌트 (페이지 선택 → 템플릿 → 미리보기 → 저장)
+- 템플릿 갤러리 CTA·권장 흐름 안내, 툴바 Undo/Redo·기기 미리보기 라벨
+- GrapesJS chrome v5, 저장 버튼·툴바 스트립 강조
+
+### 주요 화면
+- Dashboard KPI·바로가기, 게시판 목록/메일함 진입, AI Agent 채팅(마크다운·출처·첨부)
+- 전자결재 기안 헤더·카드, 대리점 포털 기존 구조 유지 + 공통 토큰 적용
+
+### 공통 컴포넌트
+- Sidebar (v1.2.1 · Design v5), Topbar, Notification Bell 패널 폴리싱
+
 ## [1.2.1] — 2026-06-30 — Phase 5 상용화 MVP 마무리 (Firebase 제외)
 
 ### Phase 5 완료

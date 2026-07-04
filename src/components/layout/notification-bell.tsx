@@ -126,23 +126,25 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative"
+          className="relative touch-target"
           aria-label={`알림 ${unread}건`}
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-5 w-5 text-muted-foreground" />
           {unread > 0 && (
-            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+            <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground shadow-soft ring-2 ring-card">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          <span>알림</span>
-          <div className="flex items-center gap-2">
+      <DropdownMenuContent align="end" className="w-[min(100vw-2rem,22rem)] p-0 shadow-elevated">
+        <DropdownMenuLabel className="flex items-center justify-between px-3 py-3">
+          <span className="text-sm font-semibold">알림</span>
+          <div className="flex items-center gap-1.5">
             {unread > 0 && (
-              <Badge variant="secondary">{unread}</Badge>
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                {unread}
+              </Badge>
             )}
             {unread > 0 && (
               <Button
@@ -160,61 +162,63 @@ export function NotificationBell() {
             )}
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {loading ? (
-          <div className="space-y-2 p-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : items.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-            새 알림이 없습니다.
-          </p>
-        ) : (
-          items.map((n) => (
-            <DropdownMenuItem
-              key={n.id}
-              className="flex cursor-pointer flex-col items-start gap-0.5 py-2"
-              onClick={() => {
-                if (!n.read) void markRead(n.id);
-                setOpen(false);
-              }}
-              asChild={!!n.link}
-            >
-              {n.link ? (
-                <Link href={n.link} className="w-full">
-                  <span
-                    className={`text-sm ${n.read ? "font-normal" : "font-semibold"}`}
+        <DropdownMenuSeparator className="m-0" />
+        <div className="max-h-[min(60vh,22rem)] overflow-y-auto p-1.5">
+          {loading ? (
+            <div className="space-y-2 p-2">
+              <Skeleton className="h-14 w-full rounded-lg" />
+              <Skeleton className="h-14 w-full rounded-lg" />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
+              <Bell className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">새 알림이 없습니다.</p>
+            </div>
+          ) : (
+            items.map((n) => (
+              <DropdownMenuItem
+                key={n.id}
+                className="cursor-pointer p-0 focus:bg-transparent"
+                onClick={() => {
+                  if (!n.read) void markRead(n.id);
+                  setOpen(false);
+                }}
+                asChild={!!n.link}
+              >
+                {n.link ? (
+                  <Link
+                    href={n.link}
+                    className={`notif-item ${n.read ? "" : "notif-item-unread"}`}
                   >
-                    {n.title}
-                  </span>
-                  {n.body && (
-                    <span className="text-xs text-muted-foreground">{n.body}</span>
-                  )}
-                  <span className="text-[11px] text-muted-foreground/70">
-                    {timeAgo(n.createdAt)}
-                  </span>
-                </Link>
-              ) : (
-                <>
-                  <span
-                    className={`text-sm ${n.read ? "font-normal" : "font-semibold"}`}
-                  >
-                    {n.title}
-                  </span>
-                  {n.body && (
-                    <span className="text-xs text-muted-foreground">{n.body}</span>
-                  )}
-                  <span className="text-[11px] text-muted-foreground/70">
-                    {timeAgo(n.createdAt)}
-                  </span>
-                </>
-              )}
-            </DropdownMenuItem>
-          ))
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="justify-center text-sm">
+                    <span className={`text-sm ${n.read ? "font-normal" : "font-semibold"}`}>
+                      {n.title}
+                    </span>
+                    {n.body && (
+                      <span className="line-clamp-2 text-xs text-muted-foreground">{n.body}</span>
+                    )}
+                    <span className="text-[11px] text-muted-foreground/70">
+                      {timeAgo(n.createdAt)}
+                    </span>
+                  </Link>
+                ) : (
+                  <div className={`notif-item ${n.read ? "" : "notif-item-unread"}`}>
+                    <span className={`text-sm ${n.read ? "font-normal" : "font-semibold"}`}>
+                      {n.title}
+                    </span>
+                    {n.body && (
+                      <span className="line-clamp-2 text-xs text-muted-foreground">{n.body}</span>
+                    )}
+                    <span className="text-[11px] text-muted-foreground/70">
+                      {timeAgo(n.createdAt)}
+                    </span>
+                  </div>
+                )}
+              </DropdownMenuItem>
+            ))
+          )}
+        </div>
+        <DropdownMenuSeparator className="m-0" />
+        <DropdownMenuItem asChild className="justify-center rounded-none py-3 text-sm font-medium text-primary">
           <Link href="/notifications">모든 알림 보기</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

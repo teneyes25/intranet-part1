@@ -86,8 +86,8 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} onMenuClick={() => setMobileOpen(true)} />
-        <main className="app-canvas-bg flex-1 p-4 md:p-8">
-          <div className="mx-auto w-full max-w-7xl">
+        <main className="app-main safe-pb">
+          <div className="app-main-inner">
             {emergencyNotice && (
               <EmergencyBanner
                 noticeId={emergencyNotice.id}

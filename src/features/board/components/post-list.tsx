@@ -34,35 +34,38 @@ export function PostList({
     <ul className="surface-card overflow-hidden divide-y divide-border/50">
       {items.map((p) => (
         <li key={p.id}>
-          <Link
-            href={`/boards/${boardKey}/${p.id}`}
-            className="flex items-center gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-brand-light/5"
-          >
+          <Link href={`/boards/${boardKey}/${p.id}`} className="board-list-row">
             {p.isPinned && (
               <Pin className="h-4 w-4 shrink-0 text-destructive" />
             )}
-            {p.category && <Badge variant="secondary">{p.category}</Badge>}
-            <span className="flex-1 truncate font-medium">{p.title}</span>
-            {p._count.attachments > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                <Paperclip className="h-3.5 w-3.5" />
-                {p._count.attachments}
-              </span>
+            {p.category && (
+              <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
+                {p.category}
+              </Badge>
             )}
-            {p._count.comments > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                <MessageSquare className="h-3.5 w-3.5" />
-                {p._count.comments}
+            <span className="min-w-0 flex-1 truncate font-medium">{p.title}</span>
+            <span className="hidden items-center gap-2.5 text-xs text-muted-foreground sm:inline-flex">
+              {p._count.attachments > 0 && (
+                <span className="inline-flex items-center gap-0.5">
+                  <Paperclip className="h-3.5 w-3.5" />
+                  {p._count.attachments}
+                </span>
+              )}
+              {p._count.comments > 0 && (
+                <span className="inline-flex items-center gap-0.5">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {p._count.comments}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-0.5">
+                <Eye className="h-3.5 w-3.5" />
+                {p.viewCount}
               </span>
-            )}
-            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-              <Eye className="h-3.5 w-3.5" />
-              {p.viewCount}
             </span>
-            <span className="hidden w-20 truncate text-right text-sm text-muted-foreground sm:block">
+            <span className="hidden w-20 truncate text-right text-sm text-muted-foreground md:block">
               {p.author.name}
             </span>
-            <span className="hidden w-24 text-right text-xs text-muted-foreground md:block">
+            <span className="w-14 shrink-0 text-right text-[11px] text-muted-foreground sm:w-24 sm:text-xs">
               {formatDate(p.createdAt)}
             </span>
           </Link>
