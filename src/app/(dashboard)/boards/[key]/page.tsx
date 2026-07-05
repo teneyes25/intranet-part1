@@ -237,7 +237,7 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
         />
         <div className="flex flex-wrap gap-2">
           {canWrite && (
-            <Button asChild className="min-h-10">
+            <Button asChild variant="accent" className="min-h-10">
               <Link href={`/boards/${board.key}/new`}>
                 <PenSquare className="h-4 w-4" />
                 글쓰기

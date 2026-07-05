@@ -62,8 +62,8 @@ export function ScheduleCalendar({
   }
 
   return (
-    <div className="schedule-calendar overflow-hidden rounded-xl border bg-card shadow-xs">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+    <div className="surface-card overflow-hidden shadow-card">
+      <div className="flex items-center justify-between border-b border-border/50 bg-muted/20 px-4 py-3.5">
         <Button asChild variant="ghost" size="icon" className="touch-target-sm">
           <Link href={hrefFor(prev.y, prev.m)} aria-label="이전 달">
             <ChevronLeft className="h-5 w-5" />
@@ -103,13 +103,13 @@ export function ScheduleCalendar({
           return (
             <div
               key={key}
-              className={`min-h-[88px] border-b border-r p-1.5 sm:p-2 ${
-                isToday ? "bg-primary/[0.04]" : ""
+              className={`min-h-[88px] border-b border-r p-1.5 transition-colors sm:p-2 ${
+                isToday ? "bg-accent/[0.06]" : "hover:bg-muted/20"
               }`}
             >
               <span
-                className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium ${
-                  isToday ? "bg-primary text-primary-foreground" : "text-foreground"
+                className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                  isToday ? "bg-accent text-accent-foreground shadow-soft" : "text-foreground"
                 }`}
               >
                 {day}

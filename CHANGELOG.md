@@ -2,6 +2,32 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.6.0] — 2026-07-05 — UI/UX 전체 폴리싱 (Design System v5 Complete)
+
+### Design System v5 완성
+- **Primary Navy** + **Accent Blue** + Slate 토큰 체계 정립 (라이트/다크)
+- Typography 유틸 (`.typo-heading`, `.typo-body`, `.typo-caption`)
+- Shadow · Radius · Spacing · Status Badge 시스템
+- Button `accent` variant · Badge `info`/`warning` variant
+
+### 공통 UX
+- `EmptyState` · `LoadingState` · `PageError` 컴포넌트
+- Dashboard `loading.tsx` / `error.tsx` (Error Boundary)
+- Sonner 토스트 — 테마 연동 · 프리미엄 스타일 · 액션 버튼
+
+### 레이아웃
+- **Mobile Bottom Nav** — 홈·공지·장터·AI·메뉴 (safe-area)
+- Sidebar / Topbar / UserMenu / 검색창 폴리싱
+- `fade-in-up` 페이지 진입 애니메이션
+
+### 주요 화면
+- **Dashboard** — KPI accent 아이콘 · EmptyState · AI CTA
+- **게시판** — accent 글쓰기 버튼 · 일정 캘린더 surface-card
+- **아나바다장터** — `surface-card-interactive` · 가격 태그 강조
+- **매장 찾기** — 지도/목록 레이아웃 · EmptyState
+- **전자결재** — 결재선 타임라인 · 상태 Badge (success/info)
+- **AI Agent** — accent 전송 버튼
+
 ## [1.5.1] — 2026-07-05 — 아나바다장터 CRUD · 일정 캘린더
 
 ### 아나바다장터

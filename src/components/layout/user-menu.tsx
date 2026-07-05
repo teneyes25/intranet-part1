@@ -34,10 +34,12 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex h-auto items-center gap-2 px-2 py-1.5"
+          className="flex h-auto items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-muted/80"
         >
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>{initials(name)}</AvatarFallback>
+          <Avatar className="h-8 w-8 ring-2 ring-accent/20 ring-offset-2 ring-offset-background">
+            <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
+              {initials(name)}
+            </AvatarFallback>
           </Avatar>
           <div className="hidden text-left sm:block">
             <p className="text-sm font-medium leading-tight">{name}</p>

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHero } from "@/components/layout/page-hero";
 import { StatCard } from "@/features/dashboard/components/stat-card";
 import { ActivityChart } from "@/features/dashboard/components/activity-chart";
@@ -214,9 +215,13 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent className="p-0">
               {data.recentPosts.length === 0 ? (
-                <p className="px-6 py-10 text-center text-sm text-muted-foreground">
-                  아직 등록된 게시글이 없습니다.
-                </p>
+                <EmptyState
+                  icon={Megaphone}
+                  title="아직 등록된 게시글이 없습니다"
+                  description="공지사항이나 게시판에 첫 글을 작성해 보세요."
+                  action={{ label: "공지사항 보기", href: "/boards/notices" }}
+                  compact
+                />
               ) : (
                 <ul className="divide-y">
                   {data.recentPosts.map((p) => (
@@ -310,7 +315,7 @@ export default async function DashboardPage() {
                 누적 댓글 <strong>{data.commentCount}건</strong>, 사용자{" "}
                 <strong>{data.userCount}명</strong>이 활동 중입니다.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+              <Button asChild variant="accent" size="sm" className="mt-2 w-full">
                 <Link href="/ai-agent">
                   <Bot className="h-4 w-4" />
                   AI 에이전트 열기

@@ -38,15 +38,16 @@ export function TopbarSearch() {
   const form = (
     <form onSubmit={onSubmit} className="flex gap-2">
       <div className="relative flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="통합 검색..."
-          className="pl-9"
+          aria-label="통합 검색"
+          className="h-10 rounded-xl border-border/70 bg-muted/30 pl-9 shadow-xs focus-visible:bg-card"
         />
       </div>
-      <Button type="submit" size="sm">
+      <Button type="submit" size="sm" variant="accent" className="rounded-xl px-4">
         검색
       </Button>
     </form>

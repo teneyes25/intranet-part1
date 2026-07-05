@@ -309,6 +309,7 @@ export function AiChat({ canSync = false }: { canSync?: boolean }) {
         />
         <Button
           type="submit"
+          variant="accent"
           size="icon"
           className="touch-target shrink-0"
           disabled={loading || !input.trim()}

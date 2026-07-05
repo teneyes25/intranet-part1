@@ -16,12 +16,12 @@ export const APPROVAL_STATUS_LABEL: Record<ApprovalStatusKey, string> = {
 /** Badge variant 매핑 */
 export const APPROVAL_STATUS_VARIANT: Record<
   ApprovalStatusKey,
-  "default" | "secondary" | "destructive" | "outline"
+  "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"
 > = {
   DRAFT: "outline",
-  IN_PROGRESS: "default",
+  IN_PROGRESS: "info",
   REJECTED: "destructive",
-  COMPLETED: "secondary",
+  COMPLETED: "success",
 };
 
 export const STEP_STATUS_LABEL: Record<StepStatusKey, string> = {

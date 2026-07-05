@@ -11,6 +11,7 @@ import {
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import { SidebarContent } from "@/components/layout/sidebar-content";
 import { Topbar } from "@/components/layout/topbar";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { PilotBanner } from "@/components/pilot/pilot-banner";
 import { EmergencyBanner } from "@/components/emergency/emergency-banner";
 import type { BrandingConfig } from "@/components/branding/branding-head";
@@ -91,8 +92,8 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} menuButtonRef={menuButtonRef} onMenuClick={() => setMobileOpen(true)} />
-        <main id="main-content" className="app-main safe-pb" tabIndex={-1}>
-          <div className="app-main-inner">
+        <main id="main-content" className="app-main" tabIndex={-1}>
+          <div className="app-main-inner fade-in-up">
             {emergencyNotice && (
               <EmergencyBanner
                 noticeId={emergencyNotice.id}
@@ -105,6 +106,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
             {children}
           </div>
         </main>
+        <MobileBottomNav onMenuClick={() => setMobileOpen(true)} />
       </div>
     </div>
   );

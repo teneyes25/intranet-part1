@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, ImageIcon, MessageCircle, MessageSquare, Paperclip, Pin } from "lucide-react";
+import { Eye, ImageIcon, MessageCircle, MessageSquare, Paperclip, Pin, ShoppingBag } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { saleStatusLabel } from "@/features/board/board-search-utils";
 import { formatDate } from "@/features/board/utils";
 import { AnabadaPostActions } from "@/features/anabada/components/anabada-post-actions";
@@ -46,8 +47,12 @@ export function AnabadaPostGrid({
 }: AnabadaPostGridProps) {
   if (items.length === 0) {
     return (
-      <div className="surface-muted border-dashed p-12 text-center text-sm text-muted-foreground">
-        등록된 물품이 없습니다.
+      <div className="surface-muted border-dashed">
+        <EmptyState
+          icon={ShoppingBag}
+          title="등록된 물품이 없습니다"
+          description="첫 물품을 등록하고 아나바다장터를 시작해 보세요."
+        />
       </div>
     );
   }
@@ -61,8 +66,8 @@ export function AnabadaPostGrid({
         return (
           <article
             key={post.id}
-            className={`board-card group relative overflow-hidden transition-all hover:shadow-md active:scale-[0.99] ${
-              isSelected ? "ring-2 ring-primary" : ""
+            className={`surface-card-interactive group relative overflow-hidden ${
+              isSelected ? "ring-2 ring-accent" : ""
             }`}
           >
             {onToggle && (
@@ -104,8 +109,8 @@ export function AnabadaPostGrid({
                     {saleStatusLabel(post.saleStatus)}
                   </Badge>
                 )}
-                <div className="absolute bottom-2 left-2 rounded-lg bg-background/95 px-2.5 py-1 shadow-sm">
-                  <p className="text-sm font-bold text-primary">{formatPrice(post.price)}</p>
+                <div className="absolute bottom-2 left-2">
+                  <span className="anabada-price-tag">{formatPrice(post.price)}</span>
                 </div>
               </div>
 

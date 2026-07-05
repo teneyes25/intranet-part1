@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Inbox } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/features/board/utils";
 import {
   APPROVAL_STATUS_LABEL,
@@ -29,19 +31,22 @@ export function ApprovalList({
 }) {
   if (items.length === 0) {
     return (
-      <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-        {emptyText}
-      </p>
+      <EmptyState
+        icon={Inbox}
+        title="결재 문서가 없습니다"
+        description={emptyText}
+        compact
+      />
     );
   }
 
   return (
-    <ul className="divide-y">
+    <ul className="divide-y divide-border/50">
       {items.map((d) => (
         <li key={d.id}>
           <Link
             href={`/approval/${d.id}`}
-            className="flex items-center gap-3 px-6 py-4 text-sm transition-all duration-200 hover:bg-primary/5"
+            className="flex items-center gap-3 px-6 py-4 text-sm transition-all duration-200 hover:bg-accent/[0.04] active:bg-accent/[0.06]"
           >
             <Badge
               variant={APPROVAL_STATUS_VARIANT[d.status as ApprovalStatusKey]}

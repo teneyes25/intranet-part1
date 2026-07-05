@@ -39,29 +39,37 @@ export function ApprovalLine({
   const orders = [...groups.keys()].sort((a, b) => a - b);
 
   return (
-    <ol className="space-y-3">
-      {orders.map((order) => {
+    <ol className="relative space-y-3 pl-1">
+      {orders.map((order, idx) => {
         const groupSteps = groups.get(order)!;
         const isActive =
           documentStatus === "IN_PROGRESS" && order === currentOrder;
         const isParallel = groupSteps.length > 1;
+        const isLast = idx === orders.length - 1;
         return (
-          <li
-            key={order}
-            className={cn(
-              "rounded-lg border p-3",
-              isActive && "border-primary/50 bg-primary/5",
+          <li key={order} className="relative">
+            {!isLast && (
+              <span
+                className="absolute left-[1.125rem] top-12 bottom-0 w-px bg-border/70"
+                aria-hidden
+              />
             )}
-          >
-            <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <div
+              className={cn(
+                "relative rounded-xl border p-4 shadow-xs transition-colors",
+                isActive && "border-accent/40 bg-accent/[0.05] shadow-soft",
+              )}
+            >
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {order}
+              </span>
               <span>{order}단계</span>
               {isParallel && (
-                <span className="rounded bg-muted px-1.5 py-0.5">병렬</span>
+                <span className="status-badge-neutral normal-case">병렬</span>
               )}
               {isActive && (
-                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-primary">
-                  진행 중
-                </span>
+                <span className="status-badge-info normal-case">진행 중</span>
               )}
             </div>
             <div className="space-y-2">
@@ -108,6 +116,7 @@ export function ApprovalLine({
                   </div>
                 );
               })}
+            </div>
             </div>
           </li>
         );

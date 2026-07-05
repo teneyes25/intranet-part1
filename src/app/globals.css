@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Design System v5 — Modern Corporate (Navy / Blue / Slate · Pretendard) */
+    /* Design System v5 Complete — Modern Corporate Premium (Navy / Blue / Slate) */
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
 
@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 217 91% 53%;
+    --primary: 222 47% 11%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 214 32% 94%;
@@ -25,8 +25,8 @@
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 213 94% 68%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 217 91% 53%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -34,6 +34,8 @@
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 217 91% 53%;
+    --brand: 217 91% 53%;
+    --brand-foreground: 0 0% 100%;
 
     --radius: 0.75rem;
     --radius-sm: 0.5rem;
@@ -59,7 +61,15 @@
 
     --topbar-h: 3.5rem;
     --topbar-h-md: 4rem;
+    --mobile-nav-h: 4rem;
     --content-max: 80rem;
+
+    --text-caption: 0.6875rem;
+    --text-body-sm: 0.8125rem;
+    --text-body: 0.9375rem;
+    --text-heading-sm: 1.125rem;
+    --text-heading: 1.5rem;
+    --text-heading-lg: 2rem;
   }
 
   .dark {
@@ -72,7 +82,7 @@
     --popover: 222 47% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 213 94% 68%;
+    --primary: 210 40% 98%;
     --primary-foreground: 222 47% 11%;
 
     --secondary: 217 33% 17%;
@@ -81,8 +91,10 @@
     --muted: 217 33% 15%;
     --muted-foreground: 215 20% 68%;
 
-    --accent: 224 64% 48%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
+    --brand: 217 91% 60%;
+    --brand-foreground: 0 0% 100%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 210 40% 98%;
@@ -166,7 +178,27 @@
   }
 
   .b2b-section-eyebrow {
-    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-primary;
+    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-accent;
+  }
+
+  .typo-caption {
+    @apply text-[11px] font-medium leading-snug text-muted-foreground;
+  }
+
+  .typo-body {
+    @apply text-[15px] leading-relaxed text-foreground;
+  }
+
+  .typo-body-muted {
+    @apply text-sm leading-relaxed text-muted-foreground md:text-[15px];
+  }
+
+  .typo-heading {
+    @apply text-xl font-bold tracking-tight text-foreground sm:text-2xl;
+  }
+
+  .typo-heading-sm {
+    @apply text-base font-semibold tracking-tight text-foreground sm:text-lg;
   }
 
   .b2b-page-hero {
@@ -236,7 +268,43 @@
   }
 
   .app-main {
-    @apply app-canvas-bg flex-1 p-3 sm:p-4 md:p-6 lg:p-8;
+    @apply app-canvas-bg flex-1 p-3 pb-[calc(var(--mobile-nav-h)+0.75rem+env(safe-area-inset-bottom,0px))] sm:p-4 sm:pb-4 md:p-6 md:pb-6 lg:p-8 lg:pb-8;
+  }
+
+  .app-mobile-nav {
+    @apply border-t border-border/60 bg-card/95 shadow-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-card/90;
+  }
+
+  .app-mobile-nav-item {
+    @apply touch-target-sm text-muted-foreground transition-colors duration-200 active:scale-95;
+  }
+
+  .app-mobile-nav-item-active {
+    @apply text-accent;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide;
+  }
+
+  .status-badge-success {
+    @apply status-badge border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400;
+  }
+
+  .status-badge-warning {
+    @apply status-badge border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400;
+  }
+
+  .status-badge-info {
+    @apply status-badge border-accent/25 bg-accent/10 text-accent;
+  }
+
+  .status-badge-neutral {
+    @apply status-badge border-border bg-muted/60 text-muted-foreground;
+  }
+
+  .status-badge-danger {
+    @apply status-badge border-destructive/20 bg-destructive/10 text-destructive;
   }
 
   .app-main-inner {
@@ -377,6 +445,29 @@
   .anabada-detail-panel {
     @apply touch-manipulation;
   }
+
+  .anabada-price-tag {
+    @apply inline-flex items-center rounded-lg bg-accent px-2.5 py-1 text-sm font-bold text-accent-foreground shadow-soft;
+  }
+
+  .store-locator-panel {
+    @apply surface-card max-h-[min(480px,50vh)] overflow-y-auto p-2 lg:max-h-[520px];
+  }
+
+  .fade-in-up {
+    animation: fade-in-up 0.35s ease-out both;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* TipTap */
@@ -408,7 +499,7 @@
   @apply list-decimal pl-4;
 }
 .prose a {
-  @apply text-primary underline;
+  @apply text-accent underline;
 }
 
 /* App canvas subtle grid */

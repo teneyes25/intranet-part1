@@ -44,11 +44,11 @@ export function BoardViewToolbar({
           </span>
         )}
       </p>
-      <div className="flex items-center gap-1 rounded-lg border bg-muted/30 p-0.5">
+      <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1 shadow-xs">
         <Button
           type="button"
           size="sm"
-          variant={layout === "list" ? "secondary" : "ghost"}
+          variant={layout === "list" ? "accent" : "ghost"}
           className="h-8 min-h-8 gap-1.5 px-2.5 touch-target-sm"
           onClick={() => setLayout("list")}
           aria-pressed={layout === "list"}
@@ -59,7 +59,7 @@ export function BoardViewToolbar({
         <Button
           type="button"
           size="sm"
-          variant={layout === "card" ? "secondary" : "ghost"}
+          variant={layout === "card" ? "accent" : "ghost"}
           className="h-8 min-h-8 gap-1.5 px-2.5 touch-target-sm"
           onClick={() => setLayout("card")}
           aria-pressed={layout === "card"}

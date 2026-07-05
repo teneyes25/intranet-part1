@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapPin, Phone, Clock } from "lucide-react";
+import { MapPin, Phone, Clock, Store } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
 export interface StoreLocatorItem {
@@ -153,23 +154,31 @@ export function StoreLocator({ stores }: StoreLocatorProps) {
   }, [mapReady, mappable, focusStore]);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <div className="relative min-h-[360px] overflow-hidden rounded-xl border bg-muted/30">
+    <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+      <div className="surface-card relative min-h-[360px] overflow-hidden p-0 lg:min-h-[420px]">
         {mapError ? (
-          <div className="flex h-full min-h-[360px] items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            {mapError}
-          </div>
+          <EmptyState
+            icon={MapPin}
+            title="지도를 불러올 수 없습니다"
+            description={mapError}
+            compact
+          />
         ) : (
-          <div ref={mapRef} className="h-full min-h-[360px] w-full" aria-label="매장 지도" />
+          <div ref={mapRef} className="h-full min-h-[360px] w-full lg:min-h-[420px]" aria-label="매장 지도" />
         )}
       </div>
 
-      <aside className="max-h-[480px] space-y-2 overflow-y-auto rounded-xl border bg-card p-2">
-        <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+      <aside className="store-locator-panel">
+        <p className="px-2 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           매장 목록 ({stores.length})
         </p>
         {stores.length === 0 ? (
-          <p className="px-2 py-8 text-center text-sm text-muted-foreground">등록된 매장이 없습니다.</p>
+          <EmptyState
+            icon={Store}
+            title="등록된 매장이 없습니다"
+            description="관리자가 대리점 매장 정보를 등록하면 여기에 표시됩니다."
+            compact
+          />
         ) : (
           stores.map((store) => (
             <button
@@ -178,10 +187,10 @@ export function StoreLocator({ stores }: StoreLocatorProps) {
               onClick={() => hasCoords(store) && focusStore(store)}
               disabled={!hasCoords(store)}
               className={cn(
-                "w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                "w-full rounded-xl border px-3 py-3 text-left text-sm transition-all duration-200",
                 selectedId === store.id
-                  ? "border-primary bg-primary/5"
-                  : "border-transparent hover:bg-muted/50",
+                  ? "border-accent/40 bg-accent/[0.06] shadow-soft"
+                  : "border-transparent hover:border-border/70 hover:bg-muted/40",
                 !hasCoords(store) && "cursor-not-allowed opacity-60",
               )}
             >

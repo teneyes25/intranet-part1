@@ -40,7 +40,7 @@ export function StatCard({ title, value, hint, icon: Icon, href, trend = "neutra
             </p>
           )}
         </div>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/10 sm:h-11 sm:w-11">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent ring-1 ring-accent/15 sm:h-11 sm:w-11">
           <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>

@@ -35,10 +35,10 @@ export function Topbar({ user, menuButtonRef, onMenuClick }: TopbarProps) {
 
       <TopbarSearch />
 
-      <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+      <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5">
         <NotificationBell />
         <ThemeToggle />
-        <div className="mx-1 hidden h-6 w-px bg-border/80 sm:block" />
+        <div className="mx-1 hidden h-6 w-px bg-border/80 sm:block" aria-hidden />
         <UserMenu name={user.name} email={user.email} role={user.role} />
       </div>
     </header>
