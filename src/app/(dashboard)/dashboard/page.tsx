@@ -25,6 +25,8 @@ import { PageHero } from "@/components/layout/page-hero";
 import { StatCard } from "@/features/dashboard/components/stat-card";
 import { ActivityChart } from "@/features/dashboard/components/activity-chart";
 import { getDashboardData } from "@/features/dashboard/queries";
+import { PilotKpiStrip } from "@/features/pilot/components/pilot-kpi-strip";
+import { getPilotKpiSummary } from "@/features/pilot/kpi-queries";
 import { CompanyBrandShowcase } from "@/features/company-theme/components/company-brand-showcase";
 import { CompanyDashboardHero } from "@/features/company-theme/components/company-dashboard-hero";
 import { CompanyPortalHub } from "@/features/company-theme/components/company-portal-hub";
@@ -49,11 +51,12 @@ function isWidgetVisible(layout: DashboardLayoutConfig, id: string) {
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [data, settings, bannerLayout, dashboardLayout] = await Promise.all([
+  const [data, settings, bannerLayout, dashboardLayout, pilotKpi] = await Promise.all([
     getDashboardData(),
     getSiteSettings(),
     getPageLayout("banner", user.dealerId),
     getPageLayout("dashboard", user.dealerId),
+    user.role === "ADMIN" ? getPilotKpiSummary() : Promise.resolve(null),
   ]);
   const layout = mergeDashboardLayoutForRole(
     user.role,
@@ -178,6 +181,10 @@ export default async function DashboardPage() {
           href="/boards/general"
         />
       </div>
+      )}
+
+      {user.role === "ADMIN" && pilotKpi && isWidgetVisible(layout, "pilotKpi") && (
+        <PilotKpiStrip data={pilotKpi} />
       )}
 
       <div

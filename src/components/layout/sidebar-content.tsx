@@ -97,7 +97,7 @@ export function SidebarContent({
               <p className="text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/30">
                 Ten Eyes Intranet
               </p>
-              <p className="mt-0.5 text-xs text-sidebar-foreground/45">v1.3.2 · Design v5</p>
+              <p className="mt-0.5 text-xs text-sidebar-foreground/45">v1.3.3 · Design v5</p>
             </div>
           )
         )}

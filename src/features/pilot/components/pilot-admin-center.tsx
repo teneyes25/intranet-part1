@@ -56,7 +56,9 @@ export function PilotAdminCenter({
         <PilotSettingsTab settings={data.monitoring.settings} envActive={data.monitoring.pilotModeEnv} />
       )}
       {tab === "groups" && <PilotGroupsTab groups={data.groups} users={data.users} />}
-      {tab === "monitoring" && <PilotMonitoringTab data={data.monitoring} />}
+      {tab === "monitoring" && (
+        <PilotMonitoringTab data={data.monitoring} kpi={data.kpi} />
+      )}
       {tab === "checklist" && <PilotChecklistTab />}
     </div>
   );

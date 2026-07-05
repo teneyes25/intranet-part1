@@ -1,6 +1,8 @@
 "use client";
 
 import type { getPilotMonitoringData } from "@/features/pilot/queries";
+import { PilotKpiStrip } from "@/features/pilot/components/pilot-kpi-strip";
+import { getPilotKpiSummary } from "@/features/pilot/kpi-queries";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -13,14 +15,18 @@ import { FEEDBACK_CATEGORIES } from "@/features/pilot/types";
 
 export function PilotMonitoringTab({
   data,
+  kpi,
 }: {
   data: Awaited<ReturnType<typeof getPilotMonitoringData>>;
+  kpi: Awaited<ReturnType<typeof getPilotKpiSummary>>;
 }) {
   const catLabel = (v: string) =>
     FEEDBACK_CATEGORIES.find((c) => c.value === v)?.label ?? v;
 
   return (
     <div className="space-y-6">
+      <PilotKpiStrip data={kpi} showLink={false} />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">

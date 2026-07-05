@@ -48,27 +48,69 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /** 기본 X 닫기 버튼 숨김 (커스텀 닫기 사용 시) */
+  hideClose?: boolean;
+  /** 열릴 때 포커스할 요소 (CSS selector) */
+  autoFocusSelector?: string;
+  /** 닫힐 때 포커스 복원 대상 */
+  restoreFocusRef?: React.RefObject<HTMLElement | null>;
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(
+  (
+    {
+      side = "right",
+      className,
+      children,
+      hideClose = false,
+      autoFocusSelector,
+      restoreFocusRef,
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      ...props
+    },
+    ref,
+  ) => (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(sheetVariants({ side }), className)}
+      onOpenAutoFocus={(event) => {
+        onOpenAutoFocus?.(event);
+        if (event.defaultPrevented) return;
+        if (autoFocusSelector) {
+          event.preventDefault();
+          const target = document.querySelector<HTMLElement>(autoFocusSelector);
+          target?.focus();
+          return;
+        }
+      }}
+      onCloseAutoFocus={(event) => {
+        onCloseAutoFocus?.(event);
+        if (event.defaultPrevented) return;
+        if (restoreFocusRef?.current) {
+          event.preventDefault();
+          restoreFocusRef.current.focus();
+        }
+      }}
       {...props}
     >
       {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none">
+      {!hideClose && (
+      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
         <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
+        <span className="sr-only">닫기</span>
       </SheetPrimitive.Close>
+      )}
     </SheetPrimitive.Content>
   </SheetPortal>
-));
+  ),
+);
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 const SheetHeader = ({

@@ -15,13 +15,15 @@ interface TopbarProps {
     email: string;
     role: Role;
   };
+  menuButtonRef?: React.RefObject<HTMLButtonElement | null>;
   onMenuClick: () => void;
 }
 
-export function Topbar({ user, onMenuClick }: TopbarProps) {
+export function Topbar({ user, menuButtonRef, onMenuClick }: TopbarProps) {
   return (
     <header className="app-topbar">
       <Button
+        ref={menuButtonRef}
         variant="ghost"
         size="icon"
         className="touch-target shrink-0 md:hidden"

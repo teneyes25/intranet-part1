@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -39,6 +39,7 @@ interface AppShellProps {
 export function AppShell({ user, branding, pilotBanner, emergencyNotice, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -76,6 +77,8 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
         <SheetContent
           side="left"
           className="app-sidebar w-72 border-sidebar-border/80 p-0"
+          autoFocusSelector='.app-sidebar a[href], .app-sidebar button:not([aria-label="메뉴 접기"])'
+          restoreFocusRef={menuButtonRef}
         >
           <SheetTitle className="sr-only">메뉴</SheetTitle>
           <SidebarContent
@@ -87,7 +90,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar user={user} onMenuClick={() => setMobileOpen(true)} />
+        <Topbar user={user} menuButtonRef={menuButtonRef} onMenuClick={() => setMobileOpen(true)} />
         <main id="main-content" className="app-main safe-pb" tabIndex={-1}>
           <div className="app-main-inner">
             {emergencyNotice && (

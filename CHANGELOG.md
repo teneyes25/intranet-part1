@@ -2,6 +2,21 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.3.3] — 2026-07-05 — Frontend UX/UI Upgrade Phase 4
+
+### 접근성 (Sheet)
+- `SheetContent`: `hideClose` · `autoFocusSelector` · `restoreFocusRef` (열기/닫기 포커스)
+- 모바일 메뉴 Sheet: 첫 nav 링크 포커스 · 닫을 때 메뉴 버튼 복원
+- Page Builder 미리보기 Sheet: 커스텀 닫기 + 초기 포커스
+
+### Pilot KPI
+- PRD v1.2.1 KPI 6종 실측 (`kpi-queries.ts`) — 활성 대리점·공지·PB·AI·에러
+- ADMIN 대시보드 `PilotKpiStrip` 위젯 · `/admin/pilot` 모니터링 탭 연동
+- Page Builder 저장 시 `page_builder_save` usage 이벤트
+
+### E2E
+- `e2e/ui-phase4.spec.ts` — Pilot KPI·Sheet 포커스·metrics API
+
 ## [1.3.2] — 2026-07-05 — Frontend UX/UI Upgrade Phase 3
 
 ### Page Builder

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getPilotMonitoringData } from "@/features/pilot/queries";
+import { getPilotKpiSummary } from "@/features/pilot/kpi-queries";
 import { trackUsage } from "@/lib/pilot/monitoring";
 import { withApiGuard, parseJsonBody } from "@/lib/security/api-guard";
 
@@ -9,8 +10,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const GET = withApiGuard({ minRole: "ADMIN" }, async () => {
-  const data = await getPilotMonitoringData();
-  return NextResponse.json(data);
+  const [data, kpi] = await Promise.all([getPilotMonitoringData(), getPilotKpiSummary()]);
+  return NextResponse.json({ ...data, kpi });
 });
 
 const usageSchema = z.object({

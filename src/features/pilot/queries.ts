@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isPilotModeEnv } from "@/lib/pilot/config";
 import { getPilotSettings, isPilotModeActive, listPilotGroups } from "@/features/pilot/pilot-service";
 import { getFeedbackStats, listFeedbacks } from "@/features/pilot/feedback-service";
+import { getPilotKpiSummary } from "@/features/pilot/kpi-queries";
 
 export async function getPilotMonitoringData() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -45,7 +46,7 @@ export async function getPilotMonitoringData() {
 }
 
 export async function getPilotAdminPageData() {
-  const [groups, monitoring, users] = await Promise.all([
+  const [groups, monitoring, users, kpi] = await Promise.all([
     listPilotGroups(),
     getPilotMonitoringData(),
     prisma.user.findMany({
@@ -53,6 +54,7 @@ export async function getPilotAdminPageData() {
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true, role: true },
     }),
+    getPilotKpiSummary(),
   ]);
-  return { groups, monitoring, users };
+  return { groups, monitoring, users, kpi };
 }

@@ -52,6 +52,8 @@ export function PageBuilderPreviewSheet({
       <SheetContent
         side="bottom"
         className="flex h-[92dvh] flex-col gap-0 p-0 sm:max-w-none"
+        hideClose
+        autoFocusSelector='[data-sheet-close="preview"]'
       >
         <SheetHeader className="shrink-0 border-b border-border/60 px-4 py-3 text-left sm:px-6">
           <div className="flex items-start justify-between gap-3">
@@ -64,6 +66,7 @@ export function PageBuilderPreviewSheet({
               variant="ghost"
               size="icon"
               className="shrink-0"
+              data-sheet-close="preview"
               onClick={() => onOpenChange(false)}
               aria-label="미리보기 닫기"
             >

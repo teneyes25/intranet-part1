@@ -30,6 +30,7 @@ import {
   type SavePageLayoutPayload,
 } from "@/features/page-layout/types";
 import { writeAudit, getClientIp } from "@/lib/audit/service";
+import { trackUsage } from "@/lib/pilot/monitoring";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { updateSiteSettings } from "@/features/customize/site-settings-service";
@@ -118,6 +119,12 @@ export async function savePageLayoutAction(payload: SavePageLayoutPayload) {
       ip: getClientIp(h),
       resource: `page_layout:${payload.slug}:${scope}`,
       detail: "grapesjs_saved",
+    });
+
+    void trackUsage({
+      userId: user.id,
+      event: "page_builder_save",
+      resource: `${payload.slug}:${scope}`,
     });
 
     revalidateLayoutPaths(payload.slug);

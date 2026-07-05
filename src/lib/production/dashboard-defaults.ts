@@ -7,6 +7,7 @@ import {
 const ROLE_WIDGET_VISIBILITY: Record<Role, Record<string, boolean>> = {
   ADMIN: {
     stats: true,
+    pilotKpi: true,
     activityChart: true,
     recentPosts: true,
     shortcuts: true,
@@ -15,6 +16,7 @@ const ROLE_WIDGET_VISIBILITY: Record<Role, Record<string, boolean>> = {
   },
   HEADQUARTER: {
     stats: true,
+    pilotKpi: false,
     activityChart: true,
     recentPosts: true,
     shortcuts: true,
@@ -23,6 +25,7 @@ const ROLE_WIDGET_VISIBILITY: Record<Role, Record<string, boolean>> = {
   },
   DEALER: {
     stats: true,
+    pilotKpi: false,
     activityChart: false,
     recentPosts: true,
     shortcuts: true,
