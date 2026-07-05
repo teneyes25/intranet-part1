@@ -365,6 +365,18 @@
   .touch-target {
     @apply min-h-11 min-w-11;
   }
+  .touch-target-sm {
+    @apply min-h-10 min-w-10;
+  }
+  .board-card {
+    @apply rounded-xl border border-border/70 bg-card shadow-xs;
+  }
+  .search-result-row {
+    @apply touch-manipulation;
+  }
+  .anabada-detail-panel {
+    @apply touch-manipulation;
+  }
 }
 
 /* TipTap */

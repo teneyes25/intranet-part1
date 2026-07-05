@@ -34,16 +34,19 @@ import {
 } from "@/features/board/bulk-actions";
 import { splitHighlightParts } from "@/features/board/board-search-utils";
 import type { PostRow } from "@/features/board/components/post-list";
+import { PostListCards } from "@/features/board/components/post-list-cards";
+import type { BoardLayoutMode } from "@/features/board/components/board-view-toolbar";
 import { formatDate } from "@/features/board/utils";
 
 interface PostListBulkProps {
   boardKey: string;
-  items: PostRow[];
+  items: (PostRow & { attachments?: { id: string; mimeType: string }[] })[];
   categories: string[];
   boards: { key: string; name: string }[];
   labels: { id: string; name: string; color: string }[];
   folders: { id: string; name: string }[];
   searchQuery?: string;
+  layout?: BoardLayoutMode;
 }
 
 export function PostListBulk({
@@ -54,6 +57,7 @@ export function PostListBulk({
   labels,
   folders,
   searchQuery,
+  layout = "list",
 }: PostListBulkProps) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -288,6 +292,16 @@ export function PostListBulk({
         </div>
       )}
 
+      {layout === "card" ? (
+        <PostListCards
+          boardKey={boardKey}
+          items={items}
+          selected={selected}
+          onToggle={toggleOne}
+          searchQuery={searchQuery}
+        />
+      ) : (
+      <>
       <ul className="surface-card overflow-hidden divide-y divide-border/50">
         <li className="flex items-center gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
           <input
@@ -356,6 +370,8 @@ export function PostListBulk({
           </li>
         ))}
       </ul>
+      </>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { SearchForm } from "@/features/search/components/search-form";
 import { SearchResults } from "@/features/search/components/search-results";
-import { unifiedSearch } from "@/features/search/queries";
+import { cachedUnifiedSearch } from "@/features/search/search-cache";
 import type { SearchSourceKey } from "@/features/search/constants";
 import {
   type BoardPeriodPreset,
@@ -62,7 +62,7 @@ export default async function SearchPage({
 
   const items =
     q || semantic
-      ? await unifiedSearch({
+      ? await cachedUnifiedSearch({
           q,
           source,
           semantic,

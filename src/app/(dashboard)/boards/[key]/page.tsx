@@ -14,6 +14,10 @@ import { PageLayoutRenderer } from "@/features/page-layout/components/layout-ren
 import { getBoardPageLayout } from "@/features/page-layout/service";
 import { BoardFilters } from "@/features/board/components/board-filters";
 import { PostListBulk } from "@/features/board/components/post-list-bulk";
+import {
+  BoardViewToolbar,
+  type BoardLayoutMode,
+} from "@/features/board/components/board-view-toolbar";
 import { AnabadaBoardList } from "@/features/anabada/components/anabada-board-list";
 import type { AnabadaPostRow } from "@/features/anabada/types";
 import { BoardPagination } from "@/features/board/components/board-pagination";
@@ -45,6 +49,7 @@ interface PageProps {
     minViews?: string;
     page?: string;
     view?: string;
+    layout?: string;
   }>;
 }
 
@@ -83,6 +88,8 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
 
   const page = Number(sp.page ?? "1") || 1;
   const infinite = sp.view === "infinite" && !isAnabada;
+  const layout: BoardLayoutMode =
+    sp.layout === "card" || isAnabada ? "card" : "list";
   const period = (sp.period ?? "all") as BoardPeriodPreset;
 
   let from: Date | undefined;
@@ -111,6 +118,7 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
       minViewCount: minViewCount && !Number.isNaN(minViewCount) ? minViewCount : undefined,
       page,
       withAnabadaFields: isAnabada,
+      withCardPreview: layout === "card" && !isAnabada,
     }),
     listBoards(),
     getCustomFolders(user.id, board.id),
@@ -136,7 +144,9 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
         categories={board.categories}
         productCategoryNames={isProducts ? productCategoryNames : undefined}
       />
-      <p className="text-sm text-muted-foreground">총 {result.total}건</p>
+      {!isAnabada && (
+        <BoardViewToolbar total={result.total} layout={layout} infinite={infinite} />
+      )}
       {infinite ? (
         <InfinitePosts
           boardKey={board.key}
@@ -176,6 +186,7 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
             labels={bulkLabels}
             folders={bulkFolders}
             searchQuery={sp.q}
+            layout={layout}
           />
           <BoardPagination page={result.page} totalPages={result.totalPages} />
         </div>

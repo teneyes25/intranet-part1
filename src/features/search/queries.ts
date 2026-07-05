@@ -7,6 +7,7 @@ import { similaritySearch } from "@/lib/ai/vector-store";
 import type { Role } from "@/lib/auth/roles";
 import { canAccessBoard } from "@/lib/auth/access";
 import { fullTextSearchPosts } from "@/lib/search/fulltext";
+import { getProductMetaMap } from "@/features/products/product-meta";
 import type { SearchSourceKey } from "./constants";
 import {
   type BoardPeriodPreset,
@@ -15,7 +16,7 @@ import {
 
 export interface SearchResultItem {
   id: string;
-  type: "post" | "document" | "approval" | "semantic";
+  type: "post" | "document" | "approval" | "semantic" | "user" | "product";
   title: string;
   snippet: string;
   href: string;
@@ -23,6 +24,11 @@ export interface SearchResultItem {
   category?: string | null;
   date: Date;
   score?: number;
+  /** 상품 검색 미리보기 */
+  imageUrl?: string | null;
+  unitPrice?: number | null;
+  stock?: number | null;
+  boardKey?: string;
 }
 
 export interface SearchParams {
@@ -123,19 +129,35 @@ async function searchPosts(
       category: true,
       createdAt: true,
       board: { select: { key: true, name: true } },
+      attachments: {
+        take: 1,
+        where: { mimeType: { startsWith: "image/" } },
+        select: { id: true },
+      },
     },
   });
 
-  return posts.map((p) => ({
-    id: p.id,
-    type: "post" as const,
-    title: p.title,
-    snippet: stripHtml(p.content).slice(0, 160),
-    href: `/boards/${p.board.key}/${p.id}`,
-    source: p.board.name,
-    category: p.category,
-    date: p.createdAt,
-  }));
+  const productIds = posts.filter((p) => p.board.key === "products").map((p) => p.id);
+  const metaMap = await getProductMetaMap(productIds);
+
+  return posts.map((p) => {
+    const meta = metaMap.get(p.id);
+    const isProduct = p.board.key === "products";
+    return {
+      id: p.id,
+      type: (isProduct ? "product" : "post") as "product" | "post",
+      title: p.title,
+      snippet: stripHtml(p.content).slice(0, 160),
+      href: `/boards/${p.board.key}/${p.id}`,
+      source: p.board.name,
+      category: p.category,
+      date: p.createdAt,
+      boardKey: p.board.key,
+      imageUrl: p.attachments[0] ? `/api/files/${p.attachments[0].id}` : null,
+      unitPrice: meta?.unitPrice ?? null,
+      stock: meta?.totalStock ?? null,
+    };
+  });
 }
 
 async function searchDocuments(params: SearchParams): Promise<SearchResultItem[]> {
@@ -206,6 +228,36 @@ async function searchApprovals(params: SearchParams, userId: string): Promise<Se
   }));
 }
 
+async function searchUsers(params: SearchParams): Promise<SearchResultItem[]> {
+  if (!params.q?.trim()) return [];
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        { name: { contains: params.q.trim(), mode: "insensitive" } },
+        { email: { contains: params.q.trim(), mode: "insensitive" } },
+      ],
+    },
+    take: 8,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      dealer: { select: { name: true } },
+      updatedAt: true,
+    },
+  });
+  return users.map((u) => ({
+    id: u.id,
+    type: "user" as const,
+    title: u.name,
+    snippet: [u.email, u.dealer?.name, u.role].filter(Boolean).join(" · "),
+    href: `/admin/users?q=${encodeURIComponent(u.email)}`,
+    source: "사용자",
+    date: u.updatedAt,
+  }));
+}
+
 async function searchSemantic(params: SearchParams): Promise<SearchResultItem[]> {
   if (!params.q) return [];
   try {
@@ -258,6 +310,7 @@ export async function unifiedSearch(
 
   if (source === "all") {
     tasks.push(searchPosts({ ...params, limit }));
+    tasks.push(searchUsers({ ...params, limit: 8 }));
   } else if (boardMap[source]) {
     tasks.push(searchPosts({ ...params, limit }, boardMap[source]));
   }

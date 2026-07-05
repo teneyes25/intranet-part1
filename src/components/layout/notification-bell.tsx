@@ -88,8 +88,15 @@ export function NotificationBell() {
   useEffect(() => {
     if (flags.firestore) return;
     fetchNotifications();
-    const id = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(id);
+    const id = setInterval(fetchNotifications, 30_000);
+    function onVisible() {
+      if (document.visibilityState === "visible") void fetchNotifications();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchNotifications, flags.firestore]);
 
   useEffect(() => {

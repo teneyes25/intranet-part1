@@ -37,6 +37,8 @@ export interface ListPostsParams {
   pageSize?: number;
   /** 아나바다 그리드용 확장 필드 */
   withAnabadaFields?: boolean;
+  /** 카드 레이아웃용 첫 첨부 미리보기 */
+  withCardPreview?: boolean;
 }
 
 export async function listPosts(params: ListPostsParams) {
@@ -92,7 +94,7 @@ export async function listPosts(params: ListPostsParams) {
       include: {
         author: { select: { id: true, name: true } },
         _count: { select: { comments: true, attachments: true } },
-        ...(params.withAnabadaFields
+        ...(params.withAnabadaFields || params.withCardPreview
           ? {
               attachments: {
                 take: 1,
@@ -143,4 +145,47 @@ export async function incrementViewCount(postId: string) {
     where: { id: postId },
     data: { viewCount: { increment: 1 } },
   });
+}
+
+export interface RelatedPostItem {
+  id: string;
+  title: string;
+  category: string | null;
+  viewCount: number;
+  createdAt: Date;
+  authorName: string;
+}
+
+/** 같은 게시판·카테고리 기준 관련 게시물 */
+export async function getRelatedPosts(
+  boardId: string,
+  postId: string,
+  category: string | null,
+  limit = 5,
+): Promise<RelatedPostItem[]> {
+  const rows = await prisma.post.findMany({
+    where: {
+      boardId,
+      id: { not: postId },
+      ...(category ? { category } : {}),
+    },
+    orderBy: [{ viewCount: "desc" }, { createdAt: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      title: true,
+      category: true,
+      viewCount: true,
+      createdAt: true,
+      author: { select: { name: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    category: r.category,
+    viewCount: r.viewCount,
+    createdAt: r.createdAt,
+    authorName: r.author.name,
+  }));
 }

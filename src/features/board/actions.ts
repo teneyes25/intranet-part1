@@ -327,7 +327,10 @@ export async function addCommentAction(
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    include: { board: { select: { key: true, allowComments: true } } },
+    include: {
+      board: { select: { key: true, name: true, allowComments: true } },
+      author: { select: { id: true } },
+    },
   });
   if (!post) return { error: "존재하지 않는 게시글입니다." };
   if (!post.board.allowComments) {
@@ -337,6 +340,17 @@ export async function addCommentAction(
   await prisma.comment.create({
     data: { postId: post.id, authorId: session.user.id, content },
   });
+
+  if (post.authorId !== session.user.id) {
+    const { createNotification } = await import("@/features/notifications/service");
+    await createNotification({
+      userId: post.authorId,
+      type: "COMMENT",
+      title: `「${post.board.name}」 새 댓글`,
+      body: `${session.user.name ?? "사용자"}: ${content.slice(0, 80)}`,
+      link: `/boards/${post.board.key}/${post.id}#comments`,
+    });
+  }
 
   revalidatePath(`/boards/${post.board.key}/${post.id}`);
   return { ok: true, error: null };

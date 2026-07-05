@@ -21,7 +21,7 @@ export function CommentForm({ postId }: { postId: string }) {
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-2">
+    <form ref={formRef} action={formAction} className="space-y-2" id={`comment-form-${postId}`}>
       <input type="hidden" name="postId" value={postId} />
       <Textarea
         name="content"

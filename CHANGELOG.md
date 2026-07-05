@@ -2,6 +2,28 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.5.0] — 2026-07-05 — 게시판 기능 강화 2차
+
+### 게시판 UX/UI
+- 리스트/카드 뷰 토글 (`BoardViewToolbar`) · 카드 그리드 `PostListBulk`
+- 상세: `PostImageGallery` · `RelatedPosts` · 아나바다 `AnabadaDetailPanel` + 문의 버튼
+- 모바일 터치 타겟 (`touch-target-sm`) · `board-card` 스타일
+
+### 상품자료실
+- `ProductDetailMeta` — SKU·가격·재고 배지 (Page Builder 상단 레이아웃 유지)
+- 통합검색 상품 카드 미리보기 (`ProductPreviewCard`)
+
+### 알림
+- 댓글 등록 시 `COMMENT` 알림 + 딥링크 `#comments`
+- 30초 폴링 + 탭 포커스 갱신 · `/notifications` 전체 읽음
+
+### 통합검색
+- 탭 UI (전체/게시물/상품/사용자/문서·결재) · 사용자 검색
+- `cachedUnifiedSearch` 60초 캐시 · DB 검색 인덱스 마이그레이션
+
+### 관리자
+- `/admin/board-analytics` — 게시판별 통계·인기 키워드·대리점 활동
+
 ## [1.4.0] — 2026-07-05 — 게시판 기능 강화 1차
 
 ### 일괄 선택·관리

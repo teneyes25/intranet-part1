@@ -35,6 +35,12 @@ export function InfinitePosts({
   const [loading, setLoading] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    setItems(initialItems);
+    setPage(initialPage);
+    setHasMore(initialHasMore);
+  }, [initialItems, initialPage, initialHasMore]);
+
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
     setLoading(true);
@@ -72,7 +78,7 @@ export function InfinitePosts({
       (entries) => {
         if (entries[0]?.isIntersecting) loadMore();
       },
-      { rootMargin: "200px" },
+      { rootMargin: "400px", threshold: 0.1 },
     );
     observer.observe(el);
     return () => observer.disconnect();

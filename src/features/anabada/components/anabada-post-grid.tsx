@@ -2,23 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, ImageIcon, MessageSquare, Paperclip, Pin } from "lucide-react";
+import { Eye, ImageIcon, MessageCircle, MessageSquare, Paperclip, Pin } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { saleStatusLabel } from "@/features/board/board-search-utils";
 import { formatDate } from "@/features/board/utils";
 import type { AnabadaPostRow } from "@/features/anabada/types";
 
 function formatPrice(price: number | null | undefined) {
-  if (price == null) return "가격 미정";
+  if (price == null) return "나눔";
+  if (price === 0) return "무료";
   return `${price.toLocaleString("ko-KR")}원`;
 }
 
-function saleStatusVariant(status: string | null | undefined) {
-  if (status === "selling") return "default" as const;
-  if (status === "reserved") return "secondary" as const;
-  if (status === "completed") return "outline" as const;
-  return "secondary" as const;
+function saleStatusClass(status: string | null | undefined) {
+  if (status === "selling") return "bg-emerald-500/90 text-white";
+  if (status === "reserved") return "bg-amber-500/90 text-white";
+  return "bg-muted-foreground/80 text-white";
 }
 
 function thumbnailUrl(post: AnabadaPostRow): string | null {
@@ -57,12 +58,12 @@ export function AnabadaPostGrid({
         return (
           <article
             key={post.id}
-            className={`surface-card group relative overflow-hidden transition-shadow hover:shadow-md ${
+            className={`board-card group relative overflow-hidden transition-all hover:shadow-md active:scale-[0.99] ${
               isSelected ? "ring-2 ring-primary" : ""
             }`}
           >
             {onToggle && (
-              <label className="absolute left-2 top-2 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-background/90 shadow-sm">
+              <label className="absolute left-2 top-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-background/90 shadow-sm touch-target-sm">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-input"
@@ -80,7 +81,7 @@ export function AnabadaPostGrid({
                     src={thumb}
                     alt={post.title}
                     fill
-                    className="object-cover"
+                    className="object-cover transition-transform group-hover:scale-[1.02]"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     unoptimized
                   />
@@ -95,19 +96,20 @@ export function AnabadaPostGrid({
                 )}
                 {post.saleStatus && (
                   <Badge
-                    variant={saleStatusVariant(post.saleStatus)}
-                    className="absolute bottom-2 right-2 text-[10px]"
+                    className={`absolute bottom-2 right-2 border-0 text-[10px] font-semibold ${saleStatusClass(post.saleStatus)}`}
                   >
                     {saleStatusLabel(post.saleStatus)}
                   </Badge>
                 )}
+                <div className="absolute bottom-2 left-2 rounded-lg bg-background/95 px-2.5 py-1 shadow-sm">
+                  <p className="text-sm font-bold text-primary">{formatPrice(post.price)}</p>
+                </div>
               </div>
 
               <div className="space-y-2 p-3">
                 <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug">
                   {post.title}
                 </p>
-                <p className="text-base font-bold text-primary">{formatPrice(post.price)}</p>
                 <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span className="truncate">{post.author.name}</span>
                   <span className="shrink-0">{formatDate(post.createdAt)}</span>
@@ -132,6 +134,15 @@ export function AnabadaPostGrid({
                 </div>
               </div>
             </Link>
+
+            <div className="px-3 pb-3">
+              <Button asChild variant="outline" size="sm" className="w-full min-h-10 touch-target-sm">
+                <Link href={`/boards/${boardKey}/${post.id}#comments`}>
+                  <MessageCircle className="h-4 w-4" />
+                  문의하기
+                </Link>
+              </Button>
+            </div>
           </article>
         );
       })}
