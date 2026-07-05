@@ -6,9 +6,14 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 import { sanitizeRichText, sanitizePlainText } from "@/lib/sanitize";
-import { archiveApprovalToDocuments } from "@/features/documents/archive-approval";
 import { createNotification } from "@/features/notifications/service";
-import { writeAudit } from "@/lib/audit/service";
+import { triggerPostApprovalPipeline } from "@/features/approval/post-complete-pipeline";
+import {
+  advanceAfterApprove,
+  canTransition,
+  statusAfterComplete,
+  statusAfterReject,
+} from "@/features/approval/workflow";
 
 export interface ActionState {
   error?: string | null;
@@ -37,6 +42,13 @@ function plainLen(html: string) {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim().length;
 }
 
+function parseAmount(raw: FormData): number | null {
+  const v = String(raw.get("amount") ?? "").trim().replace(/,/g, "");
+  if (!v) return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 // ──────────────────────────────────────────────
 // 기안서 저장(임시저장) / 상신(제출)
 // ──────────────────────────────────────────────
@@ -59,6 +71,7 @@ export async function saveDocumentAction(
   const documentCategoryId =
     String(formData.get("documentCategoryId") ?? "").trim() || null;
   const content = sanitizeRichText(String(formData.get("content") ?? ""));
+  const amount = parseAmount(formData);
 
   let parsed: RawStep[] = [];
   try {
@@ -78,7 +91,6 @@ export async function saveDocumentAction(
     }
   }
 
-  // 기존 문서 수정 권한 체크
   if (id) {
     const existing = await prisma.approvalDocument.findUnique({
       where: { id },
@@ -104,6 +116,7 @@ export async function saveDocumentAction(
             content,
             templateId,
             documentCategoryId,
+            amount,
             status,
             currentOrder: 1,
             submittedAt: submit ? new Date() : null,
@@ -123,6 +136,7 @@ export async function saveDocumentAction(
           content,
           templateId,
           documentCategoryId,
+          amount,
           drafterId: userId,
           status,
           currentOrder: 1,
@@ -180,7 +194,7 @@ export async function approveAction(
     where: { id: docId },
     include: { steps: true },
   });
-  if (!doc || doc.status !== "IN_PROGRESS") {
+  if (!doc || !canTransition(doc.status, "approve")) {
     return { error: "결재할 수 없는 문서입니다." };
   }
 
@@ -197,59 +211,54 @@ export async function approveAction(
     data: { status: "APPROVED", comment: comment || null, actedAt: new Date() },
   });
 
-  // 현재 순서의 남은 대기 단계 확인 → 다음 순서 또는 완료
   const updatedSteps = doc.steps.map((s) =>
     s.id === myStep.id ? { ...s, status: "APPROVED" as const } : s,
   );
-  const pendingAtCurrent = updatedSteps.filter(
-    (s) => s.stepOrder === doc.currentOrder && s.status === "PENDING",
+
+  const advance = advanceAfterApprove(
+    doc.currentOrder,
+    updatedSteps.map((s) => ({ stepOrder: s.stepOrder, status: s.status })),
   );
 
-  if (pendingAtCurrent.length === 0) {
-    const nextOrders = updatedSteps
-      .filter((s) => s.stepOrder > doc.currentOrder)
-      .map((s) => s.stepOrder);
-    if (nextOrders.length > 0) {
-      const nextOrder = Math.min(...nextOrders);
-      await prisma.approvalDocument.update({
-        where: { id: docId },
-        data: { currentOrder: nextOrder },
-      });
-      const nextApprovers = updatedSteps
-        .filter((s) => s.stepOrder === nextOrder && s.status === "PENDING")
-        .map((s) => s.approverId);
-      await Promise.all(
-        nextApprovers.map((uid) =>
-          createNotification({
-            userId: uid,
-            type: "APPROVAL_REQUEST",
-            title: "전자결재 승인 요청",
-            body: doc.title,
-            link: `/approval/${docId}`,
-          }),
-        ),
-      );
-    } else {
-      await prisma.approvalDocument.update({
-        where: { id: docId },
-        data: { status: "COMPLETED", completedAt: new Date() },
-      });
-      await archiveApprovalToDocuments(docId);
-      await createNotification({
-        userId: doc.drafterId,
-        type: "APPROVAL_RESULT",
-        title: "결재가 완료되었습니다",
-        body: doc.title,
-        link: `/approval/${docId}`,
-      });
-      revalidatePath("/documents");
-      void writeAudit({
-        action: "APPROVAL_APPROVE",
-        userId,
-        resource: docId,
-        detail: "completed",
-      });
-    }
+  if (advance.type === "waiting") {
+    revalidatePath(`/approval/${docId}`);
+    revalidatePath("/approval");
+    return { ok: true, error: null };
+  }
+
+  if (advance.type === "continue") {
+    await prisma.approvalDocument.update({
+      where: { id: docId },
+      data: { currentOrder: advance.nextOrder },
+    });
+    const nextApprovers = updatedSteps
+      .filter((s) => s.stepOrder === advance.nextOrder && s.status === "PENDING")
+      .map((s) => s.approverId);
+    await Promise.all(
+      nextApprovers.map((uid) =>
+        createNotification({
+          userId: uid,
+          type: "APPROVAL_REQUEST",
+          title: "전자결재 승인 요청",
+          body: doc.title,
+          link: `/approval/${docId}`,
+        }),
+      ),
+    );
+  } else if (advance.type === "completed" && statusAfterComplete() === "COMPLETED") {
+    await prisma.approvalDocument.update({
+      where: { id: docId },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+    await triggerPostApprovalPipeline(docId, userId);
+    await createNotification({
+      userId: doc.drafterId,
+      type: "APPROVAL_RESULT",
+      title: "결재가 완료되었습니다",
+      body: doc.title,
+      link: `/approval/${docId}`,
+    });
+    revalidatePath("/documents");
   }
 
   revalidatePath(`/approval/${docId}`);
@@ -276,7 +285,7 @@ export async function rejectAction(
     where: { id: docId },
     include: { steps: true },
   });
-  if (!doc || doc.status !== "IN_PROGRESS") {
+  if (!doc || !canTransition(doc.status, "reject")) {
     return { error: "결재할 수 없는 문서입니다." };
   }
 
@@ -295,7 +304,7 @@ export async function rejectAction(
     }),
     prisma.approvalDocument.update({
       where: { id: docId },
-      data: { status: "REJECTED", completedAt: new Date() },
+      data: { status: statusAfterReject(), completedAt: new Date() },
     }),
   ]);
 

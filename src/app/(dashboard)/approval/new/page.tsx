@@ -55,6 +55,7 @@ export default async function NewApprovalPage() {
               name: c.name,
             }))}
             candidates={candidates}
+            drafterRole={user.role}
           />
         </CardContent>
       </Card>

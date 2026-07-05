@@ -12,6 +12,7 @@ import {
   Send,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ interface Initial {
   content: string;
   templateId: string | null;
   documentCategoryId: string | null;
+  amount: number | null;
   approvers: ApproverRow[];
 }
 
@@ -64,11 +66,13 @@ export function ApprovalForm({
   templates,
   documentCategories,
   candidates,
+  drafterRole,
   initial,
 }: {
   templates: Template[];
   documentCategories: DocCategory[];
   candidates: Candidate[];
+  drafterRole: Role;
   initial?: Initial;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -81,6 +85,9 @@ export function ApprovalForm({
   const [documentCategoryId, setDocumentCategoryId] = useState(
     initial?.documentCategoryId ?? "",
   );
+  const [amount, setAmount] = useState(
+    initial?.amount != null ? String(initial.amount) : "",
+  );
   const [content, setContent] = useState(initial?.content ?? "");
   const [approvers, setApprovers] = useState<ApproverRow[]>(
     initial?.approvers ?? [],
@@ -88,6 +95,7 @@ export function ApprovalForm({
 
   const [purpose, setPurpose] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [lineLoading, setLineLoading] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
   const [liveHints, setLiveHints] = useState<string[]>([]);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -180,7 +188,12 @@ export function ApprovalForm({
         const res = await fetch("/api/ai/draft/hint", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, purpose, templateName: tpl?.name }),
+          body: JSON.stringify({
+            title,
+            purpose,
+            templateName: tpl?.name,
+            documentCategoryId: documentCategoryId || undefined,
+          }),
         });
         const data = await res.json();
         if (res.ok && Array.isArray(data.hints)) setLiveHints(data.hints);
@@ -191,7 +204,26 @@ export function ApprovalForm({
     return () => {
       if (hintTimer.current) clearTimeout(hintTimer.current);
     };
-  }, [title, purpose, templateId, templates]);
+  }, [title, purpose, templateId, documentCategoryId, templates]);
+
+  async function runComplianceToast() {
+    try {
+      const res = await fetch("/api/ai/draft/compliance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content, steps }),
+      });
+      const data = await res.json();
+      if (!res.ok) return;
+      if (data.ok) {
+        toast.success("Compliance: 필수 항목이 모두 작성되었습니다.");
+      } else if (Array.isArray(data.missing) && data.missing.length > 0) {
+        toast.warning(`누락 항목: ${data.missing.join(", ")}`);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function runAi() {
     if (aiLoading) return;
@@ -206,7 +238,12 @@ export function ApprovalForm({
       const res = await fetch("/api/ai/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, purpose, templateName: tpl?.name }),
+        body: JSON.stringify({
+          title,
+          purpose,
+          templateName: tpl?.name,
+          documentCategoryId: documentCategoryId || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "생성 실패");
@@ -222,10 +259,54 @@ export function ApprovalForm({
           ? "AI가 초안을 생성했습니다. 내용을 검토·수정하세요."
           : "AI 키 미설정으로 기본 골격을 생성했습니다.",
       );
+      void runComplianceToast();
     } catch (e) {
       setAiMsg(e instanceof Error ? e.message : "생성 실패");
     } finally {
       setAiLoading(false);
+    }
+  }
+
+  async function runRecommendLine() {
+    if (lineLoading) return;
+    setLineLoading(true);
+    try {
+      const parsedAmount = amount.trim()
+        ? parseInt(amount.replace(/,/g, ""), 10)
+        : undefined;
+      const res = await fetch("/api/approval/recommend-line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentCategoryId: documentCategoryId || undefined,
+          drafterRole,
+          amount: Number.isFinite(parsedAmount) ? parsedAmount : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "추천 실패");
+      if (!Array.isArray(data.steps) || data.steps.length === 0) {
+        toast.error("추천할 결재선을 찾지 못했습니다.");
+        return;
+      }
+      if (
+        approvers.length > 0 &&
+        !window.confirm("현재 결재선을 AI 추천 결재선으로 교체할까요?")
+      ) {
+        return;
+      }
+      setApprovers(
+        data.steps.map((s: { approverId: string }, i: number) => ({
+          approverId: s.approverId,
+          parallelWithPrev: i > 0 && data.steps[i].stepOrder === data.steps[i - 1].stepOrder,
+        })),
+      );
+      toast.success(data.reason ?? "AI 추천 결재선을 적용했습니다.");
+      void runComplianceToast();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "결재선 추천 실패");
+    } finally {
+      setLineLoading(false);
     }
   }
 
@@ -234,6 +315,7 @@ export function ApprovalForm({
       {initial?.id && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="templateId" value={templateId} />
       <input type="hidden" name="documentCategoryId" value={documentCategoryId} />
+      <input type="hidden" name="amount" value={amount.replace(/,/g, "")} />
       <input type="hidden" name="content" value={content} />
       <input type="hidden" name="steps" value={JSON.stringify(steps)} />
 
@@ -306,6 +388,22 @@ export function ApprovalForm({
         </p>
       </div>
 
+      <div>
+        <Label htmlFor="amount">품의 금액 (원, 선택)</Label>
+        <Input
+          id="amount"
+          type="text"
+          inputMode="numeric"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^\d,]/g, ""))}
+          placeholder="예: 1500000"
+          className="mt-1.5 sm:max-w-xs"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          100만원 초과 시 AI 추천 결재선에 관리자 단계가 추가됩니다.
+        </p>
+      </div>
+
       <div className="flex justify-end border-t pt-4">
         <Button
           type="button"
@@ -352,7 +450,20 @@ export function ApprovalForm({
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
-            AI 초안 작성
+            AI 초안 생성
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={runRecommendLine}
+            disabled={lineLoading}
+          >
+            {lineLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Users className="h-4 w-4" />
+            )}
+            AI 추천 결재선
           </Button>
         </div>
         {aiMsg && (
@@ -382,7 +493,10 @@ export function ApprovalForm({
           <ChevronLeft className="h-4 w-4" />
           이전
         </Button>
-        <Button type="button" onClick={() => setStep(2)}>
+        <Button type="button" onClick={() => {
+          void runComplianceToast();
+          setStep(2);
+        }}>
           다음: 결재선
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -492,7 +606,7 @@ export function ApprovalForm({
           <Save className="h-4 w-4" />
           임시저장
         </Button>
-        <Button type="submit" name="intent" value="submit" disabled={pending}>
+        <Button type="submit" name="intent" value="submit" disabled={pending} onClick={() => void runComplianceToast()}>
           {pending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

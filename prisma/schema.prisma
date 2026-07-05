@@ -297,11 +297,13 @@ model SharedDocument {
   approvalDocumentId String?           @unique
   approvalDocument   ApprovalDocument? @relation(fields: [approvalDocumentId], references: [id])
   tags               String[]          @default([])
+  dealerId           String?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
   @@index([category])
   @@index([documentCategoryId])
+  @@index([dealerId])
   @@map("shared_documents")
 }
 
@@ -346,9 +348,12 @@ model DocumentChunk {
   url        String?
   content    String
   embedding  Unsupported("vector(384)")
+  dealerId   String?                   @map("dealer_id")
+  minRole    String?                   @map("min_role")
   createdAt  DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([sourceType, sourceId], map: "document_chunks_source_idx")
+  @@index([dealerId], map: "document_chunks_dealer_id_idx")
   @@map("document_chunks")
 }
 
@@ -398,6 +403,8 @@ model ApprovalDocument {
   linkedOrder        Order?
   /// 현재 진행 중인 결재 단계 순서(같은 순서=병렬)
   currentOrder       Int                @default(1)
+  /// 품의 금액(원) — 고액 결재선 추천·감사용
+  amount             Int?
   isDemo             Boolean            @default(false)
   steps              ApprovalStep[]
   submittedAt        DateTime?

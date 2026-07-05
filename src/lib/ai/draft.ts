@@ -5,6 +5,7 @@ import {
   OPENAI_CHAT_MODEL,
   OPENAI_BASE_URL,
 } from "./config";
+import { prisma } from "@/lib/prisma";
 import { embedText } from "./embeddings";
 import { hybridSearch } from "./hybrid-search";
 import { sanitizeRichText } from "@/lib/sanitize";
@@ -13,6 +14,7 @@ export interface DraftRequest {
   title: string;
   purpose: string;
   templateName?: string;
+  documentCategoryId?: string;
 }
 
 export interface DraftResult {
@@ -87,10 +89,18 @@ async function generateWithOpenAI(
 }
 
 export async function generateDraft(req: DraftRequest): Promise<DraftResult> {
-  // 사내 문서 컨텍스트(있으면) — 행정안전부 정책 자료를 인제스트하면 함께 활용됨
+  let categoryHint = "";
+  if (req.documentCategoryId) {
+    const cat = await prisma.documentCategory.findUnique({
+      where: { id: req.documentCategoryId },
+      select: { name: true, slug: true },
+    });
+    if (cat) categoryHint = `[문서함 카테고리: ${cat.name}]`;
+  }
+
   let context = "";
   try {
-    const query = `${req.title} ${req.purpose}`.trim();
+    const query = `${req.title} ${req.purpose} ${categoryHint}`.trim();
     const vec = await embedText(query);
     const results = await hybridSearch(query, vec, 6);
     context = results
@@ -98,6 +108,10 @@ export async function generateDraft(req: DraftRequest): Promise<DraftResult> {
       .join("\n\n");
   } catch (e) {
     console.error("[ai/draft] 컨텍스트 검색 실패(무시):", e);
+  }
+
+  if (categoryHint) {
+    context = `${categoryHint}\n\n${context}`.trim();
   }
 
   if (OPENAI_API_KEY) {

@@ -2,6 +2,27 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.6.2] — 2026-07-06 — Pilot Sprint #2 (결재 파이프라인 + AI 강화)
+
+### Workflow & Post-Approval Pipeline
+- `workflow.ts` — `canTransition`, `advanceAfterApprove` 상태 머신
+- `post-complete-pipeline.ts` — archive → ingest(approval+shared) → audit
+- `actions.ts` — workflow 연동, COMPLETED 시 파이프라인 트리거
+
+### AI Draft & Compliance
+- `/api/ai/draft` — `documentCategoryId` RAG 컨텍스트
+- `/api/ai/draft/compliance` · hint `mode=compliance` — missing 배열
+- `approval-form` — AI 초안·추천 결재선 · Compliance toast
+
+### 결재선 추천 & UI
+- `/api/approval/recommend-line` — 템플릿 매칭 + HQ→ADMIN fallback + 고액 단계
+- `approval-line-flow.tsx` — Pilot 가로 타임라인
+- `approval/[id]` — Flow 컴포넌트 적용
+
+### Prisma & Scope
+- `ApprovalDocument.amount`, `SharedDocument.dealerId`, `document_chunks.dealer_id/min_role`
+- `ingestApprovalDocument` · `ingestSharedDocument` + RAG dealer scope 필터
+
 ## [1.6.1] — 2026-07-06 — Pilot Sprint #1 (nav + seed)
 
 ### Pilot Nav

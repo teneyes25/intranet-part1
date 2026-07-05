@@ -20,9 +20,17 @@ export function ensureSchema(): Promise<void> {
           url         TEXT,
           content     TEXT NOT NULL,
           embedding   vector(${EMBEDDING_DIM}) NOT NULL,
+          dealer_id   TEXT,
+          min_role    TEXT,
           created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
         );
       `);
+      await pgPool.query(
+        `ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS dealer_id TEXT;`,
+      );
+      await pgPool.query(
+        `ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS min_role TEXT;`,
+      );
       await pgPool.query(
         `CREATE INDEX IF NOT EXISTS document_chunks_source_idx
            ON document_chunks (source_type, source_id);`,
@@ -30,6 +38,10 @@ export function ensureSchema(): Promise<void> {
       await pgPool.query(
         `CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx
            ON document_chunks USING hnsw (embedding vector_cosine_ops);`,
+      );
+      await pgPool.query(
+        `CREATE INDEX IF NOT EXISTS document_chunks_dealer_id_idx
+           ON document_chunks (dealer_id);`,
       );
     })().catch((e) => {
       // 실패 시 다음 호출에서 재시도할 수 있도록 캐시 해제
@@ -52,6 +64,8 @@ export interface ChunkInput {
   url?: string | null;
   content: string;
   embedding: number[];
+  dealerId?: string | null;
+  minRole?: string | null;
 }
 
 export async function deleteSource(
@@ -75,7 +89,7 @@ export async function upsertChunks(chunks: ChunkInput[]): Promise<void> {
   for (const c of chunks) {
     const id = `${c.sourceType}:${c.sourceId}:${c.chunkIndex}`;
     values.push(
-      `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}::vector)`,
+      `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}::vector)`,
     );
     params.push(
       id,
@@ -85,18 +99,22 @@ export async function upsertChunks(chunks: ChunkInput[]): Promise<void> {
       c.title ?? null,
       c.url ?? null,
       c.content,
+      c.dealerId ?? null,
+      c.minRole ?? null,
       toVectorLiteral(c.embedding),
     );
   }
 
   await pgPool.query(
     `INSERT INTO document_chunks
-       (id, source_type, source_id, chunk_index, title, url, content, embedding)
+       (id, source_type, source_id, chunk_index, title, url, content, dealer_id, min_role, embedding)
      VALUES ${values.join(", ")}
      ON CONFLICT (id) DO UPDATE SET
        title = EXCLUDED.title,
        url = EXCLUDED.url,
        content = EXCLUDED.content,
+       dealer_id = EXCLUDED.dealer_id,
+       min_role = EXCLUDED.min_role,
        embedding = EXCLUDED.embedding,
        created_at = now();`,
     params,
@@ -111,22 +129,45 @@ export interface SearchResult {
   url: string | null;
   content: string;
   score: number;
+  dealerId?: string | null;
+  minRole?: string | null;
+}
+
+export interface SearchScope {
+  role: string;
+  dealerId?: string | null;
 }
 
 export async function similaritySearch(
   embedding: number[],
   k: number,
   sourceType?: string,
+  scope?: SearchScope,
 ): Promise<SearchResult[]> {
   await ensureSchema();
   const vec = toVectorLiteral(embedding);
 
-  const params: unknown[] = sourceType ? [vec, sourceType, k] : [vec, k];
-  const where = sourceType ? "WHERE source_type = $2" : "";
-  const limitParam = sourceType ? "$3" : "$2";
+  const params: unknown[] = [vec];
+  const clauses: string[] = [];
+
+  if (sourceType) {
+    params.push(sourceType);
+    clauses.push(`source_type = $${params.length}`);
+  }
+
+  if (scope && !["ADMIN", "HEADQUARTER"].includes(scope.role)) {
+    params.push(scope.dealerId ?? null);
+    clauses.push(
+      `(dealer_id IS NULL OR dealer_id = $${params.length})`,
+    );
+  }
+
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+  params.push(k);
+  const limitParam = `$${params.length}`;
 
   const res = await pgPool.query(
-    `SELECT id, source_type, source_id, title, url, content,
+    `SELECT id, source_type, source_id, title, url, content, dealer_id, min_role,
             1 - (embedding <=> $1::vector) AS score
        FROM document_chunks
        ${where}
@@ -143,6 +184,8 @@ export async function similaritySearch(
     url: r.url as string | null,
     content: r.content as string,
     score: Number(r.score),
+    dealerId: r.dealer_id as string | null,
+    minRole: r.min_role as string | null,
   }));
 }
 

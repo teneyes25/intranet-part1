@@ -2,7 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { fullTextSearchPosts } from "@/lib/search/fulltext";
-import { similaritySearch, type SearchResult } from "./vector-store";
+import { similaritySearch, type SearchResult, type SearchScope } from "./vector-store";
 
 const RRF_K = 60;
 
@@ -27,9 +27,10 @@ export async function hybridSearch(
   embedding: number[],
   k: number,
   sourceType?: string,
+  scope?: SearchScope,
 ): Promise<SearchResult[]> {
   const [vectorHits, textHits] = await Promise.all([
-    similaritySearch(embedding, k * 2, sourceType),
+    similaritySearch(embedding, k * 2, sourceType, scope),
     searchPostsFulltext(query, k * 2).catch(() => [] as Awaited<ReturnType<typeof searchPostsFulltext>>),
   ]);
 

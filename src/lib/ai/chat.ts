@@ -3,7 +3,9 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { embedText } from "./embeddings";
 import { hybridSearch } from "./hybrid-search";
-import { similaritySearch, type SearchResult } from "./vector-store";
+import { similaritySearch, type SearchResult, type SearchScope } from "./vector-store";
+import { canAccessChunk, type RagScope } from "./scope";
+import type { Role } from "@/lib/auth/roles";
 import {
   RETRIEVE_TOP_K,
   OPENAI_API_KEY,
@@ -140,25 +142,41 @@ async function generateWithOpenAI(
   return answer;
 }
 
+function filterByScope(results: SearchResult[], scope?: RagScope): SearchResult[] {
+  if (!scope) return results;
+  return results.filter((r) =>
+    canAccessChunk(scope, { dealerId: r.dealerId, minRole: r.minRole }),
+  );
+}
+
 export async function answerQuestion(
   question: string,
   history: ChatMessage[] = [],
+  scope?: { role: Role; dealerId?: string | null },
 ): Promise<ChatResult> {
   const intent = detectIntent(question);
   let results: SearchResult[] = [];
+  const searchScope: SearchScope | undefined = scope
+    ? { role: scope.role, dealerId: scope.dealerId ?? null }
+    : undefined;
+  const ragScope: RagScope | undefined = scope
+    ? { role: scope.role, dealerId: scope.dealerId ?? null }
+    : undefined;
 
   if (intent === "news_summary") {
     const news = await fetchLatestNews(6);
     results = newsToResults(news);
     if (results.length === 0) {
       const qvec = await embedText(question);
-      results = await similaritySearch(qvec, RETRIEVE_TOP_K, "post");
+      results = await similaritySearch(qvec, RETRIEVE_TOP_K, "post", searchScope);
     }
   } else {
     const qvec = await embedText(question);
     const k = intent === "related_cases" ? RETRIEVE_TOP_K + 3 : RETRIEVE_TOP_K;
-    results = await hybridSearch(question, qvec, k);
+    results = await hybridSearch(question, qvec, k, undefined, searchScope);
   }
+
+  results = filterByScope(results, ragScope);
 
   const sources: ChatSource[] = results.map((r) => ({
     title: r.title,

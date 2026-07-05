@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getSession } from "@/lib/auth/session";
 import { generateDraft } from "@/lib/ai/draft";
+import { checkApprovalCompliance } from "@/features/approval/compliance";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -17,23 +18,47 @@ export async function POST(req: NextRequest) {
     title?: unknown;
     purpose?: unknown;
     templateName?: unknown;
+    documentCategoryId?: unknown;
+    content?: unknown;
+    steps?: unknown;
     mode?: unknown;
   } | null;
 
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   const purpose = typeof body?.purpose === "string" ? body.purpose.trim() : "";
+  const content = typeof body?.content === "string" ? body.content : "";
   const templateName =
     typeof body?.templateName === "string" ? body.templateName.trim() : undefined;
+  const documentCategoryId =
+    typeof body?.documentCategoryId === "string"
+      ? body.documentCategoryId.trim() || undefined
+      : undefined;
+  const steps = Array.isArray(body?.steps)
+    ? body!.steps.filter(
+        (s): s is { approverId: string } =>
+          !!s && typeof s === "object" && typeof (s as { approverId?: string }).approverId === "string",
+      )
+    : [];
 
   if (!purpose && !title) {
     return NextResponse.json({ hints: [] });
   }
 
-  const mode = body?.mode === "full" ? "full" : "hint";
+  const mode = body?.mode === "full" ? "full" : body?.mode === "compliance" ? "compliance" : "hint";
+
+  if (mode === "compliance") {
+    const compliance = checkApprovalCompliance({ title, content, steps });
+    return NextResponse.json(compliance);
+  }
 
   if (mode === "full") {
     try {
-      const result = await generateDraft({ title, purpose, templateName });
+      const result = await generateDraft({
+        title,
+        purpose,
+        templateName,
+        documentCategoryId,
+      });
       return NextResponse.json({ content: result.content, mode: result.mode });
     } catch (e) {
       console.error("[api/ai/draft/hint]", e);

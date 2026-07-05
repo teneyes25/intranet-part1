@@ -11,7 +11,7 @@ import { ROLE_LABELS } from "@/lib/auth/roles";
 import { formatDateTime } from "@/features/board/utils";
 import { RichTextContent } from "@/features/board/components/rich-text-content";
 import { ConfirmDeleteForm } from "@/features/board/components/confirm-delete-form";
-import { ApprovalLine } from "@/features/approval/components/approval-line";
+import { ApprovalLineFlow } from "@/features/approval/components/approval-line-flow";
 import { ApprovalActions } from "@/features/approval/components/approval-actions";
 import { getDocument } from "@/features/approval/queries";
 import {
@@ -137,7 +137,7 @@ export default async function ApprovalDetailPage({
             </CardHeader>
             <CardContent>
               {doc.steps.length > 0 ? (
-                <ApprovalLine
+                <ApprovalLineFlow
                   steps={doc.steps}
                   currentOrder={doc.currentOrder}
                   documentStatus={doc.status}

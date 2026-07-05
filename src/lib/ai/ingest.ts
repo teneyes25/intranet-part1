@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { embedTexts } from "./embeddings";
 import { deleteSource, upsertChunks } from "./vector-store";
 import { CHUNK_SIZE, CHUNK_OVERLAP } from "./config";
+import { resolveChunkDealerScope } from "./scope";
 
 function htmlToText(html: string): string {
   return html
@@ -56,6 +57,7 @@ export async function ingestPost(postId: string): Promise<void> {
   if (chunks.length === 0) return;
 
   const embeddings = await embedTexts(chunks);
+  const scope = resolveChunkDealerScope(null);
   const items = chunks
     .map((content, idx) => {
       const embedding = embeddings[idx];
@@ -68,6 +70,99 @@ export async function ingestPost(postId: string): Promise<void> {
         url,
         content,
         embedding,
+        dealerId: scope.dealerId,
+        minRole: scope.minRole,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+  await upsertChunks(items);
+}
+
+/** 결재 완료 문서를 AI 지식베이스에 색인 */
+export async function ingestApprovalDocument(documentId: string): Promise<void> {
+  const doc = await prisma.approvalDocument.findUnique({
+    where: { id: documentId },
+    include: {
+      drafter: { select: { dealerId: true } },
+      documentCategory: { select: { name: true } },
+    },
+  });
+
+  if (!doc || doc.status !== "COMPLETED") {
+    await deleteSource("approval", documentId);
+    return;
+  }
+
+  const body = htmlToText(doc.content);
+  const cat = doc.documentCategory?.name ?? "전자결재";
+  const amountLine = doc.amount ? `\n금액: ${doc.amount.toLocaleString("ko-KR")}원` : "";
+  const text = `${doc.title}\n[${cat}]${amountLine}\n\n${body}`.trim();
+  const title = `[결재완료·${cat}] ${doc.title}`;
+  const url = `/approval/${doc.id}`;
+
+  await deleteSource("approval", doc.id);
+
+  const chunks = await splitter.splitText(text);
+  if (chunks.length === 0) return;
+
+  const embeddings = await embedTexts(chunks);
+  const scope = resolveChunkDealerScope(doc.drafter.dealerId);
+  const items = chunks
+    .map((content, idx) => {
+      const embedding = embeddings[idx];
+      if (!embedding) return null;
+      return {
+        sourceType: "approval",
+        sourceId: doc.id,
+        chunkIndex: idx,
+        title,
+        url,
+        content,
+        embedding,
+        dealerId: scope.dealerId,
+        minRole: scope.minRole,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+  await upsertChunks(items);
+}
+
+/** 문서함 SharedDocument 색인 */
+export async function ingestSharedDocument(sharedId: string): Promise<void> {
+  const doc = await prisma.sharedDocument.findUnique({
+    where: { id: sharedId },
+  });
+
+  if (!doc) {
+    await deleteSource("shared_doc", sharedId);
+    return;
+  }
+
+  const text = `${doc.title}\n\n${doc.description ?? ""}`.trim();
+  const title = `[문서함] ${doc.title}`;
+  const url = doc.url ?? `/documents`;
+
+  await deleteSource("shared_doc", doc.id);
+
+  const chunks = await splitter.splitText(text);
+  if (chunks.length === 0) return;
+
+  const embeddings = await embedTexts(chunks);
+  const scope = resolveChunkDealerScope(doc.dealerId);
+  const items = chunks
+    .map((content, idx) => {
+      const embedding = embeddings[idx];
+      if (!embedding) return null;
+      return {
+        sourceType: "shared_doc",
+        sourceId: doc.id,
+        chunkIndex: idx,
+        title,
+        url,
+        content,
+        embedding,
+        dealerId: scope.dealerId,
+        minRole: scope.minRole,
       };
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);

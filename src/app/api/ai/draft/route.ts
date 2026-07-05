@@ -16,12 +16,17 @@ export async function POST(req: NextRequest) {
     title?: unknown;
     purpose?: unknown;
     templateName?: unknown;
+    documentCategoryId?: unknown;
   } | null;
 
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   const purpose = typeof body?.purpose === "string" ? body.purpose.trim() : "";
   const templateName =
     typeof body?.templateName === "string" ? body.templateName.trim() : undefined;
+  const documentCategoryId =
+    typeof body?.documentCategoryId === "string"
+      ? body.documentCategoryId.trim() || undefined
+      : undefined;
 
   if (!purpose && !title) {
     return NextResponse.json(
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await generateDraft({ title, purpose, templateName });
+    const result = await generateDraft({ title, purpose, templateName, documentCategoryId });
     return NextResponse.json(result);
   } catch (e) {
     console.error("[api/ai/draft]", e);

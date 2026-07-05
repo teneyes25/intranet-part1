@@ -65,12 +65,14 @@ export default async function EditApprovalPage({
               name: c.name,
             }))}
             candidates={candidates}
+            drafterRole={user.role}
             initial={{
               id: doc.id,
               title: doc.title,
               content: doc.content,
               templateId: doc.templateId,
               documentCategoryId: doc.documentCategoryId,
+              amount: doc.amount,
               approvers,
             }}
           />

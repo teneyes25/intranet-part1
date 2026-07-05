@@ -7,7 +7,7 @@ export async function archiveApprovalToDocuments(documentId: string) {
   const doc = await prisma.approvalDocument.findUnique({
     where: { id: documentId },
     include: {
-      drafter: { select: { name: true } },
+      drafter: { select: { name: true, dealerId: true } },
       documentCategory: true,
       archivedDocument: { select: { id: true } },
     },
@@ -27,6 +27,7 @@ export async function archiveApprovalToDocuments(documentId: string) {
       documentCategoryId: doc.documentCategoryId,
       category: doc.documentCategory?.name ?? "전자결재",
       approvalDocumentId: doc.id,
+      dealerId: doc.drafter.dealerId,
       tags: ["전자결재", "완료"],
     },
   });

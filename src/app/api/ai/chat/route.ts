@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { answerQuestion, type ChatMessage } from "@/lib/ai/chat";
+import type { Role } from "@/lib/auth/roles";
 import {
   appendAiMessages,
   getOrCreateConversation,
@@ -40,7 +41,10 @@ export const POST = withApiGuard({ tier: "ai" }, async (req, { session, ip }) =>
     const mergedHistory =
       dbHistory.length > 0 ? dbHistory : (history as ChatMessage[]);
 
-    const result = await answerQuestion(question, mergedHistory);
+    const result = await answerQuestion(question, mergedHistory, {
+      role: session!.user.role as Role,
+      dealerId: session!.user.dealerId ?? null,
+    });
     await appendAiMessages(conv.id, question, result.answer, result.sources);
 
     void writeAudit({
