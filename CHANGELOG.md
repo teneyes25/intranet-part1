@@ -2,6 +2,16 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.5.1] — 2026-07-05 — 아나바다장터 CRUD · 일정 캘린더
+
+### 아나바다장터
+- 게시판명 **아나바다장터** · 물품 등록(글쓰기)·수정·삭제·이미지 첨부 업로드
+- `AnabadaFileUpload` 미리보기 · 카드별 수정/삭제 버튼
+
+### 일정 게시판
+- 월간 **캘린더** UI (`ScheduleCalendar`)
+- `Post.eventStart` / `eventEnd` · 작성 폼 일정 날짜 필드
+
 ## [1.5.0] — 2026-07-05 — 게시판 기능 강화 2차
 
 ### 게시판 UX/UI

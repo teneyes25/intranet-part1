@@ -52,6 +52,8 @@ export default async function EditPostPage({
               category: post.category,
               price: post.price,
               saleStatus: post.saleStatus,
+              eventStart: post.eventStart,
+              eventEnd: post.eventEnd,
               attachments: post.attachments.map((a) => ({
                 id: a.id,
                 filename: a.filename,

@@ -16,6 +16,7 @@ import {
 import { RichTextEditor } from "@/features/board/components/rich-text-editor";
 import { formatFileSize } from "@/features/board/utils";
 import { ANABADA_SALE_STATUSES } from "@/features/board/board-search-utils";
+import { AnabadaFileUpload } from "@/features/anabada/components/anabada-file-upload";
 import {
   createPostAction,
   updatePostAction,
@@ -40,12 +41,21 @@ interface PostFormProps {
     category: string | null;
     price?: number | null;
     saleStatus?: string | null;
+    eventStart?: Date | string | null;
+    eventEnd?: Date | string | null;
     attachments: ExistingAttachment[];
   };
 }
 
 const NONE = "__none__";
 const initialState: ActionState = { error: null };
+
+function toDateInput(value: Date | string | null | undefined) {
+  if (!value) return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
 
 export function PostForm({ mode, boardKey, categories, initial }: PostFormProps) {
   const action = mode === "create" ? createPostAction : updatePostAction;
@@ -56,6 +66,7 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
   const [saleStatus, setSaleStatus] = useState(initial?.saleStatus ?? "selling");
   const [removeIds, setRemoveIds] = useState<Set<string>>(new Set());
   const isAnabada = boardKey === "anabada";
+  const isSchedule = boardKey === "schedule";
 
   function toggleRemove(id: string) {
     setRemoveIds((prev) => {
@@ -92,7 +103,7 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
           id="title"
           name="title"
           defaultValue={initial?.title}
-          placeholder="제목을 입력하세요"
+          placeholder={isAnabada ? "판매할 물품 제목" : "제목을 입력하세요"}
           required
         />
       </div>
@@ -113,6 +124,30 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+
+      {isSchedule && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="eventStart">일정 시작일 *</Label>
+            <Input
+              id="eventStart"
+              name="eventStart"
+              type="date"
+              defaultValue={toDateInput(initial?.eventStart)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="eventEnd">일정 종료일</Label>
+            <Input
+              id="eventEnd"
+              name="eventEnd"
+              type="date"
+              defaultValue={toDateInput(initial?.eventEnd)}
+            />
+          </div>
         </div>
       )}
 
@@ -191,15 +226,19 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="files">
-          첨부파일 추가{" "}
-          <span className="text-xs font-normal text-muted-foreground">
-            (최대 {MAX_FILES}개, 개당 10MB{isAnabada ? " · 상품 사진 권장" : ""})
-          </span>
-        </Label>
-        <Input id="files" name="files" type="file" multiple />
-      </div>
+      {isAnabada ? (
+        <AnabadaFileUpload />
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="files">
+            첨부파일 추가{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (최대 {MAX_FILES}개, 개당 10MB)
+            </span>
+          </Label>
+          <Input id="files" name="files" type="file" multiple />
+        </div>
+      )}
 
       {state.error && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -208,7 +247,7 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
       )}
 
       <div className="flex justify-end gap-2">
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending} className="min-h-10 touch-target-sm">
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           {mode === "create" ? "등록" : "수정 완료"}
         </Button>

@@ -75,7 +75,7 @@ export const NAV_GROUPS: NavGroup[] = [
         minRole: "HEADQUARTER",
       },
       { title: "상품 자료실", href: "/boards/products", icon: Package },
-      { title: "아나바다", href: "/boards/anabada", icon: ShoppingBag },
+      { title: "아나바다장터", href: "/boards/anabada", icon: ShoppingBag },
       { title: "매장 찾기", href: "/stores", icon: MapPin },
     ],
   },

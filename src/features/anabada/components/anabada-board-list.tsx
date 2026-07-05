@@ -31,6 +31,7 @@ import {
 } from "@/features/board/bulk-actions";
 import { AnabadaPostGrid } from "@/features/anabada/components/anabada-post-grid";
 import type { AnabadaPostRow } from "@/features/anabada/types";
+import { canManagePost } from "@/features/board/permissions";
 
 interface AnabadaBoardListProps {
   boardKey: string;
@@ -39,6 +40,8 @@ interface AnabadaBoardListProps {
   boards: { key: string; name: string }[];
   labels: { id: string; name: string; color: string }[];
   folders: { id: string; name: string }[];
+  currentUser: { id: string; role: import("@/lib/auth/roles").Role };
+  canWrite: boolean;
 }
 
 export function AnabadaBoardList({
@@ -48,6 +51,8 @@ export function AnabadaBoardList({
   boards,
   labels,
   folders,
+  currentUser,
+  canWrite,
 }: AnabadaBoardListProps) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -86,6 +91,17 @@ export function AnabadaBoardList({
 
   return (
     <div className="space-y-3">
+      {canWrite && (
+        <div className="flex justify-end">
+          <Button asChild className="min-h-10 touch-target-sm">
+            <Link href={`/boards/${boardKey}/new`}>
+              <Pencil className="h-4 w-4" />
+              물품 등록
+            </Link>
+          </Button>
+        </div>
+      )}
+
       {items.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/20 px-3 py-2">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -290,6 +306,7 @@ export function AnabadaBoardList({
         items={items}
         selected={selected}
         onToggle={toggleOne}
+        canManage={(post) => canManagePost(currentUser, post.author.id)}
       />
     </div>
   );

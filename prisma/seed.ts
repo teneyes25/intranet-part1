@@ -147,8 +147,8 @@ async function main() {
     },
     {
       key: "anabada",
-      name: "아나바다",
-      description: "사내 중고 거래 게시판",
+      name: "아나바다장터",
+      description: "사내 중고·나눔 장터",
       categories: ["가전", "가구", "의류", "기타"],
       writeRoles: [],
     },

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { saleStatusLabel } from "@/features/board/board-search-utils";
 import { formatDate } from "@/features/board/utils";
+import { AnabadaPostActions } from "@/features/anabada/components/anabada-post-actions";
 import type { AnabadaPostRow } from "@/features/anabada/types";
 
 function formatPrice(price: number | null | undefined) {
@@ -33,6 +34,7 @@ interface AnabadaPostGridProps {
   items: AnabadaPostRow[];
   selected?: Set<string>;
   onToggle?: (id: string, checked: boolean) => void;
+  canManage?: (post: AnabadaPostRow) => boolean;
 }
 
 export function AnabadaPostGrid({
@@ -40,6 +42,7 @@ export function AnabadaPostGrid({
   items,
   selected,
   onToggle,
+  canManage,
 }: AnabadaPostGridProps) {
   if (items.length === 0) {
     return (
@@ -135,13 +138,20 @@ export function AnabadaPostGrid({
               </div>
             </Link>
 
-            <div className="px-3 pb-3">
-              <Button asChild variant="outline" size="sm" className="w-full min-h-10 touch-target-sm">
+            <div className="px-3 pb-3 flex flex-wrap items-center gap-2">
+              <Button asChild variant="outline" size="sm" className="min-h-10 flex-1 touch-target-sm">
                 <Link href={`/boards/${boardKey}/${post.id}#comments`}>
                   <MessageCircle className="h-4 w-4" />
                   문의하기
                 </Link>
               </Button>
+              {canManage?.(post) && (
+                <AnabadaPostActions
+                  boardKey={boardKey}
+                  postId={post.id}
+                  canManage
+                />
+              )}
             </div>
           </article>
         );

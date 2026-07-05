@@ -11,7 +11,7 @@ export interface PostRow {
   isPinned: boolean;
   viewCount: number;
   createdAt: string | Date;
-  author: { name: string };
+  author: { id: string; name: string };
   _count: { comments: number; attachments: number };
 }
 

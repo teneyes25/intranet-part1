@@ -101,6 +101,9 @@ model Post {
   price       Int?
   /// selling | reserved | completed
   saleStatus  String?
+  /// 일정 게시판 — 행사 시작·종료
+  eventStart  DateTime?
+  eventEnd    DateTime?
   viewCount   Int          @default(0)
   isPinned    Boolean      @default(false)
   /// Pilot 데모 데이터 — 정식 배포 시 일반 사용자에게 숨김
@@ -112,6 +115,7 @@ model Post {
   updatedAt   DateTime     @updatedAt
 
   @@index([boardId, isPinned, createdAt])
+  @@index([boardId, eventStart])
   @@index([authorId])
   @@index([title])
   @@map("posts")

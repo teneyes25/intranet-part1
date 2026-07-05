@@ -70,6 +70,28 @@ function parseAnabadaFields(boardKey: string, formData: FormData) {
   };
 }
 
+function parseScheduleFields(boardKey: string, formData: FormData) {
+  if (boardKey !== "schedule") return {};
+  const startRaw = String(formData.get("eventStart") ?? "").trim();
+  const endRaw = String(formData.get("eventEnd") ?? "").trim();
+  if (!startRaw) return { error: "일정 시작일을 입력하세요." as const };
+  const eventStart = new Date(startRaw);
+  if (Number.isNaN(eventStart.getTime())) {
+    return { error: "올바른 시작일을 입력하세요." as const };
+  }
+  eventStart.setHours(0, 0, 0, 0);
+  let eventEnd: Date | null = null;
+  if (endRaw) {
+    eventEnd = new Date(endRaw);
+    if (!Number.isNaN(eventEnd.getTime())) {
+      eventEnd.setHours(23, 59, 59, 999);
+    } else {
+      eventEnd = null;
+    }
+  }
+  return { eventStart, eventEnd };
+}
+
 async function saveAll(
   files: File[],
   audit?: { userId?: string },
@@ -115,6 +137,8 @@ export async function createPostAction(
   const rawCat = String(formData.get("category") ?? "");
   const category = await resolvePostCategory(boardKey, board.categories, rawCat);
   const anabada = parseAnabadaFields(boardKey, formData);
+  const schedule = parseScheduleFields(boardKey, formData);
+  if ("error" in schedule && schedule.error) return { error: schedule.error };
 
   const files = pickFiles(formData);
   if (files.length > MAX_FILES) {
@@ -138,6 +162,7 @@ export async function createPostAction(
         content: sanitizeRichText(contentRaw),
         category,
         ...anabada,
+        ...( "eventStart" in schedule ? { eventStart: schedule.eventStart, eventEnd: schedule.eventEnd ?? null } : {}),
         attachments: {
           create: saved.map((s) => ({
             filename: s.filename,
@@ -218,6 +243,8 @@ export async function updatePostAction(
     rawCat,
   );
   const anabada = parseAnabadaFields(post.board.key, formData);
+  const schedule = parseScheduleFields(post.board.key, formData);
+  if ("error" in schedule && schedule.error) return { error: schedule.error };
 
   const removeIds = new Set(
     formData.getAll("removeAttachmentIds").map((v) => String(v)),
@@ -246,6 +273,9 @@ export async function updatePostAction(
           content: sanitizeRichText(contentRaw),
           category,
           ...anabada,
+          ...( "eventStart" in schedule
+            ? { eventStart: schedule.eventStart, eventEnd: schedule.eventEnd ?? null }
+            : {}),
         },
       }),
       ...(toRemove.length

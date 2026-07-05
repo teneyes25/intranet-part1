@@ -34,6 +34,11 @@ import {
 } from "@/features/products/queries";
 import { listProductCategoriesFlat } from "@/features/products/category-actions";
 import type { BoardPeriodPreset } from "@/features/board/board-search-utils";
+import { ScheduleCalendar } from "@/features/schedule/components/schedule-calendar";
+import {
+  getScheduleEventsForMonth,
+  parseMonthParam,
+} from "@/features/schedule/queries";
 
 interface PageProps {
   params: Promise<{ key: string }>;
@@ -50,6 +55,7 @@ interface PageProps {
     page?: string;
     view?: string;
     layout?: string;
+    month?: string;
   }>;
 }
 
@@ -75,6 +81,8 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
 
   const isProducts = key === "products";
   const isAnabada = key === "anabada";
+  const isSchedule = key === "schedule";
+  const { year: calYear, month: calMonth } = parseMonthParam(sp.month);
   const canManageCategories =
     isProducts && (user.role === "ADMIN" || user.role === "HEADQUARTER");
 
@@ -103,7 +111,7 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
   const minViewCount = sp.minViews ? Number(sp.minViews) : undefined;
   const hasAttachment = sp.hasAttachment === "1";
 
-  const [result, allBoards, customFolders, userLabels] = await Promise.all([
+  const [result, allBoards, customFolders, userLabels, scheduleEvents] = await Promise.all([
     listPosts({
       boardId: board.id,
       role: user.role,
@@ -123,6 +131,9 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
     listBoards(),
     getCustomFolders(user.id, board.id),
     getUserLabels(user.id, board.id),
+    isSchedule
+      ? getScheduleEventsForMonth(board.id, calYear, calMonth, board.key, user.role)
+      : Promise.resolve([]),
   ]);
 
   const canWrite = canWriteBoard(user.role, board.writeRoles);
@@ -140,6 +151,14 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
 
   const listSection = (
     <>
+      {isSchedule && (
+        <ScheduleCalendar
+          boardKey={board.key}
+          year={calYear}
+          month={calMonth}
+          events={scheduleEvents}
+        />
+      )}
       <BoardFilters
         categories={board.categories}
         productCategoryNames={isProducts ? productCategoryNames : undefined}
@@ -173,6 +192,8 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
             boards={bulkBoards}
             labels={bulkLabels}
             folders={bulkFolders}
+            currentUser={{ id: user.id, role: user.role }}
+            canWrite={canWrite}
           />
           <BoardPagination page={result.page} totalPages={result.totalPages} />
         </div>

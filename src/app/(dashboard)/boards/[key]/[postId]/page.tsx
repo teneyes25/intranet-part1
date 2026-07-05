@@ -72,6 +72,7 @@ export default async function PostDetailPage({
 
   const isProduct = key === "products";
   const isAnabada = key === "anabada";
+  const isSchedule = key === "schedule";
 
   const imageAttachments = post.attachments
     .filter((a) => a.mimeType.startsWith("image/"))
@@ -129,6 +130,15 @@ export default async function PostDetailPage({
             {post.isPinned && <Badge variant="destructive">중요</Badge>}
             {post.category && <Badge variant="secondary">{post.category}</Badge>}
             {isProduct && <Badge className="bg-primary/10 text-primary hover:bg-primary/15">상품</Badge>}
+            {isSchedule && post.eventStart && (
+              <Badge variant="outline">
+                {new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(
+                  new Date(post.eventStart),
+                )}
+                {post.eventEnd &&
+                  ` ~ ${new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(post.eventEnd))}`}
+              </Badge>
+            )}
           </div>
           <CardTitle className={isProduct || isAnabada ? "text-2xl md:text-3xl" : "text-xl"}>
             {post.title}
