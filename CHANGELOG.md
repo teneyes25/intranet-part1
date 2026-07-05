@@ -18,6 +18,7 @@ All notable changes to **intranet-part1** (Part 1) are documented here.
 - `features/search/scope.ts` — 문서함·사용자 dealer 필터 (통합 검색·quick 공유)
 - `pilot-checklist.mjs` — features + quick search auth 검증
 - `/api/health` — `features.commandPalette/activityFeed/quickSearch`
+- `e2e/sprint3-pilot.spec.ts` — Cmd+K · Activity Feed Playwright E2E
 
 ## [1.6.2] — 2026-07-06 — Pilot Sprint #2 (결재 파이프라인 + AI 강화)
 
