@@ -27,6 +27,8 @@ export interface ListPostsParams {
   to?: Date;
   page?: number;
   pageSize?: number;
+  /** 아나바다 그리드용 확장 필드 */
+  withAnabadaFields?: boolean;
 }
 
 export async function listPosts(params: ListPostsParams) {
@@ -64,6 +66,15 @@ export async function listPosts(params: ListPostsParams) {
       include: {
         author: { select: { id: true, name: true } },
         _count: { select: { comments: true, attachments: true } },
+        ...(params.withAnabadaFields
+          ? {
+              attachments: {
+                take: 1,
+                orderBy: { createdAt: "asc" as const },
+                select: { id: true, mimeType: true },
+              },
+            }
+          : {}),
       },
     }),
     prisma.post.count({ where }),

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FileText, Bot, FolderOpen, FileCheck2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { splitHighlightParts } from "@/features/board/board-search-utils";
 import { formatDate } from "@/features/board/utils";
 import type { SearchResultItem } from "../queries";
 
@@ -11,6 +12,23 @@ const TYPE_ICON = {
   semantic: Bot,
 };
 
+function HighlightText({ text, query }: { text: string; query?: string }) {
+  const parts = splitHighlightParts(text, query);
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.match ? (
+          <mark key={i} className="search-highlight">
+            {part.text}
+          </mark>
+        ) : (
+          <span key={i}>{part.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 export function SearchResults({
   items,
   query,
@@ -18,6 +36,8 @@ export function SearchResults({
   items: SearchResultItem[];
   query?: string;
 }) {
+  const highlightQuery = query && query !== "(의미 검색)" ? query : undefined;
+
   if (!query) {
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
@@ -47,7 +67,9 @@ export function SearchResults({
               <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{item.title}</span>
+                  <span className="font-medium">
+                    <HighlightText text={item.title} query={highlightQuery} />
+                  </span>
                   <Badge variant="secondary" className="text-[10px]">
                     {item.source}
                   </Badge>
@@ -63,7 +85,7 @@ export function SearchResults({
                   )}
                 </div>
                 <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
-                  {item.snippet}
+                  <HighlightText text={item.snippet} query={highlightQuery} />
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
                   {formatDate(item.date)}

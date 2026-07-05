@@ -30,6 +30,11 @@ async function main() {
       region: "서울",
       rolloutActive: true,
       rolloutGroupId: group1.id,
+      address: "서울특별시 강남구 테헤란로 152",
+      phone: "02-1234-5678",
+      businessHours: "평일 10:00–19:00, 일요일 휴무",
+      latitude: 37.4979,
+      longitude: 127.0276,
     },
     create: {
       code: "GANGNAM001",
@@ -37,6 +42,11 @@ async function main() {
       region: "서울",
       rolloutActive: true,
       rolloutGroupId: group1.id,
+      address: "서울특별시 강남구 테헤란로 152",
+      phone: "02-1234-5678",
+      businessHours: "평일 10:00–19:00, 일요일 휴무",
+      latitude: 37.4979,
+      longitude: 127.0276,
     },
   });
   console.log(`✅ seeded dealer: ${dealer.code} (${dealer.name})`);
@@ -134,6 +144,13 @@ async function main() {
       description: "상품 카탈로그 및 판매 자료",
       categories: ["카탈로그", "사양서", "가격표", "교육자료"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+    },
+    {
+      key: "anabada",
+      name: "아나바다",
+      description: "사내 중고 거래 게시판",
+      categories: ["가전", "가구", "의류", "기타"],
+      writeRoles: [],
     },
   ];
 

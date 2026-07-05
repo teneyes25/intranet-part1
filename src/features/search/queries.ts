@@ -8,6 +8,10 @@ import type { Role } from "@/lib/auth/roles";
 import { canAccessBoard } from "@/lib/auth/access";
 import { fullTextSearchPosts } from "@/lib/search/fulltext";
 import type { SearchSourceKey } from "./constants";
+import {
+  type BoardPeriodPreset,
+  resolvePeriodRange,
+} from "@/features/board/board-search-utils";
 
 export interface SearchResultItem {
   id: string;
@@ -27,6 +31,10 @@ export interface SearchParams {
   category?: string;
   from?: Date;
   to?: Date;
+  period?: BoardPeriodPreset;
+  author?: string;
+  hasAttachment?: boolean;
+  minViews?: number;
   semantic?: boolean;
   role: Role;
   limit?: number;
@@ -44,6 +52,10 @@ async function searchPosts(
   params: SearchParams,
   boardKeys?: string[],
 ): Promise<SearchResultItem[]> {
+  const periodRange = params.period ? resolvePeriodRange(params.period) : {};
+  const from = params.from ?? periodRange.from;
+  const to = params.to ?? periodRange.to;
+
   const boards = await prisma.board.findMany({
     where: boardKeys?.length ? { key: { in: boardKeys } } : undefined,
     select: { id: true, key: true, name: true },
@@ -85,10 +97,19 @@ async function searchPosts(
     ];
   }
   if (params.category) where.category = params.category;
-  if (params.from || params.to) {
+  if (params.author?.trim()) {
+    where.author = { name: { contains: params.author.trim(), mode: "insensitive" } };
+  }
+  if (params.hasAttachment) {
+    where.attachments = { some: {} };
+  }
+  if (params.minViews != null && params.minViews > 0) {
+    where.viewCount = { gte: params.minViews };
+  }
+  if (from || to) {
     where.createdAt = {};
-    if (params.from) where.createdAt.gte = params.from;
-    if (params.to) where.createdAt.lte = params.to;
+    if (from) where.createdAt.gte = from;
+    if (to) where.createdAt.lte = to;
   }
 
   const posts = await prisma.post.findMany({
@@ -232,6 +253,7 @@ export async function unifiedSearch(
     news: ["news"],
     pr: ["pr"],
     products: ["products"],
+    anabada: ["anabada"],
   };
 
   if (source === "all") {

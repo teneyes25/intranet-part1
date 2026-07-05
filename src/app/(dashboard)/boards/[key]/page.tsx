@@ -14,8 +14,15 @@ import { PageLayoutRenderer } from "@/features/page-layout/components/layout-ren
 import { getBoardPageLayout } from "@/features/page-layout/service";
 import { BoardFilters } from "@/features/board/components/board-filters";
 import { PostList } from "@/features/board/components/post-list";
+import { AnabadaBoardList } from "@/features/anabada/components/anabada-board-list";
+import type { AnabadaPostRow } from "@/features/anabada/types";
 import { BoardPagination } from "@/features/board/components/board-pagination";
 import { InfinitePosts } from "@/features/board/components/infinite-posts";
+import { listBoards } from "@/features/board/queries";
+import {
+  getCustomFolders,
+  getUserLabels,
+} from "@/features/board-mailbox/queries";
 import { CategoryTree } from "@/features/products/components/category-tree";
 import {
   getCategoryTree,
@@ -56,13 +63,14 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
   if (!canAccessBoard(user.role, key)) notFound();
 
   const isProducts = key === "products";
+  const isAnabada = key === "anabada";
   const categoryTree = isProducts ? await getCategoryTree(key) : [];
   const categoryNames = isProducts && sp.cat
     ? await resolveCategoryFilter(sp.cat, key)
     : undefined;
 
   const page = Number(sp.page ?? "1") || 1;
-  const infinite = sp.view === "infinite";
+  const infinite = sp.view === "infinite" && !isAnabada;
 
   let from: Date | undefined;
   let to: Date | undefined;
@@ -72,16 +80,22 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
     to.setHours(23, 59, 59, 999);
   }
 
-  const result = await listPosts({
-    boardId: board.id,
-    role: user.role,
-    q: sp.q,
-    category: sp.category,
-    categories: categoryNames,
-    from,
-    to,
-    page,
-  });
+  const [result, allBoards, customFolders, userLabels] = await Promise.all([
+    listPosts({
+      boardId: board.id,
+      role: user.role,
+      q: sp.q,
+      category: sp.category,
+      categories: categoryNames,
+      from,
+      to,
+      page,
+      withAnabadaFields: isAnabada,
+    }),
+    isAnabada ? listBoards() : Promise.resolve([]),
+    isAnabada ? getCustomFolders(user.id, board.id) : Promise.resolve([]),
+    isAnabada ? getUserLabels(user.id, board.id) : Promise.resolve([]),
+  ]);
 
   const canWrite = canWriteBoard(user.role, board.writeRoles);
 
@@ -97,6 +111,18 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
           initialHasMore={result.hasMore}
           query={{ q: sp.q, category: sp.category, from: sp.from, to: sp.to }}
         />
+      ) : isAnabada ? (
+        <div className="space-y-4">
+          <AnabadaBoardList
+            boardKey={board.key}
+            items={result.items as AnabadaPostRow[]}
+            categories={board.categories}
+            boards={allBoards.map((b) => ({ key: b.key, name: b.name }))}
+            labels={userLabels.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
+            folders={customFolders.map((f) => ({ id: f.id, name: f.name }))}
+          />
+          <BoardPagination page={result.page} totalPages={result.totalPages} />
+        </div>
       ) : (
         <div className="space-y-4">
           <PostList boardKey={board.key} items={result.items} />

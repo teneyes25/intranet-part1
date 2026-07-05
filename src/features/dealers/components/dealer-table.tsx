@@ -1,20 +1,33 @@
 "use client";
 
 import { useTransition } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   toggleDealerActiveAction,
   toggleDealerRolloutAction,
 } from "@/features/dealers/actions";
+import { DealerStoreForm } from "@/features/dealers/components/dealer-store-form";
 
 type DealerRow = {
   id: string;
   code: string;
   name: string;
   region: string | null;
+  address: string | null;
+  phone: string | null;
+  businessHours: string | null;
+  latitude: number | null;
+  longitude: number | null;
   isActive: boolean;
   rolloutActive: boolean;
   rolloutGroup: { name: string } | null;
@@ -71,6 +84,22 @@ function DealerControls({ dealer }: { dealer: DealerRow }) {
 
   return (
     <div className="flex flex-wrap gap-1">
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button size="sm" variant="outline">
+            <MapPin className="h-3 w-3" />
+            매장
+          </Button>
+        </SheetTrigger>
+        <SheetContent className="overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>매장 정보</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <DealerStoreForm dealer={dealer} />
+          </div>
+        </SheetContent>
+      </Sheet>
       <Button
         size="sm"
         variant="outline"

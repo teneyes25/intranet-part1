@@ -10,7 +10,7 @@ export const LEGACY_PR_SLUG = "pr";
 export const MAX_LAYOUT_VERSIONS = 3;
 
 /** 게시판 단위 post-detail slug (post-detail:products 등) */
-export const POST_DETAIL_BOARD_KEYS = ["products", "pr"] as const;
+export const POST_DETAIL_BOARD_KEYS = ["products", "pr", "anabada"] as const;
 
 export type PageLayoutSlug =
   | CorePageLayoutSlug

@@ -97,6 +97,10 @@ model Post {
   /// 새니타이즈된 HTML (Rich Text)
   content     String
   category    String?
+  /// 아나바다 등 — 가격(원)
+  price       Int?
+  /// selling | reserved | completed
+  saleStatus  String?
   viewCount   Int          @default(0)
   isPinned    Boolean      @default(false)
   /// Pilot 데모 데이터 — 정식 배포 시 일반 사용자에게 숨김
@@ -427,6 +431,11 @@ model Dealer {
   code              String   @unique
   name              String
   region            String?
+  address           String?
+  phone             String?
+  businessHours     String?
+  latitude          Float?
+  longitude         Float?
   isActive          Boolean  @default(true)
   /// 단계적 Rollout — false 이면 대리점 사용자 접근 제한
   rolloutActive     Boolean  @default(false)

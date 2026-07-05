@@ -22,6 +22,24 @@ async function main() {
   });
   console.log("✅ board: schedule");
 
+  await prisma.board.upsert({
+    where: { key: "anabada" },
+    update: {
+      name: "아나바다",
+      description: "사내 중고 거래 게시판",
+      categories: ["가전", "가구", "의류", "기타"],
+      writeRoles: [],
+    },
+    create: {
+      key: "anabada",
+      name: "아나바다",
+      description: "사내 중고 거래 게시판",
+      categories: ["가전", "가구", "의류", "기타"],
+      writeRoles: [],
+    },
+  });
+  console.log("✅ board: anabada");
+
   const renames: { key: string; name: string; description: string; categories?: string[] }[] = [
     {
       key: "news",

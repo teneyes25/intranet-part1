@@ -185,6 +185,52 @@ export async function bulkImportDealersAction(csvText: string) {
   return { ok: errors.length === 0, created, updated, errors: errors.length ? errors : undefined };
 }
 
+const storeInfoSchema = z.object({
+  dealerId: z.string(),
+  address: z.string().max(300).optional(),
+  phone: z.string().max(50).optional(),
+  businessHours: z.string().max(500).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  longitude: z.coerce.number().min(-180).max(180).optional().nullable(),
+});
+
+export async function updateDealerStoreInfoAction(formData: FormData) {
+  await requireRole(["ADMIN"]);
+
+  const latRaw = formData.get("latitude");
+  const lngRaw = formData.get("longitude");
+
+  const parsed = storeInfoSchema.safeParse({
+    dealerId: formData.get("dealerId"),
+    address: formData.get("address") || undefined,
+    phone: formData.get("phone") || undefined,
+    businessHours: formData.get("businessHours") || undefined,
+    latitude: latRaw === "" || latRaw == null ? null : latRaw,
+    longitude: lngRaw === "" || lngRaw == null ? null : lngRaw,
+  });
+  if (!parsed.success) return { error: "입력값을 확인하세요." };
+
+  await prisma.dealer.update({
+    where: { id: parsed.data.dealerId },
+    data: {
+      address: parsed.data.address?.trim() || null,
+      phone: parsed.data.phone?.trim() || null,
+      businessHours: parsed.data.businessHours?.trim() || null,
+      latitude: parsed.data.latitude ?? null,
+      longitude: parsed.data.longitude ?? null,
+    },
+  });
+
+  void writeAudit({
+    action: "DEALER_ROLLOUT",
+    detail: `store_info dealer=${parsed.data.dealerId}`,
+  });
+
+  revalidatePath("/admin/dealers");
+  revalidatePath("/stores");
+  return { ok: true };
+}
+
 export const DEALER_IMPORT_TEMPLATE = `${DEALER_CSV_HEADER}
 GANGNAM001,강남대리점,서울,group-1,false
 SEOUL002,서초대리점,서울,group-1,false

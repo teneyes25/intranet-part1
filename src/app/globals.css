@@ -157,6 +157,10 @@
     @apply rounded-xl border border-border/60 bg-card/80 shadow-soft backdrop-blur-md;
   }
 
+  .search-highlight {
+    @apply rounded bg-primary/20 px-0.5 text-inherit;
+  }
+
   .b2b-kpi-strip {
     @apply grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4;
   }
