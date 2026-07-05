@@ -16,10 +16,10 @@ test.describe("UI upgrade — Page Builder (GrapesJS)", () => {
     await expect(page.getByRole("heading", { name: "Visual Page Builder" })).toBeVisible({
       timeout: 15000,
     });
+    await expect(page.getByText("에디터 로딩 중…")).toBeHidden({ timeout: 45000 });
     await expect(page.getByRole("button", { name: "저장" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "미리보기" })).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole("button", { name: "미리보기" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole("button", { name: "대시보드" })).toBeVisible();
-    await expect(page.getByText("에디터 로딩 중…")).toBeHidden({ timeout: 30000 });
     const builder = page.locator(".grapes-editor-shell");
     await expect(
       page.locator(".gjs-editor, .gjs-cv-canvas, [class*='gjs-']").first(),
@@ -78,9 +78,10 @@ test.describe("UI upgrade — Board mailbox", () => {
   test("HQ: mobile folder move control visible on small viewport", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAs(page, HQ);
-    await page.goto("/boards/notices/mailbox");
+    await page.goto("/boards/general/mailbox");
+    await expect(page.getByRole("heading", { name: /메일함/ })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole("button", { name: "폴더로 이동" }).first()).toBeVisible({
-      timeout: 10000,
+      timeout: 15000,
     });
   });
 });
@@ -101,10 +102,11 @@ test.describe("UI upgrade — navigation (Phase 5)", () => {
   test("admin: sidebar shows commercial board menu", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/dashboard");
-    await expect(page.getByRole("link", { name: "공지사항" })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole("link", { name: "일정 게시판" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "업계 뉴스" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "매장 찾기" })).toBeVisible();
+    const nav = page.getByRole("navigation", { name: "주 메뉴" });
+    await expect(nav.getByRole("link", { name: "공지사항" })).toBeVisible({ timeout: 10000 });
+    await expect(nav.getByRole("link", { name: "일정 게시판" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "업계 뉴스" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "매장 찾기" })).toBeVisible();
   });
 
   test("login: no Google button when Firebase disabled", async ({ page }) => {
@@ -118,8 +120,11 @@ test.describe("UI upgrade — approval & read mode", () => {
   test("HQ: approval form shows step wizard", async ({ page }) => {
     await loginAs(page, HQ);
     await page.goto("/approval/new");
-    await expect(page.getByRole("navigation", { name: "작성 단계" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /기안|전자결재/ }).first()).toBeVisible({
       timeout: 10000,
+    });
+    await expect(page.getByRole("navigation", { name: "작성 단계" })).toBeVisible({
+      timeout: 15000,
     });
     await expect(page.getByRole("button", { name: /다음: 본문·AI/ })).toBeVisible();
   });

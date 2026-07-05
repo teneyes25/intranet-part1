@@ -41,6 +41,18 @@ async function main() {
     if (res.status !== 401) throw new Error(`expected 401, got ${res.status}`);
   });
 
+  await check("login page reachable", async () => {
+    const res = await fetch(`${base}/login`);
+    if (!res.ok) throw new Error(`login page ${res.status}`);
+  });
+
+  await check("dashboard requires auth", async () => {
+    const res = await fetch(`${base}/dashboard`, { redirect: "manual" });
+    if (res.status !== 307 && res.status !== 302) {
+      throw new Error(`expected redirect, got ${res.status}`);
+    }
+  });
+
   await check("admin pilot page redirects unauth", async () => {
     const res = await fetch(`${base}/admin/pilot`, { redirect: "manual" });
     if (res.status !== 307 && res.status !== 302) throw new Error(`expected redirect, got ${res.status}`);

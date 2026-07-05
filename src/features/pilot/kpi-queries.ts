@@ -42,18 +42,15 @@ export async function getPilotKpiSummary() {
   const settings = await getPilotSettings();
   const pilotActive = isPilotModeActive(settings);
 
-  const pilotMemberIds = await prisma.pilotGroupMember.findMany({
-    where: { pilotGroup: { isActive: true } },
-    select: { userId: true },
-  });
-  const pilotUserIdSet = new Set(pilotMemberIds.map((m) => m.userId));
-
   const dealerUsers = await prisma.user.findMany({
     where: {
       role: Role.DEALER,
       isActive: true,
       approvalStatus: "APPROVED",
-      ...(pilotUserIdSet.size > 0 ? { id: { in: [...pilotUserIdSet] } } : {}),
+      dealerId: { not: null },
+      ...(pilotActive
+        ? { dealer: { isActive: true, rolloutActive: true } }
+        : {}),
     },
     select: { id: true, dealerId: true },
   });

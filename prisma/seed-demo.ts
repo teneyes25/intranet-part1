@@ -190,6 +190,13 @@ async function main() {
   }
 
   console.log("✅ demo seed complete");
+
+  const { execSync } = await import("node:child_process");
+  try {
+    execSync("npx tsx prisma/seed-pilot-kpi.ts", { stdio: "inherit" });
+  } catch {
+    console.warn("⚠️  pilot KPI seed skipped (non-fatal)");
+  }
 }
 
 main()

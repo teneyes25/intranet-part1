@@ -1,4 +1,4 @@
-# 본사 서버 배포 — 최종 체크리스트 (Phase 5)
+# 본사 서버 배포 — 최종 체크리스트 (Phase 5 + UX v1.3.4)
 
 > **Phase 5 완료 — Firebase 설정 제외 상용화 MVP**  
 > PostgreSQL + Docker + Nginx 기준. Firebase는 `FIREBASE_ENABLED=false` 유지, 배포 후 필요 시 활성화.
@@ -9,7 +9,7 @@
 
 | 항목 | 값 |
 |------|-----|
-| 버전 | **1.2.1** (상용화 MVP) |
+| 버전 | **1.3.4** (Frontend UX/UI Phase 1~4 + Pilot KPI 운영) |
 | 스택 | Next.js 15 · PostgreSQL · Redis · Docker · Nginx :8080 |
 | Firebase | **비활성** (`FIREBASE_ENABLED=false`) — 코드만 준비 |
 | 접속 | `http://<본사서버IP>:8080` |
@@ -25,8 +25,17 @@
 - [ ] `npm run build` 성공
 - [ ] `npm run production:check -- http://localhost:8080` 통과
 - [ ] `npm run smoke -- http://localhost:8080` 통과
-- [ ] `npm run test:ui-upgrade` 통과 (Docker 8080 기동 후)
+- [ ] **`npm run test:e2e:docker`** 통과 (Docker 8080 기동 후 — smoke + ui-upgrade + ui-phase4)
+- [ ] (선택) `npm run test:e2e:docker:full` — real-usage 포함
 - [ ] (선택) `npm run test:e2e` 전체
+
+### Pilot KPI · PRD 스크린샷 (Pilot 배포 시)
+
+- [ ] `.env`에 `PILOT_MODE=true` · `RUN_DEMO_SEED=true` (데모/Pilot 환경)
+- [ ] `npm run db:seed-pilot-kpi` — KPI 실측 데모 데이터
+- [ ] ADMIN `/dashboard` → **Pilot KPI (7일)** 6종 타일 확인
+- [ ] PRD Final **S-10** 캡처 (`/dashboard` + `/admin/pilot` 모니터링)
+- [ ] PRD S-01~S-09 캡처 (§4 기능 상세)
 
 ### 기능 수동 확인
 
@@ -34,18 +43,17 @@
 - [ ] 사이드바 게시판: 공지 · 일정 · 업계 뉴스 · 홍보실 · 상품자료실 · 매장 찾기
 - [ ] 대리점 포털 · 거래 모듈 허브
 - [ ] Page Builder: ADMIN 저장 / HQ read-only / DEALER 자사 scope
+- [ ] 전자결재 3단계 FormSteps · 게시글 읽기 모드
 - [ ] 업계 뉴스: 관리자 → 뉴스 키워드 설정 (자동 수집 cron 09:00 KST)
 - [ ] `FIREBASE_ENABLED=false` → Google 로그인 버튼 **미표시**
 
-### Backlog (Phase 5 완료 항목)
+### Frontend UX/UI 완료 (v1.3.0~1.3.4)
 
-- [x] E2E: Page Builder admin/HQ read-only/dealer (`e2e/ui-upgrade.spec.ts`)
-- [x] HEADQUARTER read-only 저장 차단
-- [x] `pageBuilderConfig.grids` JSON strip (deprecated)
-- [x] `docs/PAGE_BUILDER.md` · `docs/MVP_DEPLOYMENT_CHECKLIST.md`
-- [x] Design System v4 UI/UX
-- [x] French Maison 회사 테마 (company-theme 모듈)
-- [x] Firebase 하이브리드 코드 (기본 off)
+- [x] Phase 1: Design System v5
+- [x] Phase 2: a11y · 메일함 DnD · Page Builder 미저장 · 다크모드
+- [x] Phase 3: 초안 autosave · 결재 FormSteps · 읽기 모드
+- [x] Phase 4: Pilot KPI · Sheet a11y
+- [x] 운영: `db:seed-pilot-kpi` · `test:e2e:docker` · PRD S-10
 
 ---
 
@@ -100,6 +108,7 @@ npm run docker:sync
 
 - [ ] `curl http://<서버>:8080/api/health` → `"status":"healthy"`
 - [ ] `npm run smoke -- http://<서버>:8080`
+- [ ] `npm run test:e2e:docker -- http://<서버>:8080`
 - [ ] `npm run pilot:check -- http://<서버>:8080` (Pilot 시)
 
 ---
@@ -112,6 +121,7 @@ npm run docker:sync
 - [ ] `/admin/news-keywords` — 업계 뉴스 키워드 등록
 - [ ] `npm run db:seed-company-theme` (프렌치메종 테마, 최초 1회)
 - [ ] `npm run db:seed-boards-nav` (게시판 이름, 최초 1회)
+- [ ] Pilot 시작: `PILOT_MODE=true` → `npm run db:seed-pilot-kpi` → KPI 모니터링
 - [ ] 대리점 1곳 Pilot — DEALER Page Builder 저장 테스트
 - [ ] `/admin/activity` 감사 로그 확인
 - [ ] DB·uploads 백업 스케줄 등록
@@ -144,7 +154,8 @@ npm run docker:sync
 | [DEPLOY.md](../DEPLOY.md) | 상세 배포 |
 | [MVP_DEPLOYMENT_CHECKLIST.md](./MVP_DEPLOYMENT_CHECKLIST.md) | MVP 요약 |
 | [PAGE_BUILDER.md](./PAGE_BUILDER.md) | Page Builder |
-| [CHANGELOG.md](../CHANGELOG.md) | v1.2.1 변경 이력 |
+| [CHANGELOG.md](../CHANGELOG.md) | v1.3.4 변경 이력 |
+| [Ten_Eyes_Intranet_Part1_PRD_v1.2.1_Final.docx](./Ten_Eyes_Intranet_Part1_PRD_v1.2.1_Final.docx) | PRD (S-01~S-10) |
 | [ADMIN_MANUAL.md](../ADMIN_MANUAL.md) | 관리자 |
 | [FIREBASE_HYBRID.md](./FIREBASE_HYBRID.md) | Firebase (추후) |
 

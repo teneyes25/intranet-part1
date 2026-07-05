@@ -2,6 +2,21 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.3.4] — 2026-07-05 — Pilot 운영 · E2E Docker · PRD S-10
+
+### Pilot KPI 실측
+- `db:seed-pilot-kpi` — UsageMetric · AuditLog · 공지 viewCount 데모
+- KPI 집계: rolloutActive 대리점 기준 (Pilot 그룹 사용자 필터 수정)
+- `seed-demo` 완료 후 KPI seed 자동 실행
+
+### E2E Docker
+- `scripts/e2e-docker.mjs` — health → smoke → ui-upgrade → ui-phase4
+- `npm run test:e2e:docker` · `test:e2e:docker:full` (--full)
+
+### Docs
+- PRD Final r2/r3 — Phase 2~4 · S-10 Pilot KPI 캡처 지시
+- `HQ_DEPLOYMENT_FINAL_CHECKLIST.md` v1.3.4 갱신
+
 ## [1.3.3] — 2026-07-05 — Frontend UX/UI Upgrade Phase 4
 
 ### 접근성 (Sheet)

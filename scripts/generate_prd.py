@@ -437,6 +437,7 @@ def build():
     add_heading_styled(doc, "4.2 대시보드", 2)
     for t in [
         "PageHero 또는 회사 테마 히어로, KPI strip(2×2 모바일 / 4열 데스크톱)",
+        "ADMIN: Pilot KPI (7일) 스트립 — PRD KPI 6종 실측(§3 KPI 표)",
         "최근 게시글·AI 요약·기능 바로가기 위젯",
     ]:
         add_bullet(doc, t)
@@ -567,6 +568,28 @@ def build():
             "읽지 않은 항목이 있으면 unread 스타일이 보이도록 준비",
         ],
         "알림이 없으면 빈 상태 UI도 유효한 캡처",
+    )
+
+    add_heading_styled(doc, "4.9 Pilot KPI (ADMIN)", 2)
+    for t in [
+        "PRD §3 KPI 6종 — 주간 활성 대리점·공지 도달·Page Builder 자립도·AI·장애·교육",
+        "데이터: AuditLog · UsageMetric · SystemErrorLog · 공지 viewCount (7일)",
+        "데모 실측: npm run db:seed-pilot-kpi (Pilot 활성 + rollout 대리점)",
+    ]:
+        add_bullet(doc, t)
+    add_screenshot_block(
+        doc,
+        "S-10",
+        "Pilot KPI 대시보드 스트립",
+        "/dashboard",
+        "admin@intranet.local",
+        [
+            "ADMIN 로그인 후 /dashboard — KPI strip 아래 Pilot KPI (7일) 카드 캡처",
+            "6개 KPI 타일(목표 배지·실측값·상태 색)이 모두 보이도록 스크롤",
+            "「상세 모니터링」 링크 포함",
+            "동일 화면 /admin/pilot → 모니터링 탭 2번째 캡처 권장",
+        ],
+        "Pilot KPI seed 후 캡처하면 목표 대비 ok/warn 색상이 보임",
     )
 
     # ========== 5 ==========
@@ -701,7 +724,8 @@ PostgreSQL   Redis    uploads/
 
     # ========== 11 ==========
     add_heading_styled(doc, "11. 배포 및 유지보수 가이드 요약", 1)
-    add_para(doc, "배포 전: typecheck · lint · build · production:check · smoke · test:ui-upgrade", size=10.5)
+    add_para(doc, "배포 전: typecheck · lint · build · production:check · smoke · test:e2e:docker", size=10.5)
+    add_para(doc, "Pilot 데모: PILOT_MODE=true · RUN_DEMO_SEED=true → db:seed-pilot-kpi → S-10 캡처", size=10.5)
     add_para(doc, "배포 후: health, 관리자 비밀번호 변경, 브랜딩·Page Builder·뉴스 키워드, Pilot 1곳", size=10.5)
     add_para(doc, "일상: DB/uploads 백업, activity·monitoring, 장애 시 compose logs 및 롤백", size=10.5)
 
@@ -729,6 +753,21 @@ PostgreSQL   Redis    uploads/
                 "스크린샷 캡처 지시, 비즈니스 KPI, Risks & Assumptions, "
                 "Word 레이아웃·헤더/푸터, 변경 이력 섹션 추가. "
                 "Frontend UX/UI Phase 1(Design System v5) 반영.",
+            ],
+            [
+                "1.2.1 Final r2",
+                "2026-07-05",
+                "개정",
+                "제품 v1.3.1~1.3.3 — Frontend UX/UI Phase 2~4 반영. "
+                "a11y·메일함 DnD·Page Builder 미저장·FormSteps·Pilot KPI·Sheet a11y. "
+                "S-10 Pilot KPI 캡처 지시 추가.",
+            ],
+            [
+                "1.2.1 Final r3",
+                "2026-07-05",
+                "운영",
+                "제품 v1.3.4 — Pilot KPI seed(db:seed-pilot-kpi), "
+                "test:e2e:docker, PRD S-10 캡처 절차, HQ 체크리스트 갱신.",
             ],
         ],
     )
