@@ -2,6 +2,23 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.6.3] — 2026-07-06 — Pilot Sprint #3 (Command Palette + Activity Feed)
+
+### Command Palette
+- `command-palette.tsx` — Cmd/Ctrl+K, Dialog + debounced quick search
+- `/api/search/quick` — Posts + SharedDocument + Users (각 5건, dealer scope)
+- Topbar `⌘K` / `Ctrl+K` 힌트 · AppShell 전역 mount
+
+### Dashboard Activity Feed
+- `getRecentActivity()` — AuditLog + Notification + Post 통합
+- `activity-feed.tsx` — Liferay 스타일 경량 타임라인
+- Dashboard KPI 타일 아래 위젯 추가
+
+### QA & Scope
+- `features/search/scope.ts` — 문서함·사용자 dealer 필터 (통합 검색·quick 공유)
+- `pilot-checklist.mjs` — features + quick search auth 검증
+- `/api/health` — `features.commandPalette/activityFeed/quickSearch`
+
 ## [1.6.2] — 2026-07-06 — Pilot Sprint #2 (결재 파이프라인 + AI 강화)
 
 ### Workflow & Post-Approval Pipeline

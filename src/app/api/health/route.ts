@@ -58,6 +58,11 @@ export async function GET() {
       pilotMode: process.env.PILOT_MODE === "true",
       pilotModules: getVisiblePilotModuleKeys(),
       navModules: getPilotNavModulesSnapshot(),
+      features: {
+        commandPalette: true,
+        activityFeed: true,
+        quickSearch: true,
+      },
       checks,
     },
     { status },

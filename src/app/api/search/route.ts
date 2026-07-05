@@ -46,6 +46,7 @@ export const GET = withApiGuard({ tier: "api" }, async (req, { session }) => {
       to: to ? new Date(to) : undefined,
       role: session!.user.role,
       userId: session!.user.id,
+      dealerId: session!.user.dealerId ?? null,
     });
     return NextResponse.json({ items, total: items.length });
   } catch (e) {

@@ -11,6 +11,7 @@ import {
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import { SidebarContent } from "@/components/layout/sidebar-content";
 import { Topbar } from "@/components/layout/topbar";
+import { CommandPalette } from "@/components/layout/command-palette";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { PilotBanner } from "@/components/pilot/pilot-banner";
 import { EmergencyBanner } from "@/components/emergency/emergency-banner";
@@ -92,6 +93,7 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} menuButtonRef={menuButtonRef} onMenuClick={() => setMobileOpen(true)} />
+        <CommandPalette role={user.role} />
         <main id="main-content" className="app-main" tabIndex={-1}>
           <div className="app-main-inner fade-in-up">
             {emergencyNotice && (

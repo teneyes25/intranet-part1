@@ -87,6 +87,23 @@ async function main() {
     if (res.status !== 307 && res.status !== 302) throw new Error(`expected redirect, got ${res.status}`);
   });
 
+  await check("Sprint #3 features (command palette + activity feed)", async () => {
+    const features = healthBody?.features ?? {};
+    if (!features.commandPalette || !features.activityFeed || !features.quickSearch) {
+      throw new Error(`missing features: ${JSON.stringify(features)}`);
+    }
+  });
+
+  await check("quick search API requires auth", async () => {
+    const res = await fetch(`${base}/api/search/quick?q=test`);
+    if (res.status !== 401) throw new Error(`expected 401, got ${res.status}`);
+  });
+
+  await check("quick search short query returns empty", async () => {
+    const res = await fetch(`${base}/api/search/quick?q=a`);
+    if (res.status !== 401) throw new Error(`expected 401 without session, got ${res.status}`);
+  });
+
   const failed = checks.filter((c) => !c.ok);
   console.log(`\n[pilot-check] ${checks.length - failed.length}/${checks.length} passed`);
   if (failed.length > 0) process.exit(1);

@@ -8,6 +8,7 @@ import type { Role } from "@/lib/auth/roles";
 import { canAccessBoard } from "@/lib/auth/access";
 import { fullTextSearchPosts } from "@/lib/search/fulltext";
 import { getProductMetaMap } from "@/features/products/product-meta";
+import { sharedDocumentDealerWhere, userSearchDealerWhere } from "./scope";
 import type { SearchSourceKey } from "./constants";
 import {
   type BoardPeriodPreset,
@@ -43,6 +44,7 @@ export interface SearchParams {
   minViews?: number;
   semantic?: boolean;
   role: Role;
+  dealerId?: string | null;
   limit?: number;
 }
 
@@ -161,14 +163,20 @@ async function searchPosts(
 }
 
 async function searchDocuments(params: SearchParams): Promise<SearchResultItem[]> {
-  const where: Prisma.SharedDocumentWhereInput = {};
+  const clauses: Prisma.SharedDocumentWhereInput[] = [];
+  const dealerFilter = sharedDocumentDealerWhere(params.role, params.dealerId);
+  if (dealerFilter) clauses.push(dealerFilter);
   if (params.q) {
-    where.OR = [
-      { title: { contains: params.q, mode: "insensitive" } },
-      { description: { contains: params.q, mode: "insensitive" } },
-    ];
+    clauses.push({
+      OR: [
+        { title: { contains: params.q, mode: "insensitive" } },
+        { description: { contains: params.q, mode: "insensitive" } },
+      ],
+    });
   }
-  if (params.category) where.category = params.category;
+  if (params.category) clauses.push({ category: params.category });
+  const where: Prisma.SharedDocumentWhereInput =
+    clauses.length > 1 ? { AND: clauses } : clauses[0] ?? {};
 
   const docs = await prisma.sharedDocument.findMany({
     where,
@@ -230,13 +238,18 @@ async function searchApprovals(params: SearchParams, userId: string): Promise<Se
 
 async function searchUsers(params: SearchParams): Promise<SearchResultItem[]> {
   if (!params.q?.trim()) return [];
+  const dealerFilter = userSearchDealerWhere(params.role, params.dealerId);
+  const textFilter: Prisma.UserWhereInput = {
+    OR: [
+      { name: { contains: params.q.trim(), mode: "insensitive" } },
+      { email: { contains: params.q.trim(), mode: "insensitive" } },
+    ],
+  };
+  const where: Prisma.UserWhereInput = dealerFilter
+    ? { AND: [dealerFilter, textFilter] }
+    : textFilter;
   const users = await prisma.user.findMany({
-    where: {
-      OR: [
-        { name: { contains: params.q.trim(), mode: "insensitive" } },
-        { email: { contains: params.q.trim(), mode: "insensitive" } },
-      ],
-    },
+    where,
     take: 8,
     select: {
       id: true,
@@ -280,7 +293,7 @@ async function searchSemantic(params: SearchParams): Promise<SearchResultItem[]>
 }
 
 export async function unifiedSearch(
-  params: SearchParams & { userId: string },
+  params: SearchParams & { userId: string; dealerId?: string | null },
 ): Promise<SearchResultItem[]> {
   const limit = params.limit ?? 30;
   const source = params.source ?? "all";
