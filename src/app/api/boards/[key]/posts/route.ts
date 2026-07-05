@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth/session";
 import { getBoardByKey, listPosts } from "@/features/board/queries";
+import type { BoardPeriodPreset } from "@/features/board/board-search-utils";
 
 function parseDate(value: string | null): Date | undefined {
   if (!value) return undefined;
@@ -26,8 +27,11 @@ export async function GET(
 
   const { searchParams } = new URL(request.url);
   const to = parseDate(searchParams.get("to"));
-  // 'to' 는 해당 날짜의 끝까지 포함
   if (to) to.setHours(23, 59, 59, 999);
+
+  const period = (searchParams.get("period") ?? "all") as BoardPeriodPreset;
+  const minViews = searchParams.get("minViews");
+  const minViewCount = minViews ? Number(minViews) : undefined;
 
   const result = await listPosts({
     boardId: board.id,
@@ -36,6 +40,10 @@ export async function GET(
     category: searchParams.get("category") ?? undefined,
     from: parseDate(searchParams.get("from")),
     to,
+    period: period !== "all" ? period : undefined,
+    author: searchParams.get("author") ?? undefined,
+    hasAttachment: searchParams.get("hasAttachment") === "1" || undefined,
+    minViewCount: minViewCount && !Number.isNaN(minViewCount) ? minViewCount : undefined,
     page: Number(searchParams.get("page") ?? "1") || 1,
   });
 

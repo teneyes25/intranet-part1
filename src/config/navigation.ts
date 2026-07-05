@@ -136,6 +136,12 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: ["ADMIN"],
         moduleKey: "documents",
       },
+      {
+        title: "상품자료실 카테고리",
+        href: "/admin/product-categories",
+        icon: FolderOpen,
+        roles: ["ADMIN", "HEADQUARTER"],
+      },
       { title: "활동 로그", href: "/admin/activity", icon: Activity, roles: ["ADMIN"] },
       { title: "포털 커스터마이징", href: "/admin/customize", icon: Settings, roles: ["ADMIN"] },
       {

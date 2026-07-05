@@ -40,6 +40,36 @@ function pickFiles(formData: FormData): File[] {
     .filter((f): f is File => f instanceof File && f.size > 0);
 }
 
+async function resolvePostCategory(
+  boardKey: string,
+  boardCategories: string[],
+  rawCat: string,
+): Promise<string | null> {
+  if (!rawCat) return null;
+  if (boardCategories.includes(rawCat)) return rawCat;
+  if (boardKey === "products") {
+    const pc = await prisma.productCategory.findFirst({
+      where: { boardKey, name: rawCat },
+    });
+    if (pc) return pc.name;
+  }
+  return null;
+}
+
+function parseAnabadaFields(boardKey: string, formData: FormData) {
+  if (boardKey !== "anabada") return {};
+  const priceRaw = String(formData.get("price") ?? "").trim();
+  const parsed = priceRaw ? parseInt(priceRaw.replace(/,/g, ""), 10) : null;
+  const saleStatus = String(formData.get("saleStatus") ?? "selling");
+  const valid = ["selling", "reserved", "completed"] as const;
+  return {
+    price: parsed != null && !Number.isNaN(parsed) ? parsed : null,
+    saleStatus: valid.includes(saleStatus as (typeof valid)[number])
+      ? saleStatus
+      : "selling",
+  };
+}
+
 async function saveAll(
   files: File[],
   audit?: { userId?: string },
@@ -83,7 +113,8 @@ export async function createPostAction(
   }
 
   const rawCat = String(formData.get("category") ?? "");
-  const category = rawCat && board.categories.includes(rawCat) ? rawCat : null;
+  const category = await resolvePostCategory(boardKey, board.categories, rawCat);
+  const anabada = parseAnabadaFields(boardKey, formData);
 
   const files = pickFiles(formData);
   if (files.length > MAX_FILES) {
@@ -106,6 +137,7 @@ export async function createPostAction(
         title,
         content: sanitizeRichText(contentRaw),
         category,
+        ...anabada,
         attachments: {
           create: saved.map((s) => ({
             filename: s.filename,
@@ -180,8 +212,12 @@ export async function updatePostAction(
   }
 
   const rawCat = String(formData.get("category") ?? "");
-  const category =
-    rawCat && post.board.categories.includes(rawCat) ? rawCat : null;
+  const category = await resolvePostCategory(
+    post.board.key,
+    post.board.categories,
+    rawCat,
+  );
+  const anabada = parseAnabadaFields(post.board.key, formData);
 
   const removeIds = new Set(
     formData.getAll("removeAttachmentIds").map((v) => String(v)),
@@ -209,6 +245,7 @@ export async function updatePostAction(
           title,
           content: sanitizeRichText(contentRaw),
           category,
+          ...anabada,
         },
       }),
       ...(toRemove.length

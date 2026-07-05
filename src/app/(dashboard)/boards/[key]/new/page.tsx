@@ -7,8 +7,16 @@ import { requireUser } from "@/lib/auth/session";
 import { canWriteBoard } from "@/features/board/permissions";
 import { getBoardByKey } from "@/features/board/queries";
 import { PostForm } from "@/features/board/components/post-form";
+import { listProductCategoriesFlat } from "@/features/products/category-actions";
 
 export const metadata: Metadata = { title: "글쓰기" };
+
+async function formCategories(boardKey: string, boardCategories: string[]) {
+  if (boardKey !== "products") return boardCategories;
+  const flat = await listProductCategoriesFlat(boardKey);
+  const names = flat.map((c) => c.name);
+  return [...boardCategories, ...names.filter((n) => !boardCategories.includes(n))];
+}
 
 export default async function NewPostPage({
   params,
@@ -23,6 +31,8 @@ export default async function NewPostPage({
     redirect(`/boards/${board.key}`);
   }
 
+  const categories = await formCategories(board.key, board.categories);
+
   return (
     <div>
       <PageHeader
@@ -31,11 +41,7 @@ export default async function NewPostPage({
       />
       <Card>
         <CardContent className="pt-6">
-          <PostForm
-            mode="create"
-            boardKey={board.key}
-            categories={board.categories}
-          />
+          <PostForm mode="create" boardKey={board.key} categories={categories} />
         </CardContent>
       </Card>
     </div>

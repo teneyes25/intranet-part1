@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/features/board/components/rich-text-editor";
 import { formatFileSize } from "@/features/board/utils";
+import { ANABADA_SALE_STATUSES } from "@/features/board/board-search-utils";
 import {
   createPostAction,
   updatePostAction,
@@ -37,6 +38,8 @@ interface PostFormProps {
     title: string;
     content: string;
     category: string | null;
+    price?: number | null;
+    saleStatus?: string | null;
     attachments: ExistingAttachment[];
   };
 }
@@ -50,7 +53,9 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
 
   const [content, setContent] = useState(initial?.content ?? "");
   const [category, setCategory] = useState(initial?.category ?? NONE);
+  const [saleStatus, setSaleStatus] = useState(initial?.saleStatus ?? "selling");
   const [removeIds, setRemoveIds] = useState<Set<string>>(new Set());
+  const isAnabada = boardKey === "anabada";
 
   function toggleRemove(id: string) {
     setRemoveIds((prev) => {
@@ -74,6 +79,9 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
         name="category"
         value={category === NONE ? "" : category}
       />
+      {isAnabada && (
+        <input type="hidden" name="saleStatus" value={saleStatus} />
+      )}
       {[...removeIds].map((id) => (
         <input key={id} type="hidden" name="removeAttachmentIds" value={id} />
       ))}
@@ -105,6 +113,37 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+
+      {isAnabada && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="price">가격 (원)</Label>
+            <Input
+              id="price"
+              name="price"
+              type="number"
+              min={0}
+              defaultValue={initial?.price ?? ""}
+              placeholder="0 = 나눔"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>판매 상태</Label>
+            <Select value={saleStatus} onValueChange={setSaleStatus}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ANABADA_SALE_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
 
@@ -156,7 +195,7 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
         <Label htmlFor="files">
           첨부파일 추가{" "}
           <span className="text-xs font-normal text-muted-foreground">
-            (최대 {MAX_FILES}개, 개당 10MB)
+            (최대 {MAX_FILES}개, 개당 10MB{isAnabada ? " · 상품 사진 권장" : ""})
           </span>
         </Label>
         <Input id="files" name="files" type="file" multiple />

@@ -10,7 +10,16 @@ interface InfinitePostsProps {
   initialItems: PostRow[];
   initialPage: number;
   initialHasMore: boolean;
-  query: { q?: string; category?: string; from?: string; to?: string };
+  query: {
+    q?: string;
+    category?: string;
+    from?: string;
+    to?: string;
+    period?: string;
+    author?: string;
+    hasAttachment?: string;
+    minViews?: string;
+  };
 }
 
 export function InfinitePosts({
@@ -35,6 +44,10 @@ export function InfinitePosts({
       if (query.category) params.set("category", query.category);
       if (query.from) params.set("from", query.from);
       if (query.to) params.set("to", query.to);
+      if (query.period) params.set("period", query.period);
+      if (query.author) params.set("author", query.author);
+      if (query.hasAttachment) params.set("hasAttachment", query.hasAttachment);
+      if (query.minViews) params.set("minViews", query.minViews);
       params.set("page", String(page + 1));
 
       const res = await fetch(`/api/boards/${boardKey}/posts?${params}`);

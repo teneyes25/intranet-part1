@@ -7,8 +7,16 @@ import { requireUser } from "@/lib/auth/session";
 import { canManagePost } from "@/features/board/permissions";
 import { getPostDetail } from "@/features/board/queries";
 import { PostForm } from "@/features/board/components/post-form";
+import { listProductCategoriesFlat } from "@/features/products/category-actions";
 
 export const metadata: Metadata = { title: "글 수정" };
+
+async function formCategories(boardKey: string, boardCategories: string[]) {
+  if (boardKey !== "products") return boardCategories;
+  const flat = await listProductCategoriesFlat(boardKey);
+  const names = flat.map((c) => c.name);
+  return [...boardCategories, ...names.filter((n) => !boardCategories.includes(n))];
+}
 
 export default async function EditPostPage({
   params,
@@ -26,6 +34,8 @@ export default async function EditPostPage({
     redirect(`/boards/${key}/${postId}`);
   }
 
+  const categories = await formCategories(post.board.key, post.board.categories);
+
   return (
     <div>
       <PageHeader title={`${post.board.name} - 글 수정`} />
@@ -34,12 +44,14 @@ export default async function EditPostPage({
           <PostForm
             mode="edit"
             boardKey={post.board.key}
-            categories={post.board.categories}
+            categories={categories}
             initial={{
               postId: post.id,
               title: post.title,
               content: post.content,
               category: post.category,
+              price: post.price,
+              saleStatus: post.saleStatus,
               attachments: post.attachments.map((a) => ({
                 id: a.id,
                 filename: a.filename,

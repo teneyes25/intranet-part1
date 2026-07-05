@@ -2,6 +2,31 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.4.0] — 2026-07-05 — 게시판 기능 강화 1차
+
+### 일괄 선택·관리
+- 모든 게시판 목록 `PostListBulk` — Gmail 스타일 「선택된 N개」·보기/수정/삭제/카테고리/게시판 이동/라벨/메일함 폴더
+- `bulk-actions.ts` — 삭제·카테고리·게시판 간 이동(ADMIN/HEADQUARTER)
+
+### 상품자료실 카테고리
+- `/admin/product-categories` — 생성·수정·삭제·Drag & Drop 순서 변경
+- 게시물 일괄 이동·글쓰기 폼에 ProductCategory 연동
+
+### 검색 강화 (게시판·통합검색)
+- 기간 프리셋(오늘/이번 주/이번 달)·작성자·고급(날짜 범위·첨부·최소 조회수)
+- 검색어 하이라이트 · URL 필터 유지
+
+### 아나바다 (`board:anabada`)
+- 중고/나눔 게시판 — 가격·판매상태·이미지 그리드 UI · Page Builder 연동
+- 글쓰기/수정 폼 price·saleStatus 필드
+
+### 매장 찾기
+- 네이버 지도 API `StoreLocator` — 마커·정보창·목록 연동
+- ADMIN 대리점 매장 정보(주소·연락처·영업시간·좌표) CRUD
+
+### Schema
+- `Post.price`, `Post.saleStatus` · `Dealer` 지도 필드(address, phone, businessHours, lat/lng)
+
 ## [1.3.4] — 2026-07-05 — Pilot 운영 · E2E Docker · PRD S-10
 
 ### Pilot KPI 실측

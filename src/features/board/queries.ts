@@ -5,6 +5,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/lib/auth/roles";
 import { demoContentWhere } from "@/lib/production/demo-filter";
+import {
+  resolvePeriodRange,
+  type BoardPeriodPreset,
+} from "@/features/board/board-search-utils";
 
 export const POSTS_PAGE_SIZE = 10;
 
@@ -25,6 +29,10 @@ export interface ListPostsParams {
   categories?: string[];
   from?: Date;
   to?: Date;
+  period?: BoardPeriodPreset;
+  author?: string;
+  hasAttachment?: boolean;
+  minViewCount?: number;
   page?: number;
   pageSize?: number;
   /** 아나바다 그리드용 확장 필드 */
@@ -51,10 +59,28 @@ export async function listPosts(params: ListPostsParams) {
   } else if (params.category) {
     where.category = params.category;
   }
-  if (params.from || params.to) {
+  let from = params.from;
+  let to = params.to;
+  if (params.period && params.period !== "all") {
+    const range = resolvePeriodRange(params.period);
+    from = range.from ?? from;
+    to = range.to ?? to;
+  }
+  if (from || to) {
     where.createdAt = {};
-    if (params.from) where.createdAt.gte = params.from;
-    if (params.to) where.createdAt.lte = params.to;
+    if (from) where.createdAt.gte = from;
+    if (to) where.createdAt.lte = to;
+  }
+  if (params.author?.trim()) {
+    where.author = {
+      name: { contains: params.author.trim(), mode: "insensitive" },
+    };
+  }
+  if (params.hasAttachment) {
+    where.attachments = { some: {} };
+  }
+  if (params.minViewCount != null && params.minViewCount > 0) {
+    where.viewCount = { gte: params.minViewCount };
   }
 
   const [items, total] = await prisma.$transaction([

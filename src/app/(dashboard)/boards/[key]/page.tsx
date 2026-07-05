@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Inbox, PenSquare } from "lucide-react";
+import { Inbox, PenSquare, Settings2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/layout/page-hero";
@@ -13,7 +13,7 @@ import { getSiteSettings, parsePageBuilderConfig } from "@/features/customize/si
 import { PageLayoutRenderer } from "@/features/page-layout/components/layout-renderer";
 import { getBoardPageLayout } from "@/features/page-layout/service";
 import { BoardFilters } from "@/features/board/components/board-filters";
-import { PostList } from "@/features/board/components/post-list";
+import { PostListBulk } from "@/features/board/components/post-list-bulk";
 import { AnabadaBoardList } from "@/features/anabada/components/anabada-board-list";
 import type { AnabadaPostRow } from "@/features/anabada/types";
 import { BoardPagination } from "@/features/board/components/board-pagination";
@@ -28,6 +28,8 @@ import {
   getCategoryTree,
   resolveCategoryFilter,
 } from "@/features/products/queries";
+import { listProductCategoriesFlat } from "@/features/products/category-actions";
+import type { BoardPeriodPreset } from "@/features/board/board-search-utils";
 
 interface PageProps {
   params: Promise<{ key: string }>;
@@ -37,6 +39,10 @@ interface PageProps {
     cat?: string;
     from?: string;
     to?: string;
+    period?: string;
+    author?: string;
+    hasAttachment?: string;
+    minViews?: string;
     page?: string;
     view?: string;
   }>;
@@ -64,13 +70,20 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
 
   const isProducts = key === "products";
   const isAnabada = key === "anabada";
+  const canManageCategories =
+    isProducts && (user.role === "ADMIN" || user.role === "HEADQUARTER");
+
   const categoryTree = isProducts ? await getCategoryTree(key) : [];
+  const productCategoryFlat = isProducts ? await listProductCategoriesFlat(key) : [];
+  const productCategoryNames = productCategoryFlat.map((c) => c.name);
+
   const categoryNames = isProducts && sp.cat
     ? await resolveCategoryFilter(sp.cat, key)
     : undefined;
 
   const page = Number(sp.page ?? "1") || 1;
   const infinite = sp.view === "infinite" && !isAnabada;
+  const period = (sp.period ?? "all") as BoardPeriodPreset;
 
   let from: Date | undefined;
   let to: Date | undefined;
@@ -79,6 +92,9 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
     to = new Date(sp.to);
     to.setHours(23, 59, 59, 999);
   }
+
+  const minViewCount = sp.minViews ? Number(sp.minViews) : undefined;
+  const hasAttachment = sp.hasAttachment === "1";
 
   const [result, allBoards, customFolders, userLabels] = await Promise.all([
     listPosts({
@@ -89,19 +105,37 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
       categories: categoryNames,
       from,
       to,
+      period: period !== "all" ? period : undefined,
+      author: sp.author,
+      hasAttachment: hasAttachment || undefined,
+      minViewCount: minViewCount && !Number.isNaN(minViewCount) ? minViewCount : undefined,
       page,
       withAnabadaFields: isAnabada,
     }),
-    isAnabada ? listBoards() : Promise.resolve([]),
-    isAnabada ? getCustomFolders(user.id, board.id) : Promise.resolve([]),
-    isAnabada ? getUserLabels(user.id, board.id) : Promise.resolve([]),
+    listBoards(),
+    getCustomFolders(user.id, board.id),
+    getUserLabels(user.id, board.id),
   ]);
 
   const canWrite = canWriteBoard(user.role, board.writeRoles);
+  const bulkBoards = allBoards.map((b) => ({ key: b.key, name: b.name }));
+  const bulkLabels = userLabels.map((l) => ({
+    id: l.id,
+    name: l.name,
+    color: l.color,
+  }));
+  const bulkFolders = customFolders.map((f) => ({ id: f.id, name: f.name }));
+  const bulkCategories = [
+    ...board.categories,
+    ...productCategoryNames.filter((n) => !board.categories.includes(n)),
+  ];
 
   const listSection = (
     <>
-      <BoardFilters categories={board.categories} />
+      <BoardFilters
+        categories={board.categories}
+        productCategoryNames={isProducts ? productCategoryNames : undefined}
+      />
       <p className="text-sm text-muted-foreground">총 {result.total}건</p>
       {infinite ? (
         <InfinitePosts
@@ -109,23 +143,40 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
           initialItems={result.items}
           initialPage={result.page}
           initialHasMore={result.hasMore}
-          query={{ q: sp.q, category: sp.category, from: sp.from, to: sp.to }}
+          query={{
+            q: sp.q,
+            category: sp.category,
+            from: sp.from,
+            to: sp.to,
+            period: sp.period,
+            author: sp.author,
+            hasAttachment: sp.hasAttachment,
+            minViews: sp.minViews,
+          }}
         />
       ) : isAnabada ? (
         <div className="space-y-4">
           <AnabadaBoardList
             boardKey={board.key}
             items={result.items as AnabadaPostRow[]}
-            categories={board.categories}
-            boards={allBoards.map((b) => ({ key: b.key, name: b.name }))}
-            labels={userLabels.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
-            folders={customFolders.map((f) => ({ id: f.id, name: f.name }))}
+            categories={bulkCategories}
+            boards={bulkBoards}
+            labels={bulkLabels}
+            folders={bulkFolders}
           />
           <BoardPagination page={result.page} totalPages={result.totalPages} />
         </div>
       ) : (
         <div className="space-y-4">
-          <PostList boardKey={board.key} items={result.items} />
+          <PostListBulk
+            boardKey={board.key}
+            items={result.items}
+            categories={bulkCategories}
+            boards={bulkBoards}
+            labels={bulkLabels}
+            folders={bulkFolders}
+            searchQuery={sp.q}
+          />
           <BoardPagination page={result.page} totalPages={result.totalPages} />
         </div>
       )}
@@ -158,6 +209,14 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
               <Link href={`/boards/${board.key}/new`}>
                 <PenSquare className="h-4 w-4" />
                 글쓰기
+              </Link>
+            </Button>
+          )}
+          {canManageCategories && (
+            <Button asChild variant="outline" className="min-h-10">
+              <Link href="/admin/product-categories">
+                <Settings2 className="h-4 w-4" />
+                카테고리 관리
               </Link>
             </Button>
           )}
