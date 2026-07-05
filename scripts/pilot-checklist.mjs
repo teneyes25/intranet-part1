@@ -21,10 +21,30 @@ async function check(name, fn) {
 async function main() {
   console.log(`[pilot-check] base=${base}\n`);
 
+  let healthBody = null;
+
   await check("health endpoint", async () => {
     const res = await fetch(`${base}/api/health`);
-    const body = await res.json();
-    if (!res.ok || body.checks?.database !== "ok") throw new Error("unhealthy");
+    healthBody = await res.json();
+    if (!res.ok || healthBody.checks?.database !== "ok") throw new Error("unhealthy");
+  });
+
+  await check("pilot nav modules (approval, documents, search)", async () => {
+    const modules = healthBody?.pilotModules ?? [];
+    const required = ["approval", "documents", "search"];
+    const missing = required.filter((m) => !modules.includes(m));
+    if (missing.length > 0) {
+      throw new Error(
+        `missing in pilotModules: ${missing.join(", ")} (got: ${modules.join(", ") || "none"}) — set PILOT_MODE=true and rebuild`,
+      );
+    }
+    if (modules.includes("attendance")) {
+      throw new Error("attendance should be hidden in Pilot mode");
+    }
+    const nav = healthBody?.navModules ?? {};
+    if (nav.approval !== true || nav.documents !== true || nav.search !== true) {
+      throw new Error(`navModules mismatch: ${JSON.stringify(nav)}`);
+    }
   });
 
   await check("pilot metrics requires admin", async () => {
@@ -52,6 +72,15 @@ async function main() {
       throw new Error(`expected redirect, got ${res.status}`);
     }
   });
+
+  for (const path of ["/approval", "/documents", "/search"]) {
+    await check(`${path} requires auth`, async () => {
+      const res = await fetch(`${base}${path}`, { redirect: "manual" });
+      if (res.status !== 307 && res.status !== 302 && res.status !== 401) {
+        throw new Error(`expected redirect, got ${res.status}`);
+      }
+    });
+  }
 
   await check("admin pilot page redirects unauth", async () => {
     const res = await fetch(`${base}/admin/pilot`, { redirect: "manual" });

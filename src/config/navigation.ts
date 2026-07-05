@@ -30,7 +30,7 @@ import {
 import type { Role } from "@/lib/auth/roles";
 import { canSeeNavItem } from "@/lib/auth/access";
 import type { NavModuleKey } from "@/config/nav-modules";
-import { isNavModuleVisible } from "@/config/nav-modules";
+import { getNavModuleVisible } from "@/config/nav-modules";
 
 export interface NavItem {
   title: string;
@@ -169,7 +169,7 @@ export function getVisibleNavGroups(role: Role | undefined): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
-      (item) => isNavModuleVisible(item.moduleKey) && canSeeNavItem(role, item),
+      (item) => getNavModuleVisible(item.moduleKey) && canSeeNavItem(role, item),
     ),
   })).filter((group) => {
     if (group.roles?.length && role && !group.roles.includes(role)) return false;

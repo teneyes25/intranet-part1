@@ -31,8 +31,11 @@
 
 ### Pilot KPI · PRD 스크린샷 (Pilot 배포 시)
 
-- [ ] `.env`에 `PILOT_MODE=true` · `RUN_DEMO_SEED=true` (데모/Pilot 환경)
+- [ ] `.env.production`에 **`PILOT_MODE=true`** · **`NEXT_PUBLIC_PILOT_MODE=true`** (로컬 dev) · **`RUN_DEMO_SEED=true`** (최초 1회)
+- [ ] Docker 빌드 시 `PILOT_MODE` → `NEXT_PUBLIC_PILOT_MODE` build arg 전달 (`docker-compose.yml`)
+- [ ] `npm run db:seed-pilot-approval` — 전자결재 5건 · 문서함 · UsageMetric
 - [ ] `npm run db:seed-pilot-kpi` — KPI 실측 데모 데이터
+- [ ] `npm run pilot:check` — **pilotModules: approval, documents, search** 확인
 - [ ] ADMIN `/dashboard` → **Pilot KPI (7일)** 6종 타일 확인
 - [ ] PRD Final **S-10** 캡처 (`/dashboard` + `/admin/pilot` 모니터링)
 - [ ] PRD S-01~S-09 캡처 (§4 기능 상세)
@@ -43,7 +46,7 @@
 - [ ] 사이드바 게시판: 공지 · 일정 · 업계 뉴스 · 홍보실 · 상품자료실 · 매장 찾기
 - [ ] 대리점 포털 · 거래 모듈 허브
 - [ ] Page Builder: ADMIN 저장 / HQ read-only / DEALER 자사 scope
-- [ ] 전자결재 3단계 FormSteps · 게시글 읽기 모드
+- [ ] 전자결재 · **문서함** · **통합검색** — `PILOT_MODE=true` 시 사이드바 노출 (#11~14)
 - [ ] 업계 뉴스: 관리자 → 뉴스 키워드 설정 (자동 수집 cron 09:00 KST)
 - [ ] `FIREBASE_ENABLED=false` → Google 로그인 버튼 **미표시**
 
@@ -81,8 +84,10 @@ NEXTAUTH_URL=http://<본사IP또는도메인>:8080
 ALLOWED_ORIGINS=http://<본사IP또는도메인>:8080
 RUN_SEED=false
 FIREBASE_ENABLED=false
-PILOT_MODE=false
-RUN_DEMO_SEED=false
+PILOT_MODE=true
+NEXT_PUBLIC_PILOT_MODE=true
+RUN_DEMO_SEED=true
+RUN_PILOT_SEED=true
 RUN_DEALER_DEMO_SEED=false
 ```
 

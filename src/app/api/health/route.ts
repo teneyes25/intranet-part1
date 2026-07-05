@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getRedis } from "@/lib/redis/client";
 import { applySecurityHeaders } from "@/lib/security/headers";
+import {
+  getPilotNavModulesSnapshot,
+  getVisiblePilotModuleKeys,
+} from "@/config/nav-modules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +55,9 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version ?? "0.1.0",
       buildId: process.env.BUILD_ID ?? process.env.NEXT_PUBLIC_BUILD_ID ?? "dev",
+      pilotMode: process.env.PILOT_MODE === "true",
+      pilotModules: getVisiblePilotModuleKeys(),
+      navModules: getPilotNavModulesSnapshot(),
       checks,
     },
     { status },

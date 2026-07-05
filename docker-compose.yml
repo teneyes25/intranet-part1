@@ -44,6 +44,7 @@ services:
       dockerfile: Dockerfile
       args:
         BUILD_ID: ${BUILD_ID:-dev}
+        NEXT_PUBLIC_PILOT_MODE: ${PILOT_MODE:-false}
     container_name: intranet-app
     restart: unless-stopped
     env_file: .env.production
@@ -70,7 +71,12 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PRISMA_MIGRATE_DEPLOY: ${PRISMA_MIGRATE_DEPLOY:-true}
       PRISMA_ACCEPT_DATA_LOSS: ${PRISMA_ACCEPT_DATA_LOSS:-false}
-      # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED, PILOT_MODE → .env.production (env_file)
+      # Pilot: PILOT_MODE=true → nav(approval/documents/search) 노출 · 배너 · KPI
+      # 빌드 시 NEXT_PUBLIC_PILOT_MODE 로 클라이언트 nav 동기화 (build.args)
+      PILOT_MODE: ${PILOT_MODE:-false}
+      RUN_DEMO_SEED: ${RUN_DEMO_SEED:-false}
+      RUN_PILOT_SEED: ${RUN_PILOT_SEED:-false}
+      # RUN_SEED, RUN_DEALER_DEMO_SEED → .env.production (env_file)
       BEHIND_NGINX: "true"
       # CLAMAV_HOST: ${CLAMAV_HOST:-}
     volumes:

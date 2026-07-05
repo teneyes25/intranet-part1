@@ -1,6 +1,6 @@
 {
   "name": "intranet-part1",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -34,6 +34,7 @@
     "test:e2e:docker:full": "node scripts/e2e-docker.mjs --full",
     "test:e2e:install": "playwright install chromium",
     "docker:sync": "node scripts/docker-sync.mjs",
+    "db:seed-pilot-approval": "tsx prisma/seed-pilot-approval.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

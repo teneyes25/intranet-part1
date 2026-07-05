@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * 스모크 테스트 — health + Phase 5 보안·커스터마이징 엔드포인트
+ * 스모크 테스트 — health + Phase 5 보안·Pilot nav 라우트
  * node scripts/smoke-test.mjs [baseUrl]
  */
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/$/, "");
 
-async function get(path) {
+async function get(path, opts = {}) {
   const url = `${base}${path}`;
   console.log(`[smoke] GET ${url}`);
-  const res = await fetch(url);
+  const res = await fetch(url, opts);
   return { res, body: res.headers.get("content-type")?.includes("json") ? await res.json() : null };
 }
 
@@ -21,6 +21,13 @@ async function post(path, data) {
     body: JSON.stringify(data),
   });
   return { res, body: res.headers.get("content-type")?.includes("json") ? await res.json() : null };
+}
+
+async function expectAuthRedirect(path) {
+  const { res } = await get(path, { redirect: "manual" });
+  if (res.status !== 307 && res.status !== 302 && res.status !== 401) {
+    throw new Error(`${path} expected 307/302/401, got ${res.status}`);
+  }
 }
 
 async function main() {
@@ -53,7 +60,12 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("[smoke] OK — health, branding guard, ai ingest auth, pilot metrics auth");
+  for (const path of ["/approval", "/documents", "/search"]) {
+    await expectAuthRedirect(path);
+    console.log(`[smoke] ${path} auth redirect OK`);
+  }
+
+  console.log("[smoke] OK — health, branding guard, ai ingest auth, pilot metrics auth, pilot routes");
 }
 
 main().catch((e) => {

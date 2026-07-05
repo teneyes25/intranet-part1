@@ -2,6 +2,21 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.6.1] — 2026-07-06 — Pilot Sprint #1 (nav + seed)
+
+### Pilot Nav
+- `getNavModuleVisible()` — `PILOT_MODE=true` 시 approval/documents/search 노출
+- `/api/health` — `pilotModules` · `navModules` 스냅샷
+- Docker `NEXT_PUBLIC_PILOT_MODE` build arg (클라이언트 nav)
+
+### Pilot Seed
+- `db:seed-pilot-approval` — DocumentCategory · ApprovalLineTemplate · 결재 5건 · SharedDocument · DownloadLog · UsageMetric
+- `RUN_PILOT_SEED` entrypoint 지원
+
+### QA
+- `smoke-test.mjs` — /approval · /documents · /search auth redirect
+- `pilot-checklist.mjs` — pilotModules 3종 visible 검증
+
 ## [1.6.0] — 2026-07-05 — UI/UX 전체 폴리싱 (Design System v5 Complete)
 
 ### Design System v5 완성

@@ -3,8 +3,6 @@
  * 공지 10건, 게시물 20건, 전자결재 5건, Pilot 그룹 멤버, AI ingest 이력
  */
 import {
-  ApprovalStatus,
-  ApprovalStepStatus,
   PrismaClient,
   Role,
 } from "@prisma/client";
@@ -132,46 +130,9 @@ async function main() {
   }
 
   const tpl = await prisma.approvalTemplate.findFirst({ where: { key: "general" } });
-  const approvalCount = await prisma.approvalDocument.count();
-  if (approvalCount < 5 && tpl) {
-    const statuses: ApprovalStatus[] = [
-      ApprovalStatus.DRAFT,
-      ApprovalStatus.IN_PROGRESS,
-      ApprovalStatus.IN_PROGRESS,
-      ApprovalStatus.COMPLETED,
-      ApprovalStatus.REJECTED,
-    ];
-    for (let i = 0; i < 5; i++) {
-      const doc = await prisma.approvalDocument.create({
-        data: {
-          title: `Pilot 데모 기안서 ${i + 1}`,
-          content: tpl.content,
-          status: statuses[i],
-          isDemo: true,
-          drafterId: hqId,
-          templateId: tpl.id,
-          submittedAt: i > 0 ? new Date() : null,
-          completedAt: statuses[i] === ApprovalStatus.COMPLETED ? new Date() : null,
-        },
-      });
-      if (statuses[i] !== ApprovalStatus.DRAFT) {
-        await prisma.approvalStep.create({
-          data: {
-            documentId: doc.id,
-            approverId: adminId,
-            stepOrder: 1,
-            status:
-              statuses[i] === ApprovalStatus.COMPLETED
-                ? ApprovalStepStatus.APPROVED
-                : statuses[i] === ApprovalStatus.REJECTED
-                  ? ApprovalStepStatus.REJECTED
-                  : ApprovalStepStatus.PENDING,
-            actedAt: statuses[i] !== ApprovalStatus.IN_PROGRESS ? new Date() : null,
-          },
-        });
-      }
-    }
-    console.log("✅ 5 approval documents");
+  if (tpl && (await prisma.approvalDocument.count()) < 1) {
+    // 상세 결재 시드는 seed-pilot-approval.ts 에서 처리
+    void tpl;
   }
 
   const ingestCount = await prisma.aiIngestJob.count();
@@ -192,6 +153,19 @@ async function main() {
   console.log("✅ demo seed complete");
 
   const { execSync } = await import("node:child_process");
+  const runPilotApproval =
+    process.env.RUN_PILOT_SEED === "true" ||
+    process.env.RUN_DEMO_SEED === "true" ||
+    process.env.PILOT_MODE === "true";
+
+  if (runPilotApproval) {
+    try {
+      execSync("npx tsx prisma/seed-pilot-approval.ts", { stdio: "inherit" });
+    } catch {
+      console.warn("⚠️  pilot approval seed skipped (non-fatal)");
+    }
+  }
+
   try {
     execSync("npx tsx prisma/seed-pilot-kpi.ts", { stdio: "inherit" });
   } catch {

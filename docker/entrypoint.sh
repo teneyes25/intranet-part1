@@ -48,6 +48,11 @@ if [ "${RUN_DEMO_SEED}" = "true" ]; then
   node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed-demo.ts || echo "[entrypoint] demo seed skipped"
 fi
 
+if [ "${RUN_PILOT_SEED}" = "true" ]; then
+  echo "[entrypoint] pilot approval seed..."
+  node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed-pilot-approval.ts || echo "[entrypoint] pilot approval seed skipped"
+fi
+
 if [ "${RUN_DEALER_DEMO_SEED}" = "true" ]; then
   echo "[entrypoint] dealer demo seeding (Phase 8)..."
   node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed-dealer-demo.ts || echo "[entrypoint] dealer demo seed skipped"
