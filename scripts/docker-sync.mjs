@@ -76,17 +76,16 @@ async function main() {
   ]);
   run("docker", ["compose", "up", "-d", "--force-recreate", "app"]);
 
-  console.log("\nWaiting for app health (before nginx)...");
+  console.log("\nRestarting nginx (app recreate 후 upstream 갱신)...");
+  run("docker", ["compose", "up", "-d", "--force-recreate", "nginx"]);
+
+  console.log("\nWaiting for health @ :8080...");
   const ok = await waitHealthy();
   if (!ok) {
-    console.error("Health check timed out — check: docker compose logs app");
+    console.error("Health check timed out — check: docker compose logs app nginx");
     process.exit(1);
   }
 
-  run("docker", ["compose", "up", "-d", "--force-recreate", "nginx"]);
-
-  console.log("\nRe-check after nginx restart...");
-  await waitHealthy(10);
   await verifyPages();
 
   console.log("\n✓ 배포 완료. 브라우저에서 Ctrl+Shift+R 또는 시크릿 창으로 확인하세요.");
