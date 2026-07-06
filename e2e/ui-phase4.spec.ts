@@ -39,7 +39,7 @@ test.describe("UI Phase 4 — Sheet a11y", () => {
     await loginAsAdmin(page);
     await page.goto("/dashboard");
 
-    const menuButton = page.getByRole("button", { name: "메뉴 열기" });
+    const menuButton = page.getByRole("button", { name: "메뉴 열기", exact: true });
     await menuButton.click();
     await expect(page.getByRole("dialog")).toBeVisible();
 

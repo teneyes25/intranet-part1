@@ -25,11 +25,15 @@ test.describe("Sprint #3 — deployment gate", () => {
   });
 });
 
+function commandPaletteInput(page: Page) {
+  return page.getByRole("textbox", { name: "빠른 검색" });
+}
+
 async function openCommandPalette(page: Page) {
   await page.keyboard.press("Control+KeyK");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible({ timeout: 10000 });
-  await expect(page.getByLabel("빠른 검색")).toBeVisible();
+  await expect(commandPaletteInput(page)).toBeVisible();
   return dialog;
 }
 
@@ -96,7 +100,7 @@ test.describe("Sprint #3 — Command Palette", () => {
     await expect(hint).toBeVisible({ timeout: 15000 });
     await hint.click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByLabel("빠른 검색")).toBeFocused();
+    await expect(commandPaletteInput(page)).toBeFocused();
   });
 
   test("search menu item navigates to approval", async ({ page }) => {
@@ -105,7 +109,7 @@ test.describe("Sprint #3 — Command Palette", () => {
     await page.goto("/dashboard");
 
     await openCommandPalette(page);
-    const input = page.getByLabel("빠른 검색");
+    const input = commandPaletteInput(page);
     await input.fill("전자결재");
 
     const target = page.getByRole("button", { name: /전자결재/ }).first();
@@ -138,7 +142,7 @@ test.describe("Sprint #3 — Command Palette debounced search", () => {
     await page.goto("/dashboard");
 
     await openCommandPalette(page);
-    const input = page.getByLabel("빠른 검색");
+    const input = commandPaletteInput(page);
 
     const quickPromise = page.waitForResponse(
       (r) => r.url().includes("/api/search/quick") && r.ok(),
