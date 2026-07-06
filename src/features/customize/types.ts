@@ -14,11 +14,12 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutConfig = {
   widgets: [
     { id: "stats", visible: true, order: 0 },
     { id: "pilotKpi", visible: true, order: 1 },
-    { id: "activityChart", visible: true, order: 2 },
-    { id: "recentPosts", visible: true, order: 3 },
-    { id: "shortcuts", visible: true, order: 4 },
-    { id: "aiSummary", visible: true, order: 5 },
-    { id: "account", visible: true, order: 6 },
+    { id: "activityFeed", visible: true, order: 2 },
+    { id: "activityChart", visible: true, order: 3 },
+    { id: "recentPosts", visible: true, order: 4 },
+    { id: "shortcuts", visible: true, order: 5 },
+    { id: "aiSummary", visible: true, order: 6 },
+    { id: "account", visible: true, order: 7 },
   ],
 };
 

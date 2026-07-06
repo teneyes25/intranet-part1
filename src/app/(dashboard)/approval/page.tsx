@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FilePlus2, Inbox, FileEdit, CheckCircle2, Hourglass } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/features/dashboard/components/stat-card";
@@ -55,6 +56,7 @@ export default async function ApprovalPage({
 
   return (
     <div>
+      <PageBreadcrumb items={[{ label: "전자결재" }]} />
       <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
         <PageHeader
           title="전자결재"

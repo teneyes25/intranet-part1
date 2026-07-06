@@ -3,7 +3,7 @@
  * Docker(8080) 기동 후 Frontend E2E 전체 스위트 실행
  * node scripts/e2e-docker.mjs [baseUrl]
  *
- * 순서: health → smoke → ui-upgrade → ui-phase4 → (선택) real-usage
+ * 순서: health → smoke → ui-upgrade → ui-phase4 → sprint3-pilot → (선택) real-usage
  */
 import { spawnSync } from "node:child_process";
 
@@ -17,6 +17,7 @@ const suites = [
   { name: "smoke", files: ["e2e/smoke.spec.ts"] },
   { name: "ui-upgrade", files: ["e2e/ui-upgrade.spec.ts"] },
   { name: "ui-phase4", files: ["e2e/ui-phase4.spec.ts"] },
+  { name: "sprint3-pilot", files: ["e2e/sprint3-pilot.spec.ts"] },
 ];
 
 if (includeFull) {

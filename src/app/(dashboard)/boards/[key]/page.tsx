@@ -56,6 +56,8 @@ interface PageProps {
     view?: string;
     layout?: string;
     month?: string;
+    calView?: string;
+    week?: string;
   }>;
 }
 
@@ -157,6 +159,8 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
           year={calYear}
           month={calMonth}
           events={scheduleEvents}
+          view={sp.calView === "week" ? "week" : "month"}
+          weekStart={sp.week}
         />
       )}
       <BoardFilters

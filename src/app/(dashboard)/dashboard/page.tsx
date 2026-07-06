@@ -190,7 +190,7 @@ export default async function DashboardPage() {
         <PilotKpiStrip data={pilotKpi} />
       )}
 
-      {isWidgetVisible(layout, "stats") && (
+      {isWidgetVisible(layout, "activityFeed") && (
         <ActivityFeed items={activity} />
       )}
 

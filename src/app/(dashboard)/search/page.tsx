@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb";
 import { requireUser } from "@/lib/auth/session";
 import { SearchForm } from "@/features/search/components/search-form";
 import { SearchResults } from "@/features/search/components/search-results";
@@ -80,6 +81,7 @@ export default async function SearchPage({
 
   return (
     <div className="space-y-6">
+      <PageBreadcrumb items={[{ label: "통합 검색" }]} />
       <PageHeader
         title="통합 검색"
         description="게시물, 공지, 뉴스, 문서, 상품자료, 아나바다, 전자결재를 한 번에 검색합니다."

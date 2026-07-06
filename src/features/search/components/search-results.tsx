@@ -14,6 +14,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { splitHighlightParts } from "@/features/board/board-search-utils";
 import { formatDate } from "@/features/board/utils";
 import { ProductPreviewCard } from "@/features/products/components/product-preview-card";
@@ -93,20 +94,23 @@ export function SearchResults({
 
   if (!query) {
     return (
-      <div className="rounded-xl border border-dashed bg-muted/20 py-16 text-center">
-        <Package className="mx-auto h-10 w-10 text-muted-foreground/40" />
-        <p className="mt-3 text-sm text-muted-foreground">
-          검색어를 입력하면 게시물, 상품, 사용자, 문서, 전자결재를 통합 검색합니다.
-        </p>
-      </div>
+      <EmptyState
+        icon={Package}
+        title="통합 검색"
+        description="검색어를 입력하면 게시물, 상품, 사용자, 문서, 전자결재를 한 번에 찾습니다. Cmd+K로 빠른 검색도 이용하세요."
+        action={{ label: "AI 에이전트", href: "/ai-agent" }}
+      />
     );
   }
 
   if (items.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        &apos;{query}&apos;에 대한 검색 결과가 없습니다.
-      </p>
+      <EmptyState
+        icon={FileText}
+        title={`'${query}'에 대한 결과가 없습니다`}
+        description="다른 키워드로 검색하거나 AI 의미 검색을 켜 보세요."
+        compact
+      />
     );
   }
 
@@ -132,9 +136,12 @@ export function SearchResults({
 
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            이 분류에 결과가 없습니다.
-          </p>
+          <EmptyState
+            icon={FolderOpen}
+            title="이 분류에 결과가 없습니다"
+            description="다른 탭을 선택하거나 검색어를 변경해 보세요."
+            compact
+          />
         ) : (
           filtered.map((item) => {
             if (item.type === "product") {

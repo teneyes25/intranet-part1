@@ -1,7 +1,7 @@
-# 본사 서버 배포 — 최종 체크리스트 (Phase 5 + UX v1.3.4)
+# 본사 서버 배포 — 최종 체크리스트 (Pilot Final v1.7.0-pre)
 
-> **Phase 5 완료 — Firebase 설정 제외 상용화 MVP**  
-> PostgreSQL + Docker + Nginx 기준. Firebase는 `FIREBASE_ENABLED=false` 유지, 배포 후 필요 시 활성화.
+> **Pilot Must #1~13 완료** — PostgreSQL + Docker + Nginx :8080  
+> Sprint #1 Nav · #2 결재+AI · #3 Command Palette+Activity Feed
 
 ---
 
@@ -9,9 +9,10 @@
 
 | 항목 | 값 |
 |------|-----|
-| 버전 | **1.3.4** (Frontend UX/UI Phase 1~4 + Pilot KPI 운영) |
-| 스택 | Next.js 15 · PostgreSQL · Redis · Docker · Nginx :8080 |
-| Firebase | **비활성** (`FIREBASE_ENABLED=false`) — 코드만 준비 |
+| 버전 | **1.7.0-pre** (Pilot Final Polish) |
+| 이전 | 1.6.3 (Sprint #3) |
+| 스택 | Next.js 15 · PostgreSQL · Redis · Hybrid RAG AI |
+| Firebase | **비활성** (`FIREBASE_ENABLED=false`) |
 | 접속 | `http://<본사서버IP>:8080` |
 
 ---
@@ -21,78 +22,55 @@
 ### 빌드·품질
 
 - [ ] `npm run typecheck` 통과
-- [ ] `npm run lint` 통과
 - [ ] `npm run build` 성공
-- [ ] `npm run production:check -- http://localhost:8080` 통과
-- [ ] `npm run smoke -- http://localhost:8080` 통과
-- [ ] **`npm run test:e2e:docker`** 통과 (Docker 8080 기동 후 — smoke + ui-upgrade + ui-phase4)
-- [ ] (선택) `npm run test:e2e:docker:full` — real-usage 포함
-- [ ] (선택) `npm run test:e2e` 전체
+- [ ] `npm run production:check -- http://localhost:8080`
+- [ ] `npm run smoke -- http://localhost:8080`
+- [ ] **`npm run test:e2e:docker`** — smoke + ui-upgrade + ui-phase4 + **sprint3-pilot**
+- [ ] **`npm run test:pilot-full`** — 기안→문서함→AI Chat E2E
+- [ ] (선택) `npm run test:e2e:docker:full`
 
-### Pilot KPI · PRD 스크린샷 (Pilot 배포 시)
+### Pilot Must #1~13
 
-- [ ] `.env.production`에 **`PILOT_MODE=true`** · **`NEXT_PUBLIC_PILOT_MODE=true`** (로컬 dev) · **`RUN_DEMO_SEED=true`** (최초 1회)
-- [ ] Docker 빌드 시 `PILOT_MODE` → `NEXT_PUBLIC_PILOT_MODE` build arg 전달 (`docker-compose.yml`)
-- [ ] `npm run db:seed-pilot-approval` — 전자결재 5건 · 문서함 · UsageMetric
-- [ ] `npm run db:seed-pilot-kpi` — KPI 실측 데모 데이터
-- [ ] `npm run pilot:check` — **pilotModules: approval, documents, search** 확인
-- [ ] ADMIN `/dashboard` → **Pilot KPI (7일)** 6종 타일 확인
-- [ ] PRD Final **S-10** 캡처 (`/dashboard` + `/admin/pilot` 모니터링)
-- [ ] PRD S-01~S-09 캡처 (§4 기능 상세)
+| Must | 검증 |
+|------|------|
+| #1~3 | `pilot:check` — approval/documents/search nav |
+| #4~6 | `db:seed-pilot-approval` — 결재 5건·문서함 |
+| #7~10 | COMPLETED → 문서함 + AI ingest |
+| #11~12 | AI 초안 · 추천 결재선 · Compliance |
+| #13 | **Ctrl+K** Command Palette |
 
-### 기능 수동 확인
+- [ ] `.env.production`: `PILOT_MODE=true`, `NEXT_PUBLIC_PILOT_MODE=true`, `RUN_PILOT_SEED=true`
+- [ ] `npm run db:deploy` — Sprint #2 migration (amount, dealer scope)
+- [ ] `npm run pilot:check`
+- [ ] Dashboard: KPI + **최근 활동** + (ADMIN) Pilot KPI
+- [ ] Breadcrumb: `/approval`, `/documents`, `/search`
 
-- [ ] 로그인 (Credentials) — `admin@intranet.local`
-- [ ] 사이드바 게시판: 공지 · 일정 · 업계 뉴스 · 홍보실 · 상품자료실 · 매장 찾기
-- [ ] 대리점 포털 · 거래 모듈 허브
-- [ ] Page Builder: ADMIN 저장 / HQ read-only / DEALER 자사 scope
-- [ ] 전자결재 · **문서함** · **통합검색** — `PILOT_MODE=true` 시 사이드바 노출 (#11~14)
-- [ ] 업계 뉴스: 관리자 → 뉴스 키워드 설정 (자동 수집 cron 09:00 KST)
-- [ ] `FIREBASE_ENABLED=false` → Google 로그인 버튼 **미표시**
+### 문서
 
-### Frontend UX/UI 완료 (v1.3.0~1.3.4)
-
-- [x] Phase 1: Design System v5
-- [x] Phase 2: a11y · 메일함 DnD · Page Builder 미저장 · 다크모드
-- [x] Phase 3: 초안 autosave · 결재 FormSteps · 읽기 모드
-- [x] Phase 4: Pilot KPI · Sheet a11y
-- [x] 운영: `db:seed-pilot-kpi` · `test:e2e:docker` · PRD S-10
+- [ ] [PILOT_FAQ.md](./PILOT_FAQ.md) 팀 공유
+- [ ] [PILOT_ONBOARDING.md](./PILOT_ONBOARDING.md) 15분 온보딩
+- [ ] PRD S-01~S-10 스크린샷
 
 ---
 
-## C. 본사 서버 환경
-
-### 하드웨어·OS
-
-- [ ] Windows Server 또는 Linux (Docker 지원)
-- [ ] RAM 8GB+ (권장 16GB)
-- [ ] 디스크 20GB+ 여유 (DB + `uploads` 볼륨)
-- [ ] Docker Desktop 24+ / Docker Engine + Compose v2
-
-### 네트워크
-
-- [ ] **8080** HTTP 포트 개방 (사내망/VPN만)
-- [ ] 5432·6379는 **외부 차단** (컨테이너 내부만)
-- [ ] (선택) HTTPS — Nginx SSL + 사내 CA
-
-### `.env.production` (서버에 복사)
+## C. `.env.production` (서버)
 
 ```env
-POSTGRES_PASSWORD=<강력한_랜덤>
+POSTGRES_PASSWORD=<openssl rand -base64 24>
 NEXTAUTH_SECRET=<openssl rand -base64 32>
-NEXTAUTH_URL=http://<본사IP또는도메인>:8080
-ALLOWED_ORIGINS=http://<본사IP또는도메인>:8080
-RUN_SEED=false
-FIREBASE_ENABLED=false
+NEXTAUTH_URL=http://<본사IP>:8080
+ALLOWED_ORIGINS=http://<본사IP>:8080
 PILOT_MODE=true
 NEXT_PUBLIC_PILOT_MODE=true
 RUN_DEMO_SEED=true
 RUN_PILOT_SEED=true
 RUN_DEALER_DEMO_SEED=false
+FIREBASE_ENABLED=false
+OPENAI_API_KEY=<선택>
 ```
 
-- [ ] `OPENAI_API_KEY` — AI 에이전트 사용 시
-- [ ] `NAVER_CLIENT_ID/SECRET` — 업계 뉴스 수집 시
+- [ ] dev placeholder 시크릿 **교체**
+- [ ] `OPENAI_API_KEY` — AI Pilot 체감 시 필수
 
 ---
 
@@ -100,68 +78,46 @@ RUN_DEALER_DEMO_SEED=false
 
 ```powershell
 cd intranet-part1
-docker compose --env-file .env.production up -d --build
-```
-
-또는 개발 PC에서:
-
-```powershell
 npm run docker:sync
+# 또는
+docker compose --env-file .env.production up -d --build
 ```
 
 ### 배포 직후
 
-- [ ] `curl http://<서버>:8080/api/health` → `"status":"healthy"`
-- [ ] `npm run smoke -- http://<서버>:8080`
-- [ ] `npm run test:e2e:docker -- http://<서버>:8080`
-- [ ] `npm run pilot:check -- http://<서버>:8080` (Pilot 시)
+- [ ] `/api/health` → `features.commandPalette/activityFeed/quickSearch: true`
+- [ ] `npm run pilot:check -- http://<서버>:8080`
+- [ ] `npm run test:pilot-sprint3 -- http://<서버>:8080`
+- [ ] `npm run test:pilot-full` (선택)
 
 ---
 
-## E. 운영 초기 설정
+## E. Pilot 런칭 (비즈니스)
 
-- [ ] 관리자 로그인 → **비밀번호 즉시 변경**
-- [ ] `/admin/customize` — 앱명·로고·브랜딩
-- [ ] `/admin/customize/page-builder` — 대시보드·배너 1회 저장
-- [ ] `/admin/news-keywords` — 업계 뉴스 키워드 등록
-- [ ] `npm run db:seed-company-theme` (프렌치메종 테마, 최초 1회)
-- [ ] `npm run db:seed-boards-nav` (게시판 이름, 최초 1회)
-- [ ] Pilot 시작: `PILOT_MODE=true` → `npm run db:seed-pilot-kpi` → KPI 모니터링
-- [ ] 대리점 1곳 Pilot — DEALER Page Builder 저장 테스트
-- [ ] `/admin/activity` 감사 로그 확인
-- [ ] DB·uploads 백업 스케줄 등록
+- [ ] Pilot 그룹·계정 배포
+- [ ] 15분 온보딩 세션 (PILOT_ONBOARDING.md)
+- [ ] HQ 승인자·DEALER 테스트 계정 분리
+- [ ] 피드백 채널 (`/admin/pilot`)
+- [ ] Part 2 범위 사전 공지 (Firebase, BPM, react-flow)
 
 ---
 
-## F. Firebase (이번 배포 제외)
+## F. Git 태그
 
-배포 후 필요 시:
-
-1. Firebase Console 프로젝트 생성
-2. `.env.production`에 `NEXT_PUBLIC_FIREBASE_*` + `FIREBASE_SERVICE_ACCOUNT_JSON`
-3. `FIREBASE_ENABLED=true` 설정 후 `docker compose up -d --build`
-4. [docs/FIREBASE_HYBRID.md](./FIREBASE_HYBRID.md) 참고
+```powershell
+git tag -a v1.7.0-pre -m "Pilot Final — Must #1~13"
+git push origin v1.7.0-pre
+```
 
 ---
 
-## G. 롤백
-
-- [ ] 배포 전 DB 스냅샷 (`pg_dump` 또는 volume 백업)
-- [ ] 이전 Docker 이미지 태그 보관
-- [ ] 장애 시: `docker compose down` → 이전 이미지 + DB 복원
-
----
-
-## H. 문서 맵
+## G. 문서 맵
 
 | 문서 | 용도 |
 |------|------|
+| [PILOT_FAQ.md](./PILOT_FAQ.md) | Pilot FAQ |
+| [PILOT_ONBOARDING.md](./PILOT_ONBOARDING.md) | 15분 시작 |
+| [CHANGELOG.md](../CHANGELOG.md) | v1.7.0-pre |
 | [DEPLOY.md](../DEPLOY.md) | 상세 배포 |
-| [MVP_DEPLOYMENT_CHECKLIST.md](./MVP_DEPLOYMENT_CHECKLIST.md) | MVP 요약 |
-| [PAGE_BUILDER.md](./PAGE_BUILDER.md) | Page Builder |
-| [CHANGELOG.md](../CHANGELOG.md) | v1.3.4 변경 이력 |
-| [Ten_Eyes_Intranet_Part1_PRD_v1.2.1_Final.docx](./Ten_Eyes_Intranet_Part1_PRD_v1.2.1_Final.docx) | PRD (S-01~S-10) |
-| [ADMIN_MANUAL.md](../ADMIN_MANUAL.md) | 관리자 |
-| [FIREBASE_HYBRID.md](./FIREBASE_HYBRID.md) | Firebase (추후) |
 
-**담당:** _________________ **배포일:** _________
+**담당:** _________________ **Pilot 런칭일:** _________

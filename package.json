@@ -1,6 +1,6 @@
 {
   "name": "intranet-part1",
-  "version": "1.6.3",
+  "version": "1.7.0-pre",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -29,6 +29,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:real-usage": "playwright test e2e/real-usage.spec.ts",
     "test:pilot-sprint3": "playwright test e2e/sprint3-pilot.spec.ts",
+    "test:pilot-full": "playwright test e2e/pilot-full-flow.spec.ts",
     "test:ui-upgrade": "playwright test e2e/ui-upgrade.spec.ts",
     "test:ui-phase4": "playwright test e2e/ui-phase4.spec.ts",
     "test:e2e:docker": "node scripts/e2e-docker.mjs",

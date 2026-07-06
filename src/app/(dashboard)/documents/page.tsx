@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileText, ExternalLink } from "lucide-react";
+import { FileText, ExternalLink, FolderOpen } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
@@ -42,17 +44,19 @@ export default async function DocumentsPage() {
 
   return (
     <div className="space-y-6">
+      <PageBreadcrumb items={[{ label: "문서함" }]} />
       <PageHeader
         title="문서함"
         description="전자결재 완료 문서 및 사내 공용 자료를 카테고리별로 보관합니다."
       />
 
       {docs.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            등록된 문서가 없습니다.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={FolderOpen}
+          title="등록된 문서가 없습니다"
+          description="결재가 완료되면 선택한 카테고리로 자동 보관됩니다. Cmd+K로 빠른 검색도 이용해 보세요."
+          action={{ label: "전자결재 바로가기", href: "/approval" }}
+        />
       ) : (
         <div className="space-y-8">
           {categories.map((cat) => {

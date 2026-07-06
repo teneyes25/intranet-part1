@@ -2,6 +2,23 @@
 
 All notable changes to **intranet-part1** (Part 1) are documented here.
 
+## [1.7.0-pre] — 2026-07-06 — Pilot Final Polish
+
+### UX Polish
+- `PageBreadcrumb` — approval/documents/search 표준 breadcrumb
+- EmptyState/LoadingState — Pilot 3모듈 통일
+- Schedule calendar 주간 보기 (월/주 토글)
+- Dashboard `activityFeed` 위젯 KPI와 분리
+
+### Docs & E2E
+- `docs/PILOT_FAQ.md`, `docs/PILOT_ONBOARDING.md`
+- `e2e/pilot-full-flow.spec.ts` — 기안→문서함→AI E2E
+- `test:e2e:docker` — sprint3-pilot 포함
+- `HQ_DEPLOYMENT_FINAL_CHECKLIST.md` v1.7.0-pre 갱신
+
+### Env
+- `.env.production` — `NEXT_PUBLIC_PILOT_MODE`, `RUN_PILOT_SEED`
+
 ## [1.6.3] — 2026-07-06 — Pilot Sprint #3 (Command Palette + Activity Feed)
 
 ### Command Palette
