@@ -44,6 +44,7 @@ services:
       dockerfile: Dockerfile
       args:
         BUILD_ID: ${BUILD_ID:-dev}
+        APP_VERSION: ${APP_VERSION:-1.7.0-pre}
         NEXT_PUBLIC_PILOT_MODE: ${PILOT_MODE:-false}
     container_name: intranet-app
     restart: unless-stopped
@@ -60,6 +61,7 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-in-production}
       NODE_ENV: production
       BUILD_ID: ${BUILD_ID:-dev}
+      APP_VERSION: ${APP_VERSION:-1.7.0-pre}
       NEXT_PUBLIC_BUILD_ID: ${BUILD_ID:-dev}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}

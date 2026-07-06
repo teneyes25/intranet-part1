@@ -53,7 +53,7 @@ export async function GET() {
     {
       status: healthy ? "healthy" : "degraded",
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version ?? "0.1.0",
+      version: process.env.APP_VERSION ?? process.env.npm_package_version ?? "0.1.0",
       buildId: process.env.BUILD_ID ?? process.env.NEXT_PUBLIC_BUILD_ID ?? "dev",
       pilotMode: process.env.PILOT_MODE === "true",
       pilotModules: getVisiblePilotModuleKeys(),
