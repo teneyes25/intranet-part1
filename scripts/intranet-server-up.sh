@@ -8,18 +8,58 @@ HTTP_PORT="${HTTP_PORT:-8080}"
 ENV_FILE=".env.production"
 
 detect_lan_ip() {
-  # 사설망 IP 우선 (192.168/10/172.16-31), 없으면 hostname -I 첫 주소
+  # 사설망 IP 우선. INTRANET_LAN_IP 가 있으면 강제 사용 (권장: 사무실 PC의 실제 IP)
+  if [[ -n "${INTRANET_LAN_IP:-}" ]]; then
+    echo "${INTRANET_LAN_IP}"
+    return 0
+  fi
   local ip
+  # 사무실 LAN 에서 흔한 대역을 먼저 고른다 (192.168 / 10.x).
+  # Cursor Cloud Agent 의 172.30.0.x 는 사용자 PC 브라우저에서 접속 불가.
   ip="$(hostname -I 2>/dev/null | tr ' ' '\n' | while read -r cand; do
     case "$cand" in
       127.*|::*) ;;
-      192.168.*|10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) echo "$cand"; break ;;
+      192.168.*|10.*) echo "$cand"; break ;;
     esac
   done)"
+  if [[ -z "${ip}" ]]; then
+    ip="$(hostname -I 2>/dev/null | tr ' ' '\n' | while read -r cand; do
+      case "$cand" in
+        127.*|::*|172.17.*|172.18.*|172.19.*) ;;
+        172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) echo "$cand"; break ;;
+      esac
+    done)"
+  fi
   if [[ -z "${ip}" ]]; then
     ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
   fi
   echo "${ip:-127.0.0.1}"
+}
+
+warn_if_not_office_lan() {
+  local ip="$1"
+  case "$ip" in
+    192.168.*|10.*)
+      return 0
+      ;;
+  esac
+  if [[ -n "${CURSOR_AGENT:-}" ]] || [[ "${ip}" == 172.30.* ]]; then
+    cat <<EOF >&2
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[경고] 지금 IP(${ip})는 Cursor Cloud Agent 내부 주소일 수 있습니다.
+  → 직원 PC 브라우저에서는 http://${ip}:${HTTP_PORT} 로 접속되지 않습니다.
+
+직원용 인트라넷 서버는 **사무실에 있는 실제 PC**에서 실행하세요:
+  1) 그 PC에서 Docker Desktop/Engine 설치·실행
+  2) git clone 후:  INTRANET_LAN_IP=<사무실PC의_IPv4> bash scripts/intranet-server-up.sh
+  3) 직원 접속: http://<사무실PC의_IPv4>:${HTTP_PORT}
+
+사무실 PC IP 확인 (Windows): ipconfig
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+EOF
+  fi
 }
 
 DOCKER=(docker)
@@ -95,7 +135,18 @@ EOF
 
 ensure_docker
 LAN_IP="$(detect_lan_ip)"
+warn_if_not_office_lan "${LAN_IP}"
 write_env_if_missing "${LAN_IP}"
+
+# 사무실 PC IP를 명시하면 기존 .env.production 의 URL도 갱신
+if [[ -n "${INTRANET_LAN_IP:-}" && -f "${ENV_FILE}" ]]; then
+  _base="http://${LAN_IP}:${HTTP_PORT}"
+  if ! grep -q "^NEXTAUTH_URL=${_base}$" "${ENV_FILE}"; then
+    echo "[intranet-server] updating NEXTAUTH_URL/ALLOWED_ORIGINS → ${_base}"
+    sed -i "s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=${_base}|" "${ENV_FILE}"
+    sed -i "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=${_base},http://localhost:${HTTP_PORT},http://127.0.0.1:${HTTP_PORT}|" "${ENV_FILE}"
+  fi
+fi
 
 COMPOSER=("${DOCKER[@]}" compose --env-file "${ENV_FILE}")
 # Docker bridge가 막힌 환경(중첩 컨테이너 등)에서는 host 네트워크 폴백
