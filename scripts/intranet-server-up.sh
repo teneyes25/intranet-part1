@@ -97,23 +97,54 @@ ensure_docker
 LAN_IP="$(detect_lan_ip)"
 write_env_if_missing "${LAN_IP}"
 
+COMPOSER=("${DOCKER[@]}" compose --env-file "${ENV_FILE}")
+# Docker bridge가 막힌 환경(중첩 컨테이너 등)에서는 host 네트워크 폴백
+COMPOSE_FILES=(-f docker-compose.yml)
+MODE="${INTRANET_COMPOSE_MODE:-auto}" # auto | bridge | host
+
+start_stack() {
+  local mode="$1"
+  if [[ "${mode}" == "host" ]]; then
+    COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.host.yml)
+    echo "[intranet-server] using host-network compose (app :3001, nginx :${HTTP_PORT})"
+  else
+    COMPOSE_FILES=(-f docker-compose.yml)
+    echo "[intranet-server] using bridge compose (nginx :${HTTP_PORT})"
+  fi
+  "${DOCKER[@]}" compose "${COMPOSE_FILES[@]}" --env-file "${ENV_FILE}" down --remove-orphans >/dev/null 2>&1 || true
+  "${DOCKER[@]}" compose "${COMPOSE_FILES[@]}" --env-file "${ENV_FILE}" up -d --build
+}
+
+wait_health() {
+  local ok=0
+  for _ in $(seq 1 90); do
+    if curl -sf "http://127.0.0.1:${HTTP_PORT}/api/health" >/tmp/intranet-health.json 2>/dev/null; then
+      ok=1
+      break
+    fi
+    sleep 2
+  done
+  return $((1 - ok))
+}
+
 echo "[intranet-server] building & starting (HTTP :${HTTP_PORT}, LAN ${LAN_IP})..."
-"${DOCKER[@]}" compose --env-file "${ENV_FILE}" up -d --build
+if [[ "${MODE}" == "host" ]]; then
+  start_stack host
+elif [[ "${MODE}" == "bridge" ]]; then
+  start_stack bridge
+else
+  start_stack bridge
+  if ! wait_health; then
+    echo "[intranet-server] bridge mode unhealthy — falling back to host network"
+    start_stack host
+  fi
+fi
 
 echo "[intranet-server] waiting for health..."
-ok=0
-for _ in $(seq 1 90); do
-  if curl -sf "http://127.0.0.1:${HTTP_PORT}/api/health" >/tmp/intranet-health.json 2>/dev/null; then
-    ok=1
-    break
-  fi
-  sleep 2
-done
-
-if [[ "${ok}" -ne 1 ]]; then
+if ! wait_health; then
   echo "[intranet-server] health check failed" >&2
-  "${DOCKER[@]}" compose --env-file "${ENV_FILE}" ps >&2 || true
-  "${DOCKER[@]}" compose --env-file "${ENV_FILE}" logs --tail=80 app nginx >&2 || true
+  "${DOCKER[@]}" compose "${COMPOSE_FILES[@]}" --env-file "${ENV_FILE}" ps >&2 || true
+  "${DOCKER[@]}" compose "${COMPOSE_FILES[@]}" --env-file "${ENV_FILE}" logs --tail=80 app nginx >&2 || true
   exit 1
 fi
 
