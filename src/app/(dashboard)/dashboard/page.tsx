@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Bot,
   Pin,
+  CalendarDays,
 } from "lucide-react";
 
 import {
@@ -30,9 +31,15 @@ import { PageLayoutRenderer } from "@/features/page-layout/components/layout-ren
 import { getPageLayout } from "@/features/page-layout/service";
 import type { DashboardLayoutConfig } from "@/features/customize/types";
 import { getVisibleNavGroups } from "@/config/navigation";
-import { formatDate } from "@/features/board/utils";
+import { formatDate, formatDateTime } from "@/features/board/utils";
+import {
+  getBoardByKey,
+  listScheduleEvents,
+  SCHEDULE_BOARD_KEY,
+} from "@/features/board/queries";
 import { requireUser } from "@/lib/auth/session";
 import { ROLE_LABELS } from "@/lib/auth/roles";
+import { canAccessBoard } from "@/lib/auth/access";
 
 export const metadata: Metadata = {
   title: "홈",
@@ -44,12 +51,14 @@ function isWidgetVisible(layout: DashboardLayoutConfig, id: string) {
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [data, settings, bannerLayout, dashboardLayout] = await Promise.all([
-    getDashboardData(),
-    getSiteSettings(),
-    getPageLayout("banner", user.dealerId),
-    getPageLayout("dashboard", user.dealerId),
-  ]);
+  const [data, settings, bannerLayout, dashboardLayout, scheduleBoard] =
+    await Promise.all([
+      getDashboardData(),
+      getSiteSettings(),
+      getPageLayout("banner", user.dealerId),
+      getPageLayout("dashboard", user.dealerId),
+      getBoardByKey(SCHEDULE_BOARD_KEY),
+    ]);
   const layout = mergeDashboardLayoutForRole(
     user.role,
     parseDashboardLayout(settings.dashboardLayout),
@@ -58,6 +67,22 @@ export default async function DashboardPage() {
   const today = new Intl.DateTimeFormat("ko-KR", { dateStyle: "full" }).format(
     new Date(),
   );
+
+  const showSchedule =
+    !!scheduleBoard && canAccessBoard(user.role, SCHEDULE_BOARD_KEY);
+  let upcomingSchedule: Awaited<ReturnType<typeof listScheduleEvents>> = [];
+  if (showSchedule && scheduleBoard) {
+    const now = new Date();
+    const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59, 999);
+    upcomingSchedule = (
+      await listScheduleEvents({
+        boardId: scheduleBoard.id,
+        role: user.role,
+        rangeStart: now,
+        rangeEnd,
+      })
+    ).slice(0, 5);
+  }
 
   // 빌드된 메뉴(기능)를 역할에 맞춰 전부 노출 — '홈' 자신은 제외
   const featureGroups = getVisibleNavGroups(user.role)
@@ -156,14 +181,73 @@ export default async function DashboardPage() {
           icon={Users}
           href={user.role === "ADMIN" ? "/admin/users" : "/settings"}
         />
-        <StatCard
-          title="댓글"
-          value={`${data.commentCount}건`}
-          hint="전체 누적"
-          icon={MessageSquare}
-          href="/boards/general"
-        />
+        {showSchedule ? (
+          <StatCard
+            title="일정"
+            value={`${upcomingSchedule.length}건`}
+            hint="다가오는 일정 · 달력 보기"
+            icon={CalendarDays}
+            href="/boards/schedule"
+          />
+        ) : (
+          <StatCard
+            title="댓글"
+            value={`${data.commentCount}건`}
+            hint="전체 누적"
+            icon={MessageSquare}
+            href="/boards/general"
+          />
+        )}
       </div>
+      )}
+
+      {showSchedule && (
+        <Card className="border-sky-200/80 bg-gradient-to-r from-sky-50/80 to-card">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarDays className="h-4 w-4 text-sky-700" />
+              일정 달력
+            </CardTitle>
+            <Button asChild variant="default" size="sm">
+              <Link href="/boards/schedule">
+                달력 열기
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {upcomingSchedule.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                등록된 다가오는 일정이 없습니다.{" "}
+                <Link
+                  href="/boards/schedule/new"
+                  className="font-medium text-sky-800 underline-offset-2 hover:underline"
+                >
+                  일정 등록
+                </Link>
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {upcomingSchedule.map((e) => (
+                  <li key={e.id}>
+                    <Link
+                      href={`/boards/schedule/${e.id}`}
+                      className="flex items-center gap-3 py-2.5 text-sm transition-colors hover:bg-sky-50/60"
+                    >
+                      {e.category && (
+                        <Badge variant="secondary">{e.category}</Badge>
+                      )}
+                      <span className="flex-1 truncate font-medium">{e.title}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {e.startsAt ? formatDateTime(e.startsAt) : formatDate(new Date())}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <div

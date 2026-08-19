@@ -53,9 +53,9 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: "홈", href: "/dashboard", icon: Home },
       { title: "대리점 포털", href: "/dealer-portal", icon: Store, roles: ["DEALER", "ADMIN"] },
+      { title: "일정", href: "/boards/schedule", icon: CalendarDays },
       { title: "공지사항", href: "/boards/notices", icon: Megaphone },
       { title: "게시판", href: "/boards/general", icon: MessageSquare },
-      { title: "일정", href: "/boards/schedule", icon: CalendarDays },
       { title: "뉴스", href: "/boards/news", icon: Newspaper },
     ],
   },
