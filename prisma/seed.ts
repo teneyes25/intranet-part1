@@ -48,15 +48,16 @@ async function main() {
       role: Role.ADMIN,
       dealerId: null,
     },
+    // e2e·내부 테스트용 (로그인 화면에는 표시하지 않음 — 일반 사용자는 회원가입)
     {
       email: "hq@intranet.local",
-      name: "본사 담당자",
+      name: "본사 사용자",
       role: Role.HEADQUARTER,
       dealerId: null,
     },
     {
       email: "dealer@intranet.local",
-      name: "대리점 담당자",
+      name: "대리점 사용자",
       role: Role.DEALER,
       dealerId: dealer.id,
     },
@@ -299,31 +300,6 @@ async function main() {
       console.log("✅ seeded sample notices posts");
     }
   }
-
-  // Pilot 그룹 멤버 (Phase 6 — E2E·개발용)
-  await prisma.pilotSettings.upsert({
-    where: { id: "default" },
-    update: { isActive: true },
-    create: { id: "default", isActive: true },
-  });
-  const salesGroup = await prisma.pilotGroup.findUnique({ where: { key: "sales" } });
-  const mgmtGroup = await prisma.pilotGroup.findUnique({ where: { key: "mgmt" } });
-  if (mgmtGroup && adminId) {
-    await prisma.pilotGroupMember.upsert({
-      where: { pilotGroupId_userId: { pilotGroupId: mgmtGroup.id, userId: adminId } },
-      update: {},
-      create: { pilotGroupId: mgmtGroup.id, userId: adminId },
-    });
-  }
-  const hq = await prisma.user.findUnique({ where: { email: "hq@intranet.local" } });
-  if (salesGroup && hq) {
-    await prisma.pilotGroupMember.upsert({
-      where: { pilotGroupId_userId: { pilotGroupId: salesGroup.id, userId: hq.id } },
-      update: {},
-      create: { pilotGroupId: salesGroup.id, userId: hq.id },
-    });
-  }
-  console.log("✅ seeded pilot group members");
 }
 
 main()

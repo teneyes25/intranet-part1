@@ -63,11 +63,9 @@ export default async function LoginPage() {
         </p>
 
         <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70 backdrop-blur">
-          <p className="font-medium text-white">데모 계정 (seed)</p>
+          <p className="font-medium text-white">초기 관리자 (seed)</p>
           <ul className="mt-1 space-y-0.5">
-            <li>admin@intranet.local · 관리자</li>
-            <li>hq@intranet.local · 본사</li>
-            <li>dealer@intranet.local · 대리점</li>
+            <li>admin@intranet.local</li>
             <li>비밀번호: password1234</li>
           </ul>
         </div>

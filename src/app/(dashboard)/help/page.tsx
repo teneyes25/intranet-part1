@@ -4,11 +4,9 @@ import {
   BookOpen,
   Bot,
   FileCheck2,
-  FlaskConical,
   HelpCircle,
   Megaphone,
   PlayCircle,
-  Rocket,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -21,7 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { isPilotUser } from "@/features/pilot/pilot-service";
 import { requireUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -58,14 +55,6 @@ const SECTIONS = [
   },
 ];
 
-const PILOT_QUICK_START = [
-  "1. 대시보드에서 주요 지표·최근 공지를 확인합니다.",
-  "2. 공지사항·게시판에서 글을 읽고 댓글을 남겨 봅니다.",
-  "3. 전자결재 → 새 기안서 작성 → AI 기안 지원을 사용해 봅니다.",
-  "4. AI 에이전트에서 사내 자료 검색 질의를 테스트합니다.",
-  "5. 상단 Pilot 배너 → 피드백 폼으로 의견을 제출합니다.",
-];
-
 const VIDEO_PLACEHOLDERS = [
   { title: "로그인 & 대시보드 둘러보기", duration: "2:30" },
   { title: "전자결재 기안·결재 흐름", duration: "3:15" },
@@ -74,42 +63,10 @@ const VIDEO_PLACEHOLDERS = [
 
 export default async function HelpPage() {
   const user = await requireUser();
-  const isPilot = await isPilotUser(user.id);
 
   return (
     <div>
       <PageHeader title="헬프 센터" description="인트라넷 주요 기능 사용법" />
-
-      {isPilot && (
-        <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FlaskConical className="h-4 w-4 text-amber-600" />
-              Pilot Quick Start
-              <Badge variant="secondary">Pilot</Badge>
-            </CardTitle>
-            <CardDescription>본사 Pilot 테스트 참여자용 빠른 시작 가이드</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-              {PILOT_QUICK_START.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild size="sm">
-                <Link href="/feedback">
-                  <Rocket className="h-4 w-4" />
-                  Pilot 피드백 제출
-                </Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/dashboard">대시보드로 이동</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="mb-6 rounded-xl border bg-muted/30 p-4 text-sm">
         <p className="flex items-center gap-2 font-medium">
@@ -133,37 +90,35 @@ export default async function HelpPage() {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-base">본사 정식 배포 교육 자료</CardTitle>
-          <CardDescription>Phase 7 Rollout — 전 직원 온보딩 체크리스트</CardDescription>
+          <CardTitle className="text-base">온보딩 체크리스트</CardTitle>
+          <CardDescription>신규 직원 시작 가이드</CardDescription>
         </CardHeader>
         <CardContent>
           <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-            <li>로그인 후 비밀번호 변경 (최초 1회 필수)</li>
+            <li>회원가입 후 관리자 승인 · 로그인</li>
+            <li>최초 로그인 시 비밀번호 변경</li>
             <li>대시보드·공지사항·게시판 둘러보기</li>
             <li>전자결재 기안·결재 흐름 실습</li>
-            <li>AI 에이전트 사내 자료 검색 테스트</li>
             <li>문제 발생 시 관리자 또는 IT 헬프데스크 연락</li>
           </ol>
         </CardContent>
       </Card>
 
-      {isPilot && (
-        <div className="mb-6">
-          <h3 className="mb-3 text-sm font-semibold">교육 동영상 (준비 중)</h3>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {VIDEO_PLACEHOLDERS.map((v) => (
-              <Card key={v.title} className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-                  <PlayCircle className="h-10 w-10 text-muted-foreground/50" />
-                  <p className="text-sm font-medium">{v.title}</p>
-                  <Badge variant="outline">{v.duration}</Badge>
-                  <p className="text-xs text-muted-foreground">영상 업로드 예정</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <div className="mb-6">
+        <h3 className="mb-3 text-sm font-semibold">교육 동영상 (준비 중)</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {VIDEO_PLACEHOLDERS.map((v) => (
+            <Card key={v.title} className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+                <PlayCircle className="h-10 w-10 text-muted-foreground/50" />
+                <p className="text-sm font-medium">{v.title}</p>
+                <Badge variant="outline">{v.duration}</Badge>
+                <p className="text-xs text-muted-foreground">영상 업로드 예정</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      )}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {SECTIONS.map((s) => {
@@ -196,7 +151,7 @@ export default async function HelpPage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             <p>
-              사용자 승인, 커스터마이징, Pilot 관리, 활동 로그는 ADMIN 메뉴에서
+              회원가입 승인, 역할 지정, 커스터마이징, 활동 로그는 ADMIN 메뉴에서
               관리합니다.
             </p>
           </CardContent>

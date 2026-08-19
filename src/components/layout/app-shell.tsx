@@ -10,10 +10,8 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarContent } from "@/components/layout/sidebar-content";
 import { Topbar } from "@/components/layout/topbar";
-import { PilotBanner } from "@/components/pilot/pilot-banner";
 import { EmergencyBanner } from "@/components/emergency/emergency-banner";
 import type { BrandingConfig } from "@/components/branding/branding-head";
-import type { PilotBannerConfig } from "@/features/pilot/types";
 import type { Role } from "@/lib/auth/roles";
 
 const STORAGE_KEY = "intranet:sidebar-collapsed";
@@ -25,7 +23,6 @@ interface AppShellProps {
     role: Role;
   };
   branding?: BrandingConfig;
-  pilotBanner?: PilotBannerConfig;
   emergencyNotice?: {
     id: string;
     title: string;
@@ -35,7 +32,7 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export function AppShell({ user, branding, pilotBanner, emergencyNotice, children }: AppShellProps) {
+export function AppShell({ user, branding, emergencyNotice, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -96,7 +93,6 @@ export function AppShell({ user, branding, pilotBanner, emergencyNotice, childre
                 isAdmin={emergencyNotice.isAdmin}
               />
             )}
-            {pilotBanner && <PilotBanner config={pilotBanner} />}
             {children}
           </div>
         </main>

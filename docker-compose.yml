@@ -71,7 +71,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PRISMA_MIGRATE_DEPLOY: ${PRISMA_MIGRATE_DEPLOY:-true}
       PRISMA_ACCEPT_DATA_LOSS: ${PRISMA_ACCEPT_DATA_LOSS:-false}
-      # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED, PILOT_MODE → .env.production (env_file)
+      # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED → .env.production (env_file)
       BEHIND_NGINX: "true"
       # CLAMAV_HOST: ${CLAMAV_HOST:-}
     volumes:
