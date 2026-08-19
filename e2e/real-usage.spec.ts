@@ -1,5 +1,5 @@
 /**
- * Day 36 — 실사용 테스트 (PILOT_MODE=true, RUN_DEMO_SEED=true)
+ * Day 36 — 실사용 테스트
  * docker compose up -d 후: npm run test:real-usage
  */
 import { test, expect } from "@playwright/test";
@@ -74,11 +74,6 @@ test.describe("Day 36 Real usage — core flows", () => {
 
     await page.goto("/admin/monitoring");
     await expect(page.getByRole("heading", { name: "실시간 모니터링" })).toBeVisible();
-  });
-
-  test("Pilot banner visible when PILOT_MODE=true", async ({ page }) => {
-    await loginAsAdmin(page);
-    await expect(page.getByText("Pilot 테스트 기간")).toBeVisible({ timeout: 10000 });
   });
 });
 
