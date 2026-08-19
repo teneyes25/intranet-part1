@@ -1,0 +1,48 @@
+# Host-network fallback when Docker bridge networking is unavailable.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.host.yml --env-file .env.production up -d
+#
+# - Nginx: host :HTTP_PORT (default 8080)
+# - App:   host :3001 (avoids host :3000)
+# - DB/Redis: localhost only (not LAN-exposed via compose ports)
+
+services:
+  db:
+    network_mode: host
+    ports: !reset []
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-intranet} -d ${POSTGRES_DB:-intranet}",
+        ]
+
+  redis:
+    network_mode: host
+    ports: !reset []
+    command: redis-server --appendonly yes --bind 127.0.0.1 --port 6379
+
+  app:
+    network_mode: host
+    ports: !reset []
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-intranet}:${POSTGRES_PASSWORD:-intranet_pw}@127.0.0.1:5432/${POSTGRES_DB:-intranet}?schema=public"
+      REDIS_URL: redis://127.0.0.1:6379
+      PORT: "3001"
+      # Nginx(localhost)만 접근 — LAN에는 8080만 공개
+      HOSTNAME: "127.0.0.1"
+      BEHIND_NGINX: "true"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+
+  nginx:
+    network_mode: host
+    ports: !reset []
+    volumes:
+      - ./nginx/nginx.host.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/security-headers.conf:/etc/nginx/conf.d/security-headers.conf:ro
