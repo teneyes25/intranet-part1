@@ -129,6 +129,13 @@ async function main() {
       categories: ["카탈로그", "사양서", "가격표", "교육자료"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
     },
+    {
+      key: "schedule",
+      name: "일정",
+      description: "사내 일정·회의·마감을 달력으로 확인합니다",
+      categories: ["회의", "행사", "마감", "기타"],
+      writeRoles: [],
+    },
   ];
 
   for (const b of boards) {

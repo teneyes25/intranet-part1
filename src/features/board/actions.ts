@@ -40,6 +40,35 @@ function pickFiles(formData: FormData): File[] {
     .filter((f): f is File => f instanceof File && f.size > 0);
 }
 
+/** 일정 게시판 시작/종료 시각 파싱. 일반 보드는 null. */
+function parseScheduleDates(
+  boardKey: string,
+  formData: FormData,
+): { error?: string; startsAt?: Date | null; endsAt?: Date | null } {
+  if (boardKey !== "schedule") {
+    return { startsAt: null, endsAt: null };
+  }
+
+  const startsRaw = String(formData.get("startsAt") ?? "").trim();
+  if (!startsRaw) return { error: "일정 시작 일시를 입력하세요." };
+  const startsAt = new Date(startsRaw);
+  if (Number.isNaN(startsAt.getTime())) {
+    return { error: "일정 시작 일시가 올바르지 않습니다." };
+  }
+
+  const endsRaw = String(formData.get("endsAt") ?? "").trim();
+  if (!endsRaw) return { startsAt, endsAt: null };
+
+  const endsAt = new Date(endsRaw);
+  if (Number.isNaN(endsAt.getTime())) {
+    return { error: "일정 종료 일시가 올바르지 않습니다." };
+  }
+  if (endsAt.getTime() < startsAt.getTime()) {
+    return { error: "종료 일시는 시작 일시 이후여야 합니다." };
+  }
+  return { startsAt, endsAt };
+}
+
 async function saveAll(
   files: File[],
   audit?: { userId?: string },
@@ -85,6 +114,9 @@ export async function createPostAction(
   const rawCat = String(formData.get("category") ?? "");
   const category = rawCat && board.categories.includes(rawCat) ? rawCat : null;
 
+  const schedule = parseScheduleDates(boardKey, formData);
+  if (schedule.error) return { error: schedule.error };
+
   const files = pickFiles(formData);
   if (files.length > MAX_FILES) {
     return { error: `첨부파일은 최대 ${MAX_FILES}개까지 가능합니다.` };
@@ -106,6 +138,8 @@ export async function createPostAction(
         title,
         content: sanitizeRichText(contentRaw),
         category,
+        startsAt: schedule.startsAt ?? null,
+        endsAt: schedule.endsAt ?? null,
         attachments: {
           create: saved.map((s) => ({
             filename: s.filename,
@@ -183,6 +217,9 @@ export async function updatePostAction(
   const category =
     rawCat && post.board.categories.includes(rawCat) ? rawCat : null;
 
+  const schedule = parseScheduleDates(post.board.key, formData);
+  if (schedule.error) return { error: schedule.error };
+
   const removeIds = new Set(
     formData.getAll("removeAttachmentIds").map((v) => String(v)),
   );
@@ -209,6 +246,8 @@ export async function updatePostAction(
           title,
           content: sanitizeRichText(contentRaw),
           category,
+          startsAt: schedule.startsAt ?? null,
+          endsAt: schedule.endsAt ?? null,
         },
       }),
       ...(toRemove.length

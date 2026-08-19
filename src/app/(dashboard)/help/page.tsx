@@ -28,10 +28,11 @@ export const metadata: Metadata = {
 const SECTIONS = [
   {
     icon: Megaphone,
-    title: "게시판 · 공지",
+    title: "게시판 · 공지 · 일정",
     items: [
       "공지사항은 상단 고정 글이 먼저 표시됩니다.",
       "일반 게시판에서 글 작성·수정·삭제가 가능합니다 (본인 글 또는 ADMIN).",
+      "일정 게시판은 달력으로 회의·행사·마감을 확인할 수 있습니다.",
       "뉴스 게시판은 AI가 매일 09:00에 자동 수집합니다.",
     ],
   },

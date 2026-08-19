@@ -232,6 +232,7 @@ export async function unifiedSearch(
     news: ["news"],
     pr: ["pr"],
     products: ["products"],
+    schedule: ["schedule"],
   };
 
   if (source === "all") {
