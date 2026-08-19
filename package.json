@@ -25,6 +25,7 @@
     "test:real-usage": "playwright test e2e/real-usage.spec.ts",
     "test:ui-upgrade": "playwright test e2e/ui-upgrade.spec.ts",
     "docker:sync": "node scripts/docker-sync.mjs",
+    "office:up": "bash scripts/office-server-up.sh",
     "postinstall": "prisma generate"
   },
   "prisma": {

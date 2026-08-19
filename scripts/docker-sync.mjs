@@ -6,7 +6,7 @@
  * Cloud Agent / 중첩 Docker 에서는 host-network compose 를 자동 감지한다.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -14,6 +14,23 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const buildId = `${Date.now().toString(36)}`;
 const envFile = path.join(root, ".env.production");
 const hostOverlay = path.join(root, "docker-compose.host.yml");
+
+/** INTRANET_LAN_IP 가 있으면 .env.production 의 공개 URL을 맞춘다. */
+function applyLanIpToEnv() {
+  const lanIp = process.env.INTRANET_LAN_IP?.trim();
+  if (!lanIp || !existsSync(envFile)) return null;
+  const httpPort = process.env.HTTP_PORT?.trim() || "8080";
+  const base = `http://${lanIp}:${httpPort}`;
+  let text = readFileSync(envFile, "utf8");
+  text = text.replace(/^NEXTAUTH_URL=.*$/m, `NEXTAUTH_URL=${base}`);
+  text = text.replace(
+    /^ALLOWED_ORIGINS=.*$/m,
+    `ALLOWED_ORIGINS=${base},http://localhost:${httpPort},http://127.0.0.1:${httpPort}`,
+  );
+  writeFileSync(envFile, text, "utf8");
+  console.log(`[docker-sync] NEXTAUTH_URL → ${base}`);
+  return base;
+}
 
 function detectComposeArgs() {
   const args = ["compose"];
@@ -157,8 +174,10 @@ ON CONFLICT (key) DO UPDATE SET
 
 
 async function main() {
+  const lanBase = applyLanIpToEnv();
   const { args: composeBase, useHost } = detectComposeArgs();
   console.log("=== Docker sync → http://127.0.0.1:8080 ===");
+  if (lanBase) console.log(`LAN URL: ${lanBase}`);
   console.log(`BUILD_ID=${buildId} (캐시 버스트)`);
   console.log(`compose mode: ${useHost ? "host" : "bridge"}`);
 
@@ -199,7 +218,8 @@ async function main() {
   }
 
   console.log("\n✓ 배포 완료. 브라우저에서 Ctrl+Shift+R 또는 시크릿 창으로 확인하세요.");
-  console.log(`  http://127.0.0.1:8080/boards/schedule`);
+  console.log(`  local: http://127.0.0.1:8080/boards/schedule`);
+  if (lanBase) console.log(`  LAN:   ${lanBase}/boards/schedule`);
   console.log(`  BUILD_ID=${buildId}`);
 }
 
