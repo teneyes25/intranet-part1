@@ -78,6 +78,17 @@ export const authOptions: NextAuthOptions = {
           success: true,
         });
 
+        // 시스템 관리자 로그인 시 뉴스 자동 수집 (1일 1회, 비동기)
+        if (user.role === "ADMIN") {
+          void import("@/lib/news/scheduler")
+            .then(({ triggerNewsCollectOnAdminLogin }) => {
+              triggerNewsCollectOnAdminLogin(user.id);
+            })
+            .catch((e) =>
+              console.error("[news-auto] 로그인 트리거 실패:", e),
+            );
+        }
+
         return {
           id: user.id,
           email: user.email,

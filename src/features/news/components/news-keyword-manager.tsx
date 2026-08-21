@@ -23,7 +23,7 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          등록 {keywords.length}/{MAX_NEWS_KEYWORDS} · 게시 카테고리: 자동수집 · 매일 09:00 KST
+          등록 {keywords.length}/{MAX_NEWS_KEYWORDS} · 게시 카테고리: 자동수집 · 관리자 로그인 시 1일 1회
         </p>
         <Button
           variant="outline"

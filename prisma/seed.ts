@@ -119,7 +119,7 @@ async function main() {
     {
       key: "news",
       name: "뉴스",
-      description: "매일 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
+      description: "관리자 로그인 시 하루 1회 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
       categories: ["자동수집", "건설", "유통", "소비재", "프랜차이즈", "AI", "경제"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
     },

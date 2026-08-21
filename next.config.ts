@@ -10,7 +10,6 @@ const nextConfig: NextConfig = {
     "onnxruntime-node",
     "sharp",
     "ioredis",
-    "node-cron",
   ],
   experimental: {
     serverActions: {

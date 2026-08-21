@@ -15,7 +15,7 @@ export default async function AdminNewsKeywordsPage() {
     <div className="space-y-6">
       <PageHeader
         title="뉴스 키워드 관리"
-        description="최대 50개 키워드를 등록하면 AI 에이전트가 매일 선정·검색·요약합니다."
+        description="키워드를 등록하면 시스템 관리자 로그인 시 하루 1회 AI가 선정·검색·요약합니다."
       />
       <NewsKeywordManager keywords={keywords} />
     </div>
