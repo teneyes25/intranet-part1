@@ -11,19 +11,19 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminUsersPage() {
-  await requireRole(["ADMIN"]);
+  const admin = await requireRole(["ADMIN"]);
   const users = await listUsers();
 
   return (
     <div>
       <PageHeader
         title="사용자 관리"
-        description="시스템 사용자·가입 승인·CSV 대량 등록"
+        description="가입 승인·비밀번호 초기화·활성화/비활성화·강제 탈퇴·CSV 대량 등록"
       />
       <div className="mb-6">
         <BulkUserImportPanel />
       </div>
-      <UserTable users={users} />
+      <UserTable users={users} currentUserId={admin.id} />
     </div>
   );
 }

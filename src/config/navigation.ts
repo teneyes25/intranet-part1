@@ -22,6 +22,8 @@ import {
   Rocket,
   ShoppingCart,
   CalendarDays,
+  BookMarked,
+  PanelsTopLeft,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/auth/roles";
@@ -55,6 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { title: "대리점 포털", href: "/dealer-portal", icon: Store, roles: ["DEALER", "ADMIN"] },
       { title: "일정", href: "/boards/schedule", icon: CalendarDays },
       { title: "공지사항", href: "/boards/notices", icon: Megaphone },
+      { title: "사규", href: "/boards/regulations", icon: BookMarked },
       { title: "게시판", href: "/boards/general", icon: MessageSquare },
       { title: "뉴스", href: "/boards/news", icon: Newspaper },
     ],
@@ -98,6 +101,12 @@ export const NAV_GROUPS: NavGroup[] = [
     roles: ["ADMIN"],
     items: [
       { title: "사용자 관리", href: "/admin/users", icon: Users, roles: ["ADMIN"] },
+      {
+        title: "게시판 관리",
+        href: "/admin/boards",
+        icon: PanelsTopLeft,
+        roles: ["ADMIN"],
+      },
       { title: "대리점 관리", href: "/admin/dealers", icon: Store, roles: ["ADMIN"] },
       { title: "Rollout", href: "/admin/rollout", icon: Rocket, roles: ["ADMIN"] },
       { title: "뉴스 키워드", href: "/admin/news-keywords", icon: Newspaper, roles: ["ADMIN"] },

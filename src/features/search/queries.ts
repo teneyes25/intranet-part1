@@ -228,6 +228,7 @@ export async function unifiedSearch(
 
   const boardMap: Record<string, string[] | undefined> = {
     notices: ["notices"],
+    regulations: ["regulations"],
     general: ["general"],
     news: ["news"],
     pr: ["pr"],

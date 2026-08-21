@@ -144,6 +144,13 @@ async function main() {
       categories: ["회의", "행사", "마감", "기타"],
       writeRoles: [],
     },
+    {
+      key: "regulations",
+      name: "사규",
+      description: "사내 규정·지침·가이드라인",
+      categories: ["취업규칙", "복무", "인사", "보안", "기타"],
+      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+    },
   ];
 
   for (const b of boards) {

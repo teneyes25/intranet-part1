@@ -1,6 +1,7 @@
 export const SEARCH_SOURCES = [
   { key: "all", label: "전체" },
   { key: "notices", label: "공지사항" },
+  { key: "regulations", label: "사규" },
   { key: "general", label: "게시판" },
   { key: "news", label: "뉴스" },
   { key: "pr", label: "홍보실" },

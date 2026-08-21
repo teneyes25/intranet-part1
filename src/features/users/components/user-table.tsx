@@ -1,30 +1,39 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import type { UserListItem } from "@/features/users/services/user-service";
 import {
   approveUserAction,
+  forceDeleteUserAction,
+  forceWithdrawUserAction,
   rejectUserAction,
+  resetUserPasswordAction,
+  toggleUserActiveAction,
 } from "@/features/users/actions";
 
 interface UserTableProps {
   users: UserListItem[];
+  currentUserId: string;
 }
 
-export function UserTable({ users }: UserTableProps) {
+export function UserTable({ users, currentUserId }: UserTableProps) {
   const pending = users.filter((u) => u.approvalStatus === "PENDING");
   const others = users.filter((u) => u.approvalStatus !== "PENDING");
 
   return (
     <div className="space-y-6">
-      {pending.length > 0 && (
-        <PendingSection users={pending} />
-      )}
-      <UserListTable users={others} title="전체 사용자" />
+      {pending.length > 0 && <PendingSection users={pending} />}
+      <UserListTable
+        users={others}
+        title="전체 사용자"
+        currentUserId={currentUserId}
+        showManage
+      />
     </div>
   );
 }
@@ -44,11 +53,16 @@ function UserListTable({
   users,
   title,
   showActions = false,
+  showManage = false,
+  currentUserId,
 }: {
   users: UserListItem[];
   title?: string;
   showActions?: boolean;
+  showManage?: boolean;
+  currentUserId?: string;
 }) {
+  const colSpan = showActions || showManage ? 6 : 5;
   return (
     <div className="overflow-hidden rounded-lg border">
       {title && (
@@ -65,7 +79,7 @@ function UserListTable({
               <th className="px-4 py-3 font-medium">권한</th>
               <th className="px-4 py-3 font-medium">소속</th>
               <th className="px-4 py-3 font-medium">상태</th>
-              {showActions && (
+              {(showActions || showManage) && (
                 <th className="px-4 py-3 font-medium">처리</th>
               )}
             </tr>
@@ -74,7 +88,7 @@ function UserListTable({
             {users.length === 0 && (
               <tr>
                 <td
-                  colSpan={showActions ? 6 : 5}
+                  colSpan={colSpan}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   사용자가 없습니다.
@@ -101,6 +115,14 @@ function UserListTable({
                     <ApprovalButtons userId={u.id} />
                   </td>
                 )}
+                {showManage && (
+                  <td className="px-4 py-3">
+                    <ManageButtons
+                      user={u}
+                      isSelf={u.id === currentUserId}
+                    />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -118,7 +140,9 @@ function StatusBadge({ user }: { user: UserListItem }) {
   }
   if (user.approvalStatus === "REJECTED") {
     return (
-      <span className="text-xs font-medium text-destructive">반려됨</span>
+      <span className="text-xs font-medium text-destructive">
+        {user.isActive ? "반려됨" : "탈퇴/반려"}
+      </span>
     );
   }
   return (
@@ -162,6 +186,101 @@ function ApprovalButtons({ userId }: { userId: string }) {
       >
         반려
       </Button>
+    </div>
+  );
+}
+
+function ManageButtons({
+  user,
+  isSelf,
+}: {
+  user: UserListItem;
+  isSelf: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [lastTemp, setLastTemp] = useState<string | null>(null);
+
+  function run(
+    fn: () => Promise<{ ok?: boolean; error?: string; tempPassword?: string }>,
+    confirmMsg?: string,
+  ) {
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    startTransition(async () => {
+      const r = await fn();
+      if (r.error) {
+        toast.error(r.error);
+        return;
+      }
+      if (r.tempPassword) {
+        setLastTemp(r.tempPassword);
+        toast.success(`임시 비밀번호: ${r.tempPassword}`);
+      } else {
+        toast.success("처리되었습니다.");
+      }
+    });
+  }
+
+  return (
+    <div className="flex min-w-[14rem] flex-col gap-1">
+      <div className="flex flex-wrap gap-1">
+        {user.approvalStatus === "APPROVED" && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() =>
+              run(
+                () => resetUserPasswordAction(user.id),
+                `${user.name} 님의 비밀번호를 초기화할까요?`,
+              )
+            }
+          >
+            {pending && <Loader2 className="h-3 w-3 animate-spin" />}
+            비번 초기화
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending || isSelf}
+          onClick={() =>
+            run(() => toggleUserActiveAction(user.id, !user.isActive))
+          }
+        >
+          {user.isActive ? "비활성화" : "활성화"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending || isSelf}
+          onClick={() =>
+            run(
+              () => forceWithdrawUserAction(user.id),
+              `${user.name} 님을 강제 탈퇴(비활성) 처리할까요?`,
+            )
+          }
+        >
+          강제탈퇴
+        </Button>
+        <Button
+          size="sm"
+          variant="destructive"
+          disabled={pending || isSelf}
+          onClick={() =>
+            run(
+              () => forceDeleteUserAction(user.id),
+              `${user.name} 계정을 완전 삭제할까요? (이력 없으면만 가능)`,
+            )
+          }
+        >
+          삭제
+        </Button>
+      </div>
+      {lastTemp && (
+        <p className="text-[11px] text-muted-foreground">
+          최근 임시 비번: <code className="font-mono">{lastTemp}</code>
+        </p>
+      )}
     </div>
   );
 }

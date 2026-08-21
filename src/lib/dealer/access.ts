@@ -20,9 +20,24 @@ export function canAccessFeature(role: Role, featureKey: string): boolean {
 /** 역할별 읽기 가능 게시판 */
 export function getReadableBoardKeys(role: Role): string[] {
   if (hasMinRole(role, "HEADQUARTER")) {
-    return ["notices", "general", "news", "products", "pr", "schedule"];
+    return [
+      "notices",
+      "regulations",
+      "general",
+      "news",
+      "products",
+      "pr",
+      "schedule",
+    ];
   }
-  return ["notices", "general", "news", "products", "schedule"];
+  return [
+    "notices",
+    "regulations",
+    "general",
+    "news",
+    "products",
+    "schedule",
+  ];
 }
 
 /** 대리점 사용자 데이터 스코프 — 본사/ADMIN 은 null (전체) */
