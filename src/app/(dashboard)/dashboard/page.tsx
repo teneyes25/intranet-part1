@@ -40,6 +40,7 @@ import {
 import { requireUser } from "@/lib/auth/session";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { canAccessBoard } from "@/lib/auth/access";
+import { BrandExternalLinks } from "@/features/dashboard/components/brand-external-links";
 
 export const metadata: Metadata = {
   title: "홈",
@@ -105,6 +106,8 @@ export default async function DashboardPage() {
           <p className="text-muted-foreground">{today}</p>
         </div>
       </div>
+
+      <BrandExternalLinks />
 
       {dashboardLayout?.html && dashboardLayout.isPublished ? (
         <PageLayoutRenderer
