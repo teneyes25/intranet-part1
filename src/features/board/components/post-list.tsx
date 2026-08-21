@@ -11,6 +11,7 @@ export interface PostRow {
   isPinned: boolean;
   viewCount: number;
   createdAt: string | Date;
+  startsAt?: string | Date | null;
   author: { name: string };
   _count: { comments: number; attachments: number };
 }
@@ -29,6 +30,8 @@ export function PostList({
       </div>
     );
   }
+
+  const isSchedule = boardKey === "schedule";
 
   return (
     <ul className="surface-card overflow-hidden divide-y divide-border/50">
@@ -63,7 +66,9 @@ export function PostList({
               {p.author.name}
             </span>
             <span className="hidden w-24 text-right text-xs text-muted-foreground md:block">
-              {formatDate(p.createdAt)}
+              {formatDate(
+                isSchedule && p.startsAt ? p.startsAt : p.createdAt,
+              )}
             </span>
           </Link>
         </li>
@@ -71,3 +76,4 @@ export function PostList({
     </ul>
   );
 }
+

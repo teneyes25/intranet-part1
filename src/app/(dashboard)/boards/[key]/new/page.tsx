@@ -26,8 +26,12 @@ export default async function NewPostPage({
   return (
     <div>
       <PageHeader
-        title={`${board.name} - 글쓰기`}
-        description="새 게시글을 작성합니다."
+        title={`${board.name} - ${key === "schedule" ? "일정 등록" : "글쓰기"}`}
+        description={
+          key === "schedule"
+            ? "시작·종료 일시를 지정해 일정을 등록합니다."
+            : "새 게시글을 작성합니다."
+        }
       />
       <Card>
         <CardContent className="pt-6">

@@ -5,6 +5,7 @@ export const SEARCH_SOURCES = [
   { key: "news", label: "뉴스" },
   { key: "pr", label: "홍보실" },
   { key: "products", label: "상품자료실" },
+  { key: "schedule", label: "일정" },
   { key: "documents", label: "문서함" },
   { key: "approval", label: "전자결재" },
 ] as const;

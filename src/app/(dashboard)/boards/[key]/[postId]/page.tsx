@@ -78,9 +78,16 @@ export default async function PostDetailPage({
           <CardTitle className="text-xl">{post.title}</CardTitle>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span>{post.author.name}</span>
+            {post.startsAt && (
+              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                <CalendarDays className="h-3.5 w-3.5" />
+                {formatDateTime(post.startsAt)}
+                {post.endsAt ? ` ~ ${formatDateTime(post.endsAt)}` : null}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5" />
-              {formatDateTime(post.createdAt)}
+              작성 {formatDateTime(post.createdAt)}
             </span>
             <span className="inline-flex items-center gap-1">
               <Eye className="h-3.5 w-3.5" />

@@ -2,6 +2,7 @@
  * 대리점 Rollout 데모 — RUN_DEALER_DEMO_SEED=true 시 entrypoint에서 실행
  * SKU, 재고, 샘플 주문, Rollout 그룹
  */
+import "./load-env";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();

@@ -40,6 +40,8 @@ export default async function EditPostPage({
               title: post.title,
               content: post.content,
               category: post.category,
+              startsAt: post.startsAt,
+              endsAt: post.endsAt,
               attachments: post.attachments.map((a) => ({
                 id: a.id,
                 filename: a.filename,

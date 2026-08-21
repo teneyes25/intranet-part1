@@ -15,6 +15,10 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-dealer-demo": "tsx prisma/seed-dealer-demo.ts",
     "db:studio": "prisma studio",
+    "office:db-seed": "node scripts/office-db-seed.mjs",
+    "office:up": "bash scripts/office-server-up.sh",
+    "office:sync": "node scripts/docker-sync.mjs",
+    "docker:sync": "node scripts/docker-sync.mjs",
     "smoke": "node scripts/smoke-test.mjs",
     "production:check": "node scripts/production-check.mjs",
     "final:check": "node scripts/final-check.mjs",
@@ -24,7 +28,6 @@
     "test:e2e:ui": "playwright test --ui",
     "test:real-usage": "playwright test e2e/real-usage.spec.ts",
     "test:ui-upgrade": "playwright test e2e/ui-upgrade.spec.ts",
-    "docker:sync": "node scripts/docker-sync.mjs",
     "postinstall": "prisma generate"
   },
   "prisma": {

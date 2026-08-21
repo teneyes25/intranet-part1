@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PenSquare } from "lucide-react";
@@ -8,7 +9,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { canWriteBoard } from "@/features/board/permissions";
 import { canAccessBoard } from "@/lib/auth/access";
-import { getBoardByKey, listPosts } from "@/features/board/queries";
+import {
+  getBoardByKey,
+  listPosts,
+  listScheduleEvents,
+  SCHEDULE_BOARD_KEY,
+} from "@/features/board/queries";
 import { getSiteSettings, parsePageBuilderConfig } from "@/features/customize/site-settings-service";
 import { PageLayoutRenderer } from "@/features/page-layout/components/layout-renderer";
 import { getBoardPageLayout } from "@/features/page-layout/service";
@@ -16,6 +22,10 @@ import { BoardFilters } from "@/features/board/components/board-filters";
 import { PostList } from "@/features/board/components/post-list";
 import { BoardPagination } from "@/features/board/components/board-pagination";
 import { InfinitePosts } from "@/features/board/components/infinite-posts";
+import {
+  ScheduleCalendar,
+  ScheduleViewToggle,
+} from "@/features/board/components/schedule-calendar";
 import { CategoryTree } from "@/features/products/components/category-tree";
 import {
   getCategoryTree,
@@ -32,6 +42,8 @@ interface PageProps {
     to?: string;
     page?: string;
     view?: string;
+    year?: string;
+    month?: string;
   }>;
 }
 
@@ -56,10 +68,20 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
   if (!canAccessBoard(user.role, key)) notFound();
 
   const isProducts = key === "products";
+  const isSchedule = key === SCHEDULE_BOARD_KEY;
   const categoryTree = isProducts ? await getCategoryTree(key) : [];
   const categoryNames = isProducts && sp.cat
     ? await resolveCategoryFilter(sp.cat, key)
     : undefined;
+
+  const now = new Date();
+  const year = Number(sp.year) || now.getFullYear();
+  const monthNum = Number(sp.month);
+  const month =
+    Number.isFinite(monthNum) && monthNum >= 1 && monthNum <= 12
+      ? monthNum - 1
+      : now.getMonth();
+  const scheduleView = sp.view === "list" ? "list" : "calendar";
 
   const page = Number(sp.page ?? "1") || 1;
   const infinite = sp.view === "infinite";
@@ -72,39 +94,83 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
     to.setHours(23, 59, 59, 999);
   }
 
-  const result = await listPosts({
-    boardId: board.id,
-    role: user.role,
-    q: sp.q,
-    category: sp.category,
-    categories: categoryNames,
-    from,
-    to,
-    page,
-  });
-
   const canWrite = canWriteBoard(user.role, board.writeRoles);
 
-  const listSection = (
-    <>
-      <BoardFilters categories={board.categories} />
-      <p className="text-sm text-muted-foreground">총 {result.total}건</p>
-      {infinite ? (
-        <InfinitePosts
+  let listSection: ReactNode;
+
+  if (isSchedule && scheduleView === "calendar") {
+    const rangeStart = new Date(year, month, 1);
+    const rangeEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    const events = await listScheduleEvents({
+      boardId: board.id,
+      role: user.role,
+      rangeStart,
+      rangeEnd,
+      category: sp.category,
+      q: sp.q,
+    });
+
+    listSection = (
+      <>
+        <BoardFilters categories={board.categories} mode="schedule" />
+        <ScheduleCalendar
           boardKey={board.key}
-          initialItems={result.items}
-          initialPage={result.page}
-          initialHasMore={result.hasMore}
-          query={{ q: sp.q, category: sp.category, from: sp.from, to: sp.to }}
+          year={year}
+          month={month}
+          events={events}
+          category={sp.category}
+          q={sp.q}
         />
-      ) : (
-        <div className="space-y-4">
-          <PostList boardKey={board.key} items={result.items} />
-          <BoardPagination page={result.page} totalPages={result.totalPages} />
+      </>
+    );
+  } else {
+    const result = await listPosts({
+      boardId: board.id,
+      role: user.role,
+      q: sp.q,
+      category: sp.category,
+      categories: categoryNames,
+      from,
+      to,
+      page,
+    });
+
+    listSection = (
+      <>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <BoardFilters
+            categories={board.categories}
+            mode={isSchedule ? "schedule" : "default"}
+          />
+          {isSchedule && (
+            <ScheduleViewToggle
+              boardKey={board.key}
+              year={year}
+              month={month}
+              view="list"
+              category={sp.category}
+              q={sp.q}
+            />
+          )}
         </div>
-      )}
-    </>
-  );
+        <p className="text-sm text-muted-foreground">총 {result.total}건</p>
+        {infinite ? (
+          <InfinitePosts
+            boardKey={board.key}
+            initialItems={result.items}
+            initialPage={result.page}
+            initialHasMore={result.hasMore}
+            query={{ q: sp.q, category: sp.category, from: sp.from, to: sp.to }}
+          />
+        ) : (
+          <div className="space-y-4">
+            <PostList boardKey={board.key} items={result.items} />
+            <BoardPagination page={result.page} totalPages={result.totalPages} />
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -129,7 +195,7 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
             <Button asChild>
               <Link href={`/boards/${board.key}/new`}>
                 <PenSquare className="h-4 w-4" />
-                글쓰기
+                {isSchedule ? "일정 등록" : "글쓰기"}
               </Link>
             </Button>
           )}

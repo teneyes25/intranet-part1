@@ -1,9 +1,17 @@
+import "./load-env";
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL 이 없습니다. .env 또는 .env.production 에 DATABASE_URL(또는 POSTGRES_*)을 설정하세요.\n" +
+        "예: DATABASE_URL=\"postgresql://intranet:비밀번호@127.0.0.1:5432/intranet?schema=public\"\n" +
+        "Docker 사용 시: npm run office:db-seed",
+    );
+  }
   const password = await bcrypt.hash("password1234", 10);
 
   const rolloutGroups = [
@@ -128,6 +136,13 @@ async function main() {
       description: "상품 카탈로그 및 판매 자료",
       categories: ["카탈로그", "사양서", "가격표", "교육자료"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+    },
+    {
+      key: "schedule",
+      name: "일정",
+      description: "사내 일정·회의·마감을 달력으로 확인합니다",
+      categories: ["회의", "행사", "마감", "기타"],
+      writeRoles: [],
     },
   ];
 

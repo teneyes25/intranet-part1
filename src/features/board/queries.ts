@@ -7,6 +7,7 @@ import type { Role } from "@/lib/auth/roles";
 import { demoContentWhere } from "@/lib/production/demo-filter";
 
 export const POSTS_PAGE_SIZE = 10;
+export const SCHEDULE_BOARD_KEY = "schedule";
 
 export function getBoardByKey(key: string) {
   return prisma.board.findUnique({ where: { key } });
@@ -81,6 +82,55 @@ export async function listPosts(params: ListPostsParams) {
 
 export type PostListResult = Awaited<ReturnType<typeof listPosts>>;
 export type PostListItem = PostListResult["items"][number];
+
+/** 달력에 표시할 일정 (해당 월과 겹치는 이벤트) */
+export async function listScheduleEvents(params: {
+  boardId: string;
+  role?: Role;
+  rangeStart: Date;
+  rangeEnd: Date;
+  category?: string;
+  q?: string;
+}) {
+  const where: Prisma.PostWhereInput = {
+    boardId: params.boardId,
+    startsAt: { not: null, lte: params.rangeEnd },
+    OR: [
+      { endsAt: null, startsAt: { gte: params.rangeStart } },
+      { endsAt: { gte: params.rangeStart } },
+    ],
+    ...(params.role ? demoContentWhere(params.role) : {}),
+  };
+
+  if (params.category) where.category = params.category;
+  if (params.q) {
+    where.AND = [
+      {
+        OR: [
+          { title: { contains: params.q, mode: "insensitive" } },
+          { content: { contains: params.q, mode: "insensitive" } },
+        ],
+      },
+    ];
+  }
+
+  return prisma.post.findMany({
+    where,
+    orderBy: [{ startsAt: "asc" }, { title: "asc" }],
+    select: {
+      id: true,
+      title: true,
+      category: true,
+      startsAt: true,
+      endsAt: true,
+      author: { select: { id: true, name: true } },
+    },
+  });
+}
+
+export type ScheduleEvent = Awaited<
+  ReturnType<typeof listScheduleEvents>
+>[number];
 
 export function getPostDetail(postId: string) {
   return prisma.post.findUnique({

@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/features/board/components/rich-text-editor";
-import { formatFileSize } from "@/features/board/utils";
+import { formatFileSize, toDatetimeLocalValue } from "@/features/board/utils";
 import {
   createPostAction,
   updatePostAction,
@@ -37,6 +37,8 @@ interface PostFormProps {
     title: string;
     content: string;
     category: string | null;
+    startsAt?: string | Date | null;
+    endsAt?: string | Date | null;
     attachments: ExistingAttachment[];
   };
 }
@@ -105,6 +107,35 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+
+      {boardKey === "schedule" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="startsAt">시작 일시</Label>
+            <Input
+              id="startsAt"
+              name="startsAt"
+              type="datetime-local"
+              required
+              defaultValue={toDatetimeLocalValue(initial?.startsAt)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="endsAt">
+              종료 일시{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                (선택)
+              </span>
+            </Label>
+            <Input
+              id="endsAt"
+              name="endsAt"
+              type="datetime-local"
+              defaultValue={toDatetimeLocalValue(initial?.endsAt)}
+            />
+          </div>
         </div>
       )}
 

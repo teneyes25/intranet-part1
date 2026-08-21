@@ -15,13 +15,20 @@ import {
 
 const ALL = "__all__";
 
-export function BoardFilters({ categories }: { categories: string[] }) {
+export function BoardFilters({
+  categories,
+  mode = "default",
+}: {
+  categories: string[];
+  mode?: "default" | "schedule";
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const currentCategory = searchParams.get("category") ?? ALL;
   const infinite = searchParams.get("view") === "infinite";
+  const isSchedule = mode === "schedule";
 
   function submit(formData: FormData) {
     const params = new URLSearchParams();
@@ -32,9 +39,19 @@ export function BoardFilters({ categories }: { categories: string[] }) {
 
     if (q) params.set("q", q);
     if (category && category !== ALL) params.set("category", category);
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    if (infinite) params.set("view", "infinite");
+
+    if (isSchedule) {
+      const year = searchParams.get("year");
+      const month = searchParams.get("month");
+      const view = searchParams.get("view") ?? "calendar";
+      if (year) params.set("year", year);
+      if (month) params.set("month", month);
+      if (view) params.set("view", view);
+    } else {
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      if (infinite) params.set("view", "infinite");
+    }
 
     router.push(`${pathname}?${params.toString()}`);
   }
@@ -48,6 +65,11 @@ export function BoardFilters({ categories }: { categories: string[] }) {
   }
 
   function reset() {
+    if (isSchedule) {
+      const view = searchParams.get("view") ?? "calendar";
+      router.push(`${pathname}?view=${view}`);
+      return;
+    }
     router.push(pathname);
   }
 
@@ -64,27 +86,28 @@ export function BoardFilters({ categories }: { categories: string[] }) {
       </div>
 
       {categories.length > 0 && (
-        <>
-          {/* Radix Select 는 폼 제출에 hidden input 이 필요 */}
-          <CategorySelect defaultValue={currentCategory} categories={categories} />
-        </>
+        <CategorySelect defaultValue={currentCategory} categories={categories} />
       )}
 
-      <Input
-        type="date"
-        name="from"
-        defaultValue={searchParams.get("from") ?? ""}
-        className="w-auto"
-        aria-label="시작일"
-      />
-      <span className="pb-2 text-muted-foreground">~</span>
-      <Input
-        type="date"
-        name="to"
-        defaultValue={searchParams.get("to") ?? ""}
-        className="w-auto"
-        aria-label="종료일"
-      />
+      {!isSchedule && (
+        <>
+          <Input
+            type="date"
+            name="from"
+            defaultValue={searchParams.get("from") ?? ""}
+            className="w-auto"
+            aria-label="시작일"
+          />
+          <span className="pb-2 text-muted-foreground">~</span>
+          <Input
+            type="date"
+            name="to"
+            defaultValue={searchParams.get("to") ?? ""}
+            className="w-auto"
+            aria-label="종료일"
+          />
+        </>
+      )}
 
       <Button type="submit">
         <Search className="h-4 w-4" />
@@ -94,19 +117,21 @@ export function BoardFilters({ categories }: { categories: string[] }) {
         <RotateCcw className="h-4 w-4" />
         초기화
       </Button>
-      <Button type="button" variant="outline" onClick={toggleView}>
-        {infinite ? (
-          <>
-            <List className="h-4 w-4" />
-            페이지
-          </>
-        ) : (
-          <>
-            <InfinityIcon className="h-4 w-4" />
-            무한스크롤
-          </>
-        )}
-      </Button>
+      {!isSchedule && (
+        <Button type="button" variant="outline" onClick={toggleView}>
+          {infinite ? (
+            <>
+              <List className="h-4 w-4" />
+              페이지
+            </>
+          ) : (
+            <>
+              <InfinityIcon className="h-4 w-4" />
+              무한스크롤
+            </>
+          )}
+        </Button>
+      )}
     </form>
   );
 }
