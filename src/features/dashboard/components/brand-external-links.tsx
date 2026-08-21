@@ -23,7 +23,7 @@ export function BrandExternalLinks() {
           </span>
           <span>Instagram</span>
           <ExternalLink
-            className="h-3.5 w-3.5 text-[#8A7A68] opacity-70 transition-opacity group-hover:opacity-100"
+            className="h-3.5 w-3.5 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100"
             aria-hidden
           />
         </a>
