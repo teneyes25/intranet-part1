@@ -17,6 +17,7 @@
     "db:studio": "prisma studio",
     "office:db-seed": "node scripts/office-db-seed.mjs",
     "office:up": "bash scripts/office-server-up.sh",
+    "office:sync": "node scripts/docker-sync.mjs",
     "docker:sync": "node scripts/docker-sync.mjs",
     "smoke": "node scripts/smoke-test.mjs",
     "production:check": "node scripts/production-check.mjs",
