@@ -1,9 +1,17 @@
+import "./load-env";
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL 이 없습니다. .env 또는 .env.production 에 DATABASE_URL(또는 POSTGRES_*)을 설정하세요.\n" +
+        "예: DATABASE_URL=\"postgresql://intranet:비밀번호@127.0.0.1:5432/intranet?schema=public\"\n" +
+        "Docker 사용 시: npm run office:db-seed",
+    );
+  }
   const password = await bcrypt.hash("password1234", 10);
 
   const rolloutGroups = [
