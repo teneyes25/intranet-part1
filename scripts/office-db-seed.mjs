@@ -29,6 +29,7 @@ function run(cmd, args, env) {
 function main() {
   const { databaseUrl, env } = resolveOfficeDatabaseUrl(root);
   console.log(`DATABASE_URL host=${databaseUrl.replace(/:[^:@/]+@/, ":***@")}`);
+  run("npx", ["prisma", "generate"], env);
   run("npx", ["prisma", "migrate", "deploy"], env);
   run("npx", ["tsx", "prisma/seed.ts"], env);
   console.log("\n✓ migrate + seed 완료");

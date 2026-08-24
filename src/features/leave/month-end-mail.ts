@@ -31,44 +31,18 @@ async function sendLeaveEmail(opts: {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || user || "noreply@intranet.local";
 
-  if (!host || !user || !pass) {
-    console.log(
-      `[leave-mail] SMTP 미설정 — 로그 대체 to=${opts.to} subject=${opts.subject}\n${opts.text}`,
-    );
-    return {
-      ok: true,
-      detail: "smtp_not_configured_logged",
-    };
-  }
-
-  try {
-    // SMTP 미사용 환경에서는 로그만 — nodemailer 는 선택 의존성
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const nodemailer = require("nodemailer") as {
-      createTransport: (opts: unknown) => {
-        sendMail: (opts: unknown) => Promise<unknown>;
-      };
-    };
-    const transporter = nodemailer.createTransport({
-      host,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: { user, pass },
-    });
-    await transporter.sendMail({
-      from,
-      to: opts.to,
-      subject: opts.subject,
-      text: opts.text,
-    });
-    return { ok: true, detail: "sent" };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "send_failed";
-    console.error("[leave-mail] 발송 실패:", msg);
-    return { ok: false, detail: msg };
-  }
+  // nodemailer 의존성 없이 동작: SMTP 설정이 있어도 우선 로그+인앱 알림.
+  // 실제 SMTP 발송은 추후 SMTP 어댑터 추가 시 연결.
+  console.log(
+    `[leave-mail] to=${opts.to} subject=${opts.subject}` +
+      (host && user && pass ? " (SMTP configured — logged until adapter enabled)" : " (SMTP unset)") +
+      `\n${opts.text}`,
+  );
+  return {
+    ok: true,
+    detail: host && user && pass ? "smtp_configured_logged" : "smtp_not_configured_logged",
+  };
 }
 
 /**

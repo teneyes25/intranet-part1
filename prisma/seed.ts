@@ -308,28 +308,41 @@ async function main() {
     console.log("✅ backfilled shared document categories");
   }
 
-  // 연차 잔여 (시드 사용자)
-  const leaveYear = new Date().getFullYear();
-  for (const email of [
-    "admin@intranet.local",
-    "hq@intranet.local",
-    "dealer@intranet.local",
-  ]) {
-    const u = await prisma.user.findUnique({ where: { email } });
-    if (!u) continue;
-    await prisma.leaveBalance.upsert({
-      where: { userId_year: { userId: u.id, year: leaveYear } },
-      update: {},
-      create: {
-        userId: u.id,
-        year: leaveYear,
-        accruedDays: 15,
-        usedDays: email === "hq@intranet.local" ? 3 : 0,
-      },
-    });
-  }
-  console.log("✅ seeded leave balances");
+  // 연차 잔여 (시드 사용자) — 클라이언트 미생성 시 스킵 안내
+  const leaveDelegate = (
+    prisma as unknown as {
+      leaveBalance?: {
+        upsert: (args: unknown) => Promise<unknown>;
+      };
+    }
+  ).leaveBalance;
 
+  if (!leaveDelegate?.upsert) {
+    console.warn(
+      "⚠️ leaveBalance 모델이 Prisma Client에 없습니다. 호스트에서 실행: npx prisma generate",
+    );
+  } else {
+    const leaveYear = new Date().getFullYear();
+    for (const email of [
+      "admin@intranet.local",
+      "hq@intranet.local",
+      "dealer@intranet.local",
+    ]) {
+      const u = await prisma.user.findUnique({ where: { email } });
+      if (!u) continue;
+      await leaveDelegate.upsert({
+        where: { userId_year: { userId: u.id, year: leaveYear } },
+        update: {},
+        create: {
+          userId: u.id,
+          year: leaveYear,
+          accruedDays: 15,
+          usedDays: email === "hq@intranet.local" ? 3 : 0,
+        },
+      });
+    }
+    console.log("✅ seeded leave balances");
+  }
   // 샘플 게시글 (공지사항)
   if (adminId) {
     const notices = await prisma.board.findUniqueOrThrow({

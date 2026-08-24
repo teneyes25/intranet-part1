@@ -24,7 +24,8 @@ function dbUserFromUrl(url: string): string {
     return decodeURIComponent(new URL(url).username || "");
   } catch {
     const m = url.match(/^postgres(?:ql)?:\/\/([^:@/]+)/i);
-    return m ? decodeURIComponent(m[1]) : "";
+    const user = m?.[1];
+    return user ? decodeURIComponent(user) : "";
   }
 }
 
