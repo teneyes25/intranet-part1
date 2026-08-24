@@ -6,7 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit/service";
 
 const credentialsSchema = z.object({
-  email: z.string().email(),
+  // .local 등 사내 도메인 + 대소문자/공백 허용 후 정규화
+  email: z
+    .string()
+    .trim()
+    .min(3)
+    .transform((v) => v.toLowerCase())
+    .pipe(z.string().email()),
   password: z.string().min(1),
 });
 
@@ -26,8 +32,20 @@ export const authOptions: NextAuthOptions = {
         password: { label: "비밀번호", type: "password" },
       },
       async authorize(rawCredentials) {
-        const parsed = credentialsSchema.safeParse(rawCredentials);
-        if (!parsed.success) return null;
+        const parsed = credentialsSchema.safeParse({
+          email: String(rawCredentials?.email ?? ""),
+          // 앞뒤 공백이 붙으면 bcrypt 불일치 → "비밀번호 오류"로 보임
+          password: String(rawCredentials?.password ?? "").trim(),
+        });
+        if (!parsed.success) {
+          void writeAudit({
+            action: "LOGIN_FAILURE",
+            userEmail: String(rawCredentials?.email ?? "").slice(0, 120),
+            detail: "invalid_credentials_format",
+            success: false,
+          });
+          return null;
+        }
 
         const { email, password } = parsed.data;
 
@@ -54,6 +72,23 @@ export const authOptions: NextAuthOptions = {
             action: "LOGIN_FAILURE",
             userEmail: email,
             detail: "pending_approval",
+            success: false,
+          });
+          return null;
+        }
+
+        // 시드 직후가 아닌데 hash 가 bcrypt 가 아니면 비교 실패 (시드 누락/잘못된 DB)
+        if (
+          !user.passwordHash ||
+          (!user.passwordHash.startsWith("$2a$") &&
+            !user.passwordHash.startsWith("$2b$") &&
+            !user.passwordHash.startsWith("$2y$"))
+        ) {
+          void writeAudit({
+            action: "LOGIN_FAILURE",
+            userEmail: email,
+            userId: user.id,
+            detail: "invalid_password_hash",
             success: false,
           });
           return null;

@@ -21,8 +21,9 @@ export class RegisterError extends Error {
  * 신청 시점에는 HEADQUARTER 로 대기(비활성) 상태로 생성한다.
  */
 export async function registerUser(input: RegisterInput) {
+  const email = input.email.trim().toLowerCase();
   const existing = await prisma.user.findUnique({
-    where: { email: input.email },
+    where: { email },
     select: { id: true },
   });
   if (existing) {
@@ -34,7 +35,7 @@ export async function registerUser(input: RegisterInput) {
   const user = await prisma.user.create({
     data: {
       name: input.name,
-      email: input.email,
+      email,
       passwordHash,
       role: Role.HEADQUARTER,
       dealerId: null,

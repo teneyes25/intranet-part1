@@ -25,15 +25,17 @@ export function LoginForm() {
     setLoading(true);
 
     const res = await signIn("credentials", {
-      email,
-      password,
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
       redirect: false,
     });
 
     setLoading(false);
 
     if (!res || res.error) {
-      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      setError(
+        "이메일 또는 비밀번호가 올바르지 않습니다. (초기: admin@intranet.local / password1234 — 복구: npm run office:reset-admin)",
+      );
       return;
     }
 
@@ -47,9 +49,10 @@ export function LoginForm() {
         <Label htmlFor="email">이메일</Label>
         <Input
           id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@intranet.local"
+          type="text"
+          inputMode="email"
+          autoComplete="username"
+          placeholder="admin@intranet.local"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required

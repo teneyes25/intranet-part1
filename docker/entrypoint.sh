@@ -40,7 +40,12 @@ fi
 
 if [ "${RUN_SEED}" = "true" ]; then
   echo "[entrypoint] seeding..."
-  node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed.ts || echo "[entrypoint] seed skipped"
+  if ! node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed.ts; then
+    echo "[entrypoint] ERROR: seed failed — admin@intranet.local 로그인이 안 될 수 있습니다."
+    echo "[entrypoint] 호스트에서: npm run office:reset-admin 또는 npm run office:db-seed"
+  else
+    echo "[entrypoint] seed OK — admin@intranet.local / password1234"
+  fi
 fi
 
 if [ "${RUN_DEALER_DEMO_SEED}" = "true" ]; then

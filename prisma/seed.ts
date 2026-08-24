@@ -73,9 +73,10 @@ async function main() {
 
   let adminId = "";
   for (const u of seedUsers) {
+    const email = u.email.trim().toLowerCase();
     const mustChangeOnCreate = u.role === Role.ADMIN;
     const created = await prisma.user.upsert({
-      where: { email: u.email },
+      where: { email },
       update: {
         name: u.name,
         role: u.role,
@@ -83,10 +84,12 @@ async function main() {
         passwordHash: password,
         isActive: true,
         approvalStatus: "APPROVED",
+        // 재시드 시 초기 비밀번호로 복구 — 바로 로그인 가능
         mustChangePassword: false,
+        passwordChangedAt: null,
       },
       create: {
-        email: u.email,
+        email,
         name: u.name,
         role: u.role,
         dealerId: u.dealerId,
@@ -97,7 +100,7 @@ async function main() {
       },
     });
     if (u.role === Role.ADMIN) adminId = created.id;
-    console.log(`✅ seeded user: ${u.email} (${u.role})`);
+    console.log(`✅ seeded user: ${email} (${u.role}) password=password1234`);
   }
 
   // 게시판 (베이스 보드 시스템)

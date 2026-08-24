@@ -68,6 +68,9 @@ export default async function LoginPage() {
             <li>admin@intranet.local</li>
             <li>비밀번호: password1234</li>
           </ul>
+          <p className="mt-2 text-white/50">
+            로그인이 안 되면 서버 PC에서 npm run office:reset-admin
+          </p>
         </div>
       </div>
     </main>

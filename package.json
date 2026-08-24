@@ -16,6 +16,7 @@
     "db:seed-dealer-demo": "tsx prisma/seed-dealer-demo.ts",
     "db:studio": "prisma studio",
     "office:db-seed": "node scripts/office-db-seed.mjs",
+    "office:reset-admin": "node scripts/office-reset-admin-password.mjs",
     "office:up": "bash scripts/office-server-up.sh",
     "office:sync": "node scripts/docker-sync.mjs",
     "docker:sync": "node scripts/docker-sync.mjs",
