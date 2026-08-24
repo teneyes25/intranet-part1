@@ -4,89 +4,23 @@
  * usage: npm run office:reset-admin
  *
  * - Docker Postgres(intranet 사용자, 127.0.0.1:5432) 대상
- * - 계정 없으면 생성(승인·활성)
- * - mustChangePassword=false (바로 로그인 가능)
+ * - .env 의 postgres@localhost 는 무시하고 .env.production POSTGRES_* 사용
  */
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { resolveOfficeDatabaseUrl } from "./lib/office-db-url.mjs";
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ADMIN_EMAIL = "admin@intranet.local";
 const ADMIN_PASSWORD = "password1234";
 
-function stripQuotes(value) {
-  const v = value.trim();
-  if (
-    (v.startsWith('"') && v.endsWith('"')) ||
-    (v.startsWith("'") && v.endsWith("'"))
-  ) {
-    return v.slice(1, -1);
-  }
-  return v;
-}
-
-function loadEnvFile(file) {
-  const out = {};
-  if (!existsSync(file)) return out;
-  for (const raw of readFileSync(file, "utf8").split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const eq = line.indexOf("=");
-    if (eq <= 0) continue;
-    out[line.slice(0, eq).trim()] = stripQuotes(line.slice(eq + 1));
-  }
-  return out;
-}
-
-function resolveDatabaseUrl() {
-  const fromDot = loadEnvFile(path.join(root, ".env"));
-  const fromProd = loadEnvFile(path.join(root, ".env.production"));
-  const merged = { ...fromProd, ...fromDot, ...process.env };
-
-  const user = merged.POSTGRES_USER || "intranet";
-  const password = merged.POSTGRES_PASSWORD || "";
-  const db = merged.POSTGRES_DB || "intranet";
-  const port = merged.POSTGRES_PORT || "5432";
-
-  let databaseUrl = merged.DATABASE_URL || "";
-  if (!databaseUrl || databaseUrl.includes("@db:")) {
-    if (!password) {
-      console.error(
-        "POSTGRES_PASSWORD 또는 DATABASE_URL 이 필요합니다.\n" +
-          "  .env.production 의 POSTGRES_PASSWORD 를 확인한 뒤 다시 실행하세요.",
-      );
-      process.exit(1);
-    }
-    databaseUrl = `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@127.0.0.1:${port}/${db}?schema=public`;
-  }
-
-  const envPath = path.join(root, ".env");
-  if (!fromDot.DATABASE_URL) {
-    const line = `DATABASE_URL="${databaseUrl}"\n`;
-    if (existsSync(envPath)) {
-      const cur = readFileSync(envPath, "utf8");
-      if (!/^DATABASE_URL=/m.test(cur)) {
-        writeFileSync(envPath, cur.replace(/\s*$/, "\n") + line, "utf8");
-      }
-    } else {
-      writeFileSync(
-        envPath,
-        `# office host → docker postgres\nDATABASE_URL="${databaseUrl}"\n`,
-        "utf8",
-      );
-    }
-  }
-
-  return databaseUrl;
-}
-
 async function main() {
-  const databaseUrl = resolveDatabaseUrl();
-  process.env.DATABASE_URL = databaseUrl;
+  const { databaseUrl, env } = resolveOfficeDatabaseUrl(root);
+  Object.assign(process.env, env);
   console.log(`DATABASE_URL host=${databaseUrl.replace(/:[^:@/]+@/, ":***@")}`);
 
   let PrismaClient;
