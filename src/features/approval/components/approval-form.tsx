@@ -69,7 +69,10 @@ export function ApprovalForm({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [templateId, setTemplateId] = useState(initial?.templateId ?? "");
   const [documentCategoryId, setDocumentCategoryId] = useState(
-    initial?.documentCategoryId ?? "",
+    initial?.documentCategoryId ??
+      documentCategories.find((c) => c.name === "전자결재")?.id ??
+      documentCategories[0]?.id ??
+      "",
   );
   const [content, setContent] = useState(initial?.content ?? "");
   const [approvers, setApprovers] = useState<ApproverRow[]>(
@@ -268,9 +271,10 @@ export function ApprovalForm({
           id="docCat"
           value={documentCategoryId}
           onChange={(e) => setDocumentCategoryId(e.target.value)}
+          required
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring sm:max-w-md"
         >
-          <option value="">카테고리 선택 (선택)</option>
+          <option value="">카테고리 선택 (필수)</option>
           {documentCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -278,7 +282,7 @@ export function ApprovalForm({
           ))}
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          결재 완료 시 선택한 카테고리로 문서함에 자동 보관됩니다.
+          결재 완료 시 선택한 문서함 카테고리로 자동 보관됩니다.
         </p>
       </div>
 

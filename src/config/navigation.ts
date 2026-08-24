@@ -73,7 +73,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "업무",
     items: [
       { title: "문서함", href: "/documents", icon: FolderOpen },
-      { title: "근태관리", href: "/attendance", icon: Clock, minRole: "HEADQUARTER" },
+      { title: "연차관리", href: "/leave", icon: Clock },
       { title: "전자결재", href: "/approval", icon: FileCheck2 },
     ],
   },

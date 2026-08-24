@@ -57,6 +57,9 @@ model User {
   postFolders     PostFolder[]
   postLabels      PostLabel[]
   postMailItems   PostMailItem[]
+  leaveBalances   LeaveBalance[]
+  leaveRequests   LeaveRequest[] @relation("LeaveRequester")
+  leaveApprovals  LeaveRequest[] @relation("LeaveApprover")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -285,7 +288,7 @@ model SharedDocument {
   /// 레거시 문자열 카테고리 (마이그레이션 호환)
   category           String?
   documentCategoryId String?
-  documentCategory   DocumentCategory? @relation(fields: [documentCategoryId], references: [id])
+  documentCategory   DocumentCategory? @relation(fields: [documentCategoryId], references: [id], onDelete: SetNull)
   /// 외부 URL 또는 내부 게시글/결재 링크
   url                String?
   boardKey           String?
@@ -389,7 +392,7 @@ model ApprovalDocument {
   templateId         String?
   template           ApprovalTemplate?  @relation(fields: [templateId], references: [id])
   documentCategoryId String?
-  documentCategory   DocumentCategory?  @relation(fields: [documentCategoryId], references: [id])
+  documentCategory   DocumentCategory?  @relation(fields: [documentCategoryId], references: [id], onDelete: SetNull)
   archivedDocument   SharedDocument?
   linkedOrder        Order?
   /// 현재 진행 중인 결재 단계 순서(같은 순서=병렬)
@@ -512,6 +515,73 @@ enum NotificationType {
   AI_MENTION
   SYSTEM
   EMERGENCY
+  LEAVE_REQUEST
+  LEAVE_RESULT
+}
+
+/// 연차 신청 상태
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// 연도별 연차 잔여 (발생·사용)
+model LeaveBalance {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year        Int
+  /// 발생 연차(일)
+  accruedDays Float    @default(15)
+  /// 승인된 사용 연차(일)
+  usedDays    Float    @default(0)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, year])
+  @@index([year])
+  @@map("leave_balances")
+}
+
+/// 연차 사용 신청
+model LeaveRequest {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation("LeaveRequester", fields: [userId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  days        Float
+  reason      String?
+  status      LeaveRequestStatus @default(PENDING)
+  approverId  String?
+  approver    User?              @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  reviewedAt  DateTime?
+  reviewNote  String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("leave_requests")
+}
+
+/// 월말 잔여연차 메일 발송 로그
+model LeaveMonthEndMailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  year      Int
+  month     Int
+  email     String
+  remaining Float
+  success   Boolean  @default(true)
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, year, month])
+  @@index([year, month])
+  @@map("leave_month_end_mail_logs")
 }
 
 /// 사용자 알림 (In-app)

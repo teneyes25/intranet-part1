@@ -122,6 +122,10 @@ export const authOptions: NextAuthOptions = {
             .catch((e) =>
               console.error("[news-auto] 로그인 트리거 실패:", e),
             );
+          // 말일이면 잔여연차 메일 잡도 보조 실행
+          void import("@/features/leave/month-end-mail")
+            .then(({ runMonthEndLeaveMailJob }) => runMonthEndLeaveMailJob())
+            .catch((e) => console.error("[leave-mail] 로그인 트리거 실패:", e));
         }
 
         return {

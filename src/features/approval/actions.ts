@@ -56,8 +56,17 @@ export async function saveDocumentAction(
   if (!title) return { error: "제목을 입력하세요." };
 
   const templateId = String(formData.get("templateId") ?? "").trim() || null;
-  const documentCategoryId =
+  let documentCategoryId =
     String(formData.get("documentCategoryId") ?? "").trim() || null;
+
+  // 문서함 연동: 미선택 시 기본「전자결재」카테고리
+  if (!documentCategoryId) {
+    const { getDefaultApprovalDocumentCategoryId } = await import(
+      "@/features/documents/category-service"
+    );
+    documentCategoryId = await getDefaultApprovalDocumentCategoryId();
+  }
+
   const content = sanitizeRichText(String(formData.get("content") ?? ""));
 
   let parsed: RawStep[] = [];

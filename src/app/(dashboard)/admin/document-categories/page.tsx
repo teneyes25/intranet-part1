@@ -15,7 +15,7 @@ export default async function AdminDocumentCategoriesPage() {
     <div className="space-y-6">
       <PageHeader
         title="문서함 카테고리"
-        description="전자결재 완료 문서가 분류되어 보관됩니다."
+        description="전자결재 완료 문서 보관 분류와 연동됩니다. 이름 변경 시 문서함에도 즉시 반영됩니다."
       />
       <DocumentCategoryManager categories={categories} />
     </div>

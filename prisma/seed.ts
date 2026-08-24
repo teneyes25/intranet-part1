@@ -265,6 +265,9 @@ async function main() {
   console.log("✅ seeded news keywords");
 
   // 문서함 샘플
+  const cats = await prisma.documentCategory.findMany();
+  const catByName = Object.fromEntries(cats.map((c) => [c.name, c.id]));
+
   const docCount = await prisma.sharedDocument.count();
   if (docCount === 0) {
     await prisma.sharedDocument.createMany({
@@ -273,6 +276,7 @@ async function main() {
           title: "행정안전부 공문 작성 지침",
           description: "전자결재 기안 시 참고하는 공문 작성 기준 자료",
           category: "정책",
+          documentCategoryId: catByName["정책"] ?? null,
           url: "https://www.mois.go.kr",
           tags: ["행정", "공문", "결재"],
         },
@@ -280,18 +284,51 @@ async function main() {
           title: "사내 보안 정책 안내",
           description: "정보 보안 및 개인정보 처리 지침",
           category: "보안",
+          documentCategoryId: catByName["보안"] ?? null,
           tags: ["보안", "정책"],
         },
         {
           title: "대리점 운영 매뉴얼",
           description: "대리점 일일 업무 및 보고 절차",
           category: "운영",
+          documentCategoryId: catByName["운영"] ?? null,
           tags: ["대리점", "매뉴얼"],
         },
       ],
     });
-    console.log("✅ seeded shared documents");
+    console.log("✅ seeded shared documents (category FK linked)");
+  } else {
+    // 기존 레거시 category 문자열 → FK 연결
+    for (const [name, id] of Object.entries(catByName)) {
+      await prisma.sharedDocument.updateMany({
+        where: { documentCategoryId: null, category: name },
+        data: { documentCategoryId: id },
+      });
+    }
+    console.log("✅ backfilled shared document categories");
   }
+
+  // 연차 잔여 (시드 사용자)
+  const leaveYear = new Date().getFullYear();
+  for (const email of [
+    "admin@intranet.local",
+    "hq@intranet.local",
+    "dealer@intranet.local",
+  ]) {
+    const u = await prisma.user.findUnique({ where: { email } });
+    if (!u) continue;
+    await prisma.leaveBalance.upsert({
+      where: { userId_year: { userId: u.id, year: leaveYear } },
+      update: {},
+      create: {
+        userId: u.id,
+        year: leaveYear,
+        accruedDays: 15,
+        usedDays: email === "hq@intranet.local" ? 3 : 0,
+      },
+    });
+  }
+  console.log("✅ seeded leave balances");
 
   // 샘플 게시글 (공지사항)
   if (adminId) {
