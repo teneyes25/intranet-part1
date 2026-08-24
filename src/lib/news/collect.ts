@@ -10,7 +10,7 @@ import {
   parseDefaultKeywordsFromEnv,
 } from "@/lib/news/config";
 import { fetchNews, type NewsItem } from "./sources";
-import { summarizeNews } from "./summarize";
+import { scrubNewsSummaryLine, summarizeNews } from "./summarize";
 
 export const NEWS_BOARD_KEY = "news";
 const NEWS_BOT_EMAIL = "newsbot@intranet.local";
@@ -61,12 +61,19 @@ function buildContent(
   item: NewsItem,
   keywordLabel: string,
 ): string {
-  const lines = summaryLines.map((l) => escapeHtml(l)).join("<br/>");
-  const src = item.source ? ` (${escapeHtml(item.source)})` : "";
+  const lines = summaryLines
+    .map((l) => scrubNewsSummaryLine(l))
+    .filter(Boolean)
+    .map((l) => escapeHtml(l))
+    .join("<br/>");
+  const sourceName = scrubNewsSummaryLine(item.source ?? "") || "";
+  const linkLabel = sourceName
+    ? `원문 보기 (${escapeHtml(sourceName)})`
+    : "원문 보기";
   const html = `
     <p><strong>[${escapeHtml(keywordLabel)}]</strong></p>
     <p>${lines}</p>
-    <p>🔗 <a href="${escapeHtml(item.link)}">원문 보기${src}</a></p>
+    <p><a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">🔗 ${linkLabel}</a></p>
     <p><em>본 글은 등록 키워드 기반 자동 수집·AI 요약입니다. (카테고리: ${AUTO_COLLECT_POST_CATEGORY})</em></p>
   `;
   return sanitizeRichText(html);

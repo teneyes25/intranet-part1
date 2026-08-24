@@ -38,6 +38,7 @@ import {
   AttachmentMeta,
   AttachmentVersionList,
 } from "@/features/products/components/attachment-meta";
+import { scrubNewsContentHtml } from "@/lib/news/summarize";
 
 export const metadata: Metadata = { title: "게시글" };
 
@@ -100,7 +101,14 @@ export default async function PostDetailPage({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <RichTextContent html={post.content} className="min-h-24" />
+          <RichTextContent
+            html={
+              key === "news"
+                ? scrubNewsContentHtml(post.content)
+                : post.content
+            }
+            className="min-h-24"
+          />
 
           {post.attachments.length > 0 && (
             <div className="space-y-2">
