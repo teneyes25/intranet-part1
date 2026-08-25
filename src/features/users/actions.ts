@@ -253,3 +253,38 @@ export async function forceDeleteUserAction(
   revalidatePath("/admin/users");
   return { ok: true };
 }
+
+/** 관리자: 사용자 휴대폰 번호 저장 */
+export async function updateUserPhoneAction(
+  userId: string,
+  phoneRaw: string,
+): Promise<AdminUserActionResult> {
+  const admin = await requireRole(["ADMIN"]);
+  const { normalizePhone } = await import("@/lib/phone");
+  const trimmed = String(phoneRaw ?? "").trim();
+  const phone = trimmed === "" ? null : normalizePhone(trimmed);
+  if (trimmed && !phone) {
+    return { error: "올바른 휴대폰 번호를 입력하세요. (예: 010-1234-5678)" };
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!target) return { error: "사용자를 찾을 수 없습니다." };
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { phone },
+  });
+
+  void writeAudit({
+    action: "USER_APPROVE",
+    userId: admin.id,
+    resource: userId,
+    detail: `phone_update phone=${phone ?? "cleared"}`,
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}

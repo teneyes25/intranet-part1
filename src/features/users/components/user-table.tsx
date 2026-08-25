@@ -5,7 +5,9 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ROLE_LABELS } from "@/lib/auth/roles";
+import { formatPhoneDisplay } from "@/lib/phone";
 import type { UserListItem } from "@/features/users/services/user-service";
 import {
   approveUserAction,
@@ -14,6 +16,7 @@ import {
   rejectUserAction,
   resetUserPasswordAction,
   toggleUserActiveAction,
+  updateUserPhoneAction,
 } from "@/features/users/actions";
 
 interface UserTableProps {
@@ -62,7 +65,7 @@ function UserListTable({
   showManage?: boolean;
   currentUserId?: string;
 }) {
-  const colSpan = showActions || showManage ? 6 : 5;
+  const colSpan = showActions || showManage ? 7 : 6;
   return (
     <div className="overflow-hidden rounded-lg border">
       {title && (
@@ -76,6 +79,7 @@ function UserListTable({
             <tr>
               <th className="px-4 py-3 font-medium">이름</th>
               <th className="px-4 py-3 font-medium">이메일</th>
+              <th className="px-4 py-3 font-medium">휴대폰</th>
               <th className="px-4 py-3 font-medium">권한</th>
               <th className="px-4 py-3 font-medium">소속</th>
               <th className="px-4 py-3 font-medium">상태</th>
@@ -99,6 +103,15 @@ function UserListTable({
               <tr key={u.id} className="hover:bg-muted/30">
                 <td className="px-4 py-3 font-medium">{u.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                <td className="px-4 py-3">
+                  {showManage || showActions ? (
+                    <PhoneEditor userId={u.id} phone={u.phone} />
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {formatPhoneDisplay(u.phone)}
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
                     {ROLE_LABELS[u.role]}
@@ -128,6 +141,51 @@ function UserListTable({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function PhoneEditor({
+  userId,
+  phone,
+}: {
+  userId: string;
+  phone: string | null;
+}) {
+  const [value, setValue] = useState(
+    phone ? formatPhoneDisplay(phone) : "",
+  );
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    startTransition(async () => {
+      const r = await updateUserPhoneAction(userId, value);
+      if (r.error) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success("휴대폰 번호를 저장했습니다.");
+    });
+  }
+
+  return (
+    <div className="flex min-w-[11rem] items-center gap-1">
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="010-0000-0000"
+        className="h-8 w-36 text-xs"
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8 px-2 text-xs"
+        disabled={pending}
+        onClick={save}
+      >
+        {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "저장"}
+      </Button>
     </div>
   );
 }

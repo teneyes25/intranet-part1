@@ -28,6 +28,7 @@ export function SignupForm() {
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       password: "",
     },
   });
@@ -86,6 +87,20 @@ export function SignupForm() {
         />
         {errors.email && (
           <p className="text-xs text-destructive">{errors.email.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="phone">휴대폰</Label>
+        <Input
+          id="phone"
+          type="tel"
+          autoComplete="tel"
+          placeholder="010-1234-5678"
+          {...register("phone")}
+        />
+        {errors.phone && (
+          <p className="text-xs text-destructive">{errors.phone.message}</p>
         )}
       </div>
 

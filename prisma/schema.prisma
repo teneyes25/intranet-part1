@@ -31,6 +31,8 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
+  /// 휴대폰 (숫자만 저장, 예: 01012345678)
+  phone        String?
   passwordHash String
   role         Role     @default(DEALER)
   isActive     Boolean  @default(true)
@@ -65,6 +67,7 @@ model User {
 
   @@index([role])
   @@index([dealerId])
+  @@index([phone])
   @@map("users")
 }
 

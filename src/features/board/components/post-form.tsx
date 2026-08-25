@@ -193,6 +193,25 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
         <Input id="files" name="files" type="file" multiple />
       </div>
 
+      {mode === "create" && boardKey === "notices" && (
+        <label className="flex items-start gap-2 rounded-lg border border-amber-200/80 bg-amber-50/60 px-3 py-3 text-sm dark:border-amber-900 dark:bg-amber-950/30">
+          <input
+            type="checkbox"
+            name="sendContactNotify"
+            className="mt-1"
+            defaultChecked
+          />
+          <span>
+            <span className="font-medium">사용자 연락처로 알림 발송</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              등록된 휴대폰으로 문자(SMS)를 보냅니다. 카카오 알림톡은 채널·템플릿
+              심사 후 환경변수로 활성화할 수 있으며, 미설정 시 SMS(또는 서버
+              로그)로 발송됩니다.
+            </span>
+          </span>
+        </label>
+      )}
+
       {state.error && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}

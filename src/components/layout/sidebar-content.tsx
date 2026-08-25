@@ -6,6 +6,7 @@ import { Building2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { SidebarNotifications } from "@/components/layout/sidebar-notifications";
 import type { BrandingConfig } from "@/components/branding/branding-head";
 import type { NavBoard } from "@/config/navigation";
 import type { Role } from "@/lib/auth/roles";
@@ -70,6 +71,8 @@ export function SidebarContent({
           </Button>
         )}
       </div>
+
+      <SidebarNotifications collapsed={collapsed} onNavigate={onNavigate} />
 
       <SidebarNav
         role={role}

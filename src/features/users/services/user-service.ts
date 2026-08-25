@@ -12,6 +12,7 @@ export function listUsers() {
       id: true,
       email: true,
       name: true,
+      phone: true,
       role: true,
       isActive: true,
       approvalStatus: true,

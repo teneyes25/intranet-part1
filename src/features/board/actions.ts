@@ -180,7 +180,32 @@ export async function createPostAction(
   }
 
   reindexPost(postId);
+
+  const authorName =
+    (await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true },
+    }))?.name ?? session.user.name ?? "작성자";
+
+  const sendContactNotify =
+    boardKey === "notices" && formData.get("sendContactNotify") === "on";
+
+  void import("@/features/notifications/post-fanout")
+    .then(({ fanoutNewPostNotifications }) =>
+      fanoutNewPostNotifications({
+        boardKey,
+        boardName: board.name,
+        postId,
+        title,
+        authorId: session.user.id,
+        authorName,
+        sendContactNotify,
+      }),
+    )
+    .catch((e) => console.error("[post-notify]", e));
+
   revalidatePath(`/boards/${boardKey}`);
+  revalidatePath("/", "layout");
   redirect(`/boards/${boardKey}/${postId}`);
 }
 
