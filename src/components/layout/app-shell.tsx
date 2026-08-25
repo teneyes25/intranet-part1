@@ -12,6 +12,7 @@ import { SidebarContent } from "@/components/layout/sidebar-content";
 import { Topbar } from "@/components/layout/topbar";
 import { EmergencyBanner } from "@/components/emergency/emergency-banner";
 import type { BrandingConfig } from "@/components/branding/branding-head";
+import type { NavBoard } from "@/config/navigation";
 import type { Role } from "@/lib/auth/roles";
 
 const STORAGE_KEY = "intranet:sidebar-collapsed";
@@ -22,6 +23,7 @@ interface AppShellProps {
     email: string;
     role: Role;
   };
+  boards?: NavBoard[];
   branding?: BrandingConfig;
   emergencyNotice?: {
     id: string;
@@ -32,7 +34,13 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export function AppShell({ user, branding, emergencyNotice, children }: AppShellProps) {
+export function AppShell({
+  user,
+  boards = [],
+  branding,
+  emergencyNotice,
+  children,
+}: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -60,6 +68,7 @@ export function AppShell({ user, branding, emergencyNotice, children }: AppShell
       >
         <SidebarContent
           role={user.role}
+          boards={boards}
           branding={branding}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapsed}
@@ -75,6 +84,7 @@ export function AppShell({ user, branding, emergencyNotice, children }: AppShell
           <SheetTitle className="sr-only">메뉴</SheetTitle>
           <SidebarContent
             role={user.role}
+            boards={boards}
             branding={branding}
             onNavigate={() => setMobileOpen(false)}
           />

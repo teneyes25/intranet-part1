@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { getVisibleNavGroups, type NavItem } from "@/config/navigation";
+import { getVisibleNavGroups, type NavBoard, type NavItem } from "@/config/navigation";
 import type { Role } from "@/lib/auth/roles";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +15,7 @@ import {
 
 interface SidebarNavProps {
   role: Role | undefined;
+  boards?: NavBoard[];
   collapsed?: boolean;
   onNavigate?: () => void;
 }
@@ -25,11 +26,12 @@ function isActiveHref(pathname: string, href: string) {
 
 export function SidebarNav({
   role,
+  boards = [],
   collapsed = false,
   onNavigate,
 }: SidebarNavProps) {
   const pathname = usePathname();
-  const groups = getVisibleNavGroups(role);
+  const groups = getVisibleNavGroups(role, boards);
 
   return (
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">

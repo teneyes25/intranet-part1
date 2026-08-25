@@ -18,6 +18,7 @@ export interface ActionState {
 interface RawStep {
   approverId: string;
   stepOrder: number;
+  title?: string | null;
 }
 
 /** 결재선 순서를 1..n 으로 연속화(같은 순서=병렬 유지) */
@@ -27,10 +28,15 @@ function normalizeSteps(raw: RawStep[]): RawStep[] {
     (a, b) => a - b,
   );
   const remap = new Map(orders.map((o, i) => [o, i + 1]));
-  return valid.map((s) => ({
-    approverId: s.approverId,
-    stepOrder: remap.get(Number(s.stepOrder) || 1) ?? 1,
-  }));
+  return valid.map((s) => {
+    const title =
+      typeof s.title === "string" && s.title.trim() ? s.title.trim().slice(0, 40) : null;
+    return {
+      approverId: s.approverId,
+      stepOrder: remap.get(Number(s.stepOrder) || 1) ?? 1,
+      title,
+    };
+  });
 }
 
 function plainLen(html: string) {
@@ -120,6 +126,7 @@ export async function saveDocumentAction(
               create: steps.map((s) => ({
                 approverId: s.approverId,
                 stepOrder: s.stepOrder,
+                title: s.title ?? null,
               })),
             },
           },
@@ -140,6 +147,7 @@ export async function saveDocumentAction(
             create: steps.map((s) => ({
               approverId: s.approverId,
               stepOrder: s.stepOrder,
+              title: s.title ?? null,
             })),
           },
         },

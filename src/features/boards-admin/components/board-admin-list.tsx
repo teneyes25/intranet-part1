@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { Pencil, Trash2, ExternalLink } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Trash2, ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { deleteBoardAction } from "@/features/boards-admin/actions";
+import {
+  deleteBoardAction,
+  moveBoardAction,
+} from "@/features/boards-admin/actions";
 import type { BoardAdminItem } from "@/features/boards-admin/queries";
 import { ConfirmDeleteForm } from "@/features/board/components/confirm-delete-form";
 
@@ -13,6 +16,7 @@ export function BoardAdminList({ boards }: { boards: BoardAdminItem[] }) {
       <table className="w-full text-sm">
         <thead className="border-b bg-muted/30 text-left text-muted-foreground">
           <tr>
+            <th className="w-24 px-4 py-3 font-medium">순서</th>
             <th className="px-4 py-3 font-medium">이름</th>
             <th className="px-4 py-3 font-medium">키</th>
             <th className="px-4 py-3 font-medium">카테고리</th>
@@ -21,8 +25,40 @@ export function BoardAdminList({ boards }: { boards: BoardAdminItem[] }) {
           </tr>
         </thead>
         <tbody className="divide-y">
-          {boards.map((b) => (
+          {boards.map((b, index) => (
             <tr key={b.id} className="hover:bg-muted/30">
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  <form action={moveBoardAction}>
+                    <input type="hidden" name="key" value={b.key} />
+                    <input type="hidden" name="direction" value="up" />
+                    <Button
+                      type="submit"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      disabled={index === 0}
+                      aria-label="위로"
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </Button>
+                  </form>
+                  <form action={moveBoardAction}>
+                    <input type="hidden" name="key" value={b.key} />
+                    <input type="hidden" name="direction" value="down" />
+                    <Button
+                      type="submit"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      disabled={index === boards.length - 1}
+                      aria-label="아래로"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </form>
+                </div>
+              </td>
               <td className="px-4 py-3 font-medium">{b.name}</td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                 {b.key}

@@ -46,6 +46,7 @@ export default async function EditApprovalPage({
     return {
       approverId: s.approverId,
       parallelWithPrev: i > 0 && !!prev && s.stepOrder === prev.stepOrder,
+      title: s.title?.trim() || "이사",
     };
   });
 

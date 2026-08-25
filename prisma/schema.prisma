@@ -80,12 +80,15 @@ model Board {
   /// 작성 허용 권한. 비어 있으면 모든 인증 사용자가 작성 가능.
   writeRoles    Role[]   @default([])
   allowComments Boolean  @default(true)
+  /// 사이드바·관리 목록 표시 순서 (작을수록 위)
+  sortOrder     Int      @default(0)
   posts         Post[]
   postFolders   PostFolder[]
   postLabels    PostLabel[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([sortOrder])
   @@map("boards")
 }
 
@@ -418,6 +421,8 @@ model ApprovalStep {
   approverId String
   approver   User               @relation("ApprovalApprover", fields: [approverId], references: [id])
   stepOrder  Int
+  /// 결재란 직책 표기 (예: 이사, 대표이사)
+  title      String?
   status     ApprovalStepStatus @default(PENDING)
   comment    String?
   actedAt    DateTime?

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export function listBoardsAdmin() {
   return prisma.board.findMany({
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     include: {
       _count: {
         select: {

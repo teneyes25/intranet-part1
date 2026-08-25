@@ -57,7 +57,7 @@ export default async function ApprovalPrintPage({
                 key={`role-${s.id}`}
                 className="border border-gray-400 bg-gray-50 px-2 py-1 text-xs"
               >
-                {s.stepOrder}단계 · {ROLE_LABELS[s.approver.role]}
+                {s.title?.trim() || ROLE_LABELS[s.approver.role]}
               </td>
             ))}
             {steps.length === 0 && (

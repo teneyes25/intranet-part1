@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { Role } from "@prisma/client";
 
@@ -65,6 +66,9 @@ export async function createBoardAction(
   });
   if (exists) return { error: "이미 존재하는 게시판 키입니다." };
 
+  const maxOrder = await prisma.board.aggregate({ _max: { sortOrder: true } });
+  const sortOrder = (maxOrder._max.sortOrder ?? 0) + 10;
+
   await prisma.board.create({
     data: {
       key: parsed.data.key,
@@ -73,6 +77,7 @@ export async function createBoardAction(
       categories: parsed.data.categories,
       writeRoles: parsed.data.writeRoles,
       allowComments: parsed.data.allowComments,
+      sortOrder,
     },
   });
 
@@ -90,7 +95,8 @@ export async function createBoardAction(
 
   revalidatePath("/admin/boards");
   revalidatePath(`/boards/${parsed.data.key}`);
-  return { ok: true };
+  revalidatePath("/", "layout");
+  redirect(`/admin/boards/${parsed.data.key}`);
 }
 
 export async function updateBoardAction(
@@ -137,7 +143,43 @@ export async function updateBoardAction(
   revalidatePath("/admin/boards");
   revalidatePath(`/admin/boards/${key}`);
   revalidatePath(`/boards/${key}`);
+  revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** 게시판 사이드바·목록 위치(순서) 변경 */
+export async function moveBoardAction(formData: FormData): Promise<void> {
+  await requireRole(["ADMIN"]);
+  const key = String(formData.get("key") ?? "").trim();
+  const direction = String(formData.get("direction") ?? "");
+  if (!key || (direction !== "up" && direction !== "down")) return;
+
+  const boards = await prisma.board.findMany({
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, key: true, sortOrder: true },
+  });
+  const idx = boards.findIndex((b) => b.key === key);
+  if (idx < 0) return;
+  const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= boards.length) return;
+
+  const ordered = [...boards];
+  const a = ordered[idx]!;
+  const b = ordered[swapIdx]!;
+  ordered[idx] = b;
+  ordered[swapIdx] = a;
+
+  await prisma.$transaction(
+    ordered.map((board, i) =>
+      prisma.board.update({
+        where: { id: board.id },
+        data: { sortOrder: (i + 1) * 10 },
+      }),
+    ),
+  );
+
+  revalidatePath("/admin/boards");
+  revalidatePath("/", "layout");
 }
 
 export async function deleteBoardAction(formData: FormData): Promise<void> {
@@ -169,6 +211,7 @@ export async function deleteBoardAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/admin/boards");
+  revalidatePath("/", "layout");
 }
 
 export async function adminDeleteMailboxFolderAction(formData: FormData) {

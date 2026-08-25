@@ -11,6 +11,7 @@ interface Step {
   status: string;
   comment: string | null;
   actedAt: Date | null;
+  title?: string | null;
   approver: { name: string; role: Role };
 }
 
@@ -81,7 +82,7 @@ export function ApprovalLine({
                       <div className="flex flex-wrap items-center gap-x-2">
                         <span className="font-medium">{s.approver.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {ROLE_LABELS[s.approver.role]}
+                          {s.title?.trim() || ROLE_LABELS[s.approver.role]}
                         </span>
                         <span
                           className={cn(

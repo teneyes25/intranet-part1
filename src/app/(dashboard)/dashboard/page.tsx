@@ -41,6 +41,7 @@ import { requireUser } from "@/lib/auth/session";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { canAccessBoard } from "@/lib/auth/access";
 import { BrandExternalLinks } from "@/features/dashboard/components/brand-external-links";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "홈",
@@ -52,13 +53,17 @@ function isWidgetVisible(layout: DashboardLayoutConfig, id: string) {
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [data, settings, bannerLayout, dashboardLayout, scheduleBoard] =
+  const [data, settings, bannerLayout, dashboardLayout, scheduleBoard, boards] =
     await Promise.all([
       getDashboardData(),
       getSiteSettings(),
       getPageLayout("banner", user.dealerId),
       getPageLayout("dashboard", user.dealerId),
       getBoardByKey(SCHEDULE_BOARD_KEY),
+      prisma.board.findMany({
+        select: { key: true, name: true, sortOrder: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      }),
     ]);
   const layout = mergeDashboardLayoutForRole(
     user.role,
@@ -86,7 +91,7 @@ export default async function DashboardPage() {
   }
 
   // 빌드된 메뉴(기능)를 역할에 맞춰 전부 노출 — '홈' 자신은 제외
-  const featureGroups = getVisibleNavGroups(user.role)
+  const featureGroups = getVisibleNavGroups(user.role, boards)
     .map((g) => ({
       ...g,
       items: g.items.filter((i) => i.href !== "/dashboard"),

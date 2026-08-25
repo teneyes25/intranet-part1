@@ -20,7 +20,7 @@ export default async function AdminBoardsPage() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <PageHeader
           title="게시판 관리"
-          description="카테고리·작성권한·메일함 등 게시판 설정 관리"
+          description="게시판 생성·순서·카테고리·작성권한·메일함 설정"
         />
         <Button asChild variant="outline">
           <Link href="/admin/users">사용자 관리</Link>
