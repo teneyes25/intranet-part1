@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import {
   FileText,
   LayoutPanelLeft,
@@ -99,16 +100,44 @@ export default async function DashboardPage() {
     .filter((g) => g.items.length > 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+    <div
+      className="maison-home space-y-8"
+      style={
+        {
+          "--maison-ink": "#1C1F1D",
+          "--maison-sage": "#5C7358",
+          "--maison-mist": "#E8EBE7",
+          "--maison-surface": "#F7F8F6",
+          fontFamily: "var(--font-manrope), var(--font-inter), system-ui, sans-serif",
+        } as CSSProperties
+      }
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground">
+          <p
+            className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]"
+            style={{ color: "var(--maison-sage)" }}
+          >
+            French Maison Intranet
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2
+              className="text-3xl font-semibold tracking-tight sm:text-4xl"
+              style={{
+                color: "var(--maison-ink)",
+                fontFamily: "var(--font-cormorant), Georgia, serif",
+              }}
+            >
               안녕하세요, {user.name}님
             </h2>
-            <Badge variant="secondary">{ROLE_LABELS[user.role]}</Badge>
+            <Badge
+              variant="secondary"
+              className="border-0 bg-[#E6EAE6] text-[#1C1F1D]"
+            >
+              {ROLE_LABELS[user.role]}
+            </Badge>
           </div>
-          <p className="text-muted-foreground">{today}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{today}</p>
         </div>
       </div>
 
@@ -210,13 +239,17 @@ export default async function DashboardPage() {
       )}
 
       {showSchedule && (
-        <Card className="border-sky-200/80 bg-gradient-to-r from-sky-50/80 to-card">
+        <Card className="border-[#C5D0C4]/80 bg-gradient-to-r from-[#EEF1ED] to-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarDays className="h-4 w-4 text-sky-700" />
+              <CalendarDays className="h-4 w-4 text-[#5C7358]" />
               일정 달력
             </CardTitle>
-            <Button asChild variant="default" size="sm">
+            <Button
+              asChild
+              size="sm"
+              className="bg-[#5C7358] text-white hover:bg-[#4A5E47]"
+            >
               <Link href="/boards/schedule">
                 달력 열기
                 <ArrowRight className="h-4 w-4" />
@@ -229,7 +262,7 @@ export default async function DashboardPage() {
                 등록된 다가오는 일정이 없습니다.{" "}
                 <Link
                   href="/boards/schedule/new"
-                  className="font-medium text-sky-800 underline-offset-2 hover:underline"
+                  className="font-medium text-[#5C7358] underline-offset-2 hover:underline"
                 >
                   일정 등록
                 </Link>
@@ -240,7 +273,7 @@ export default async function DashboardPage() {
                   <li key={e.id}>
                     <Link
                       href={`/boards/schedule/${e.id}`}
-                      className="flex items-center gap-3 py-2.5 text-sm transition-colors hover:bg-sky-50/60"
+                      className="flex items-center gap-3 py-2.5 text-sm transition-colors hover:bg-[#EEF1ED]/70"
                     >
                       {e.category && (
                         <Badge variant="secondary">{e.category}</Badge>
@@ -362,29 +395,29 @@ export default async function DashboardPage() {
         {/* 우측: AI 요약 + 내 정보 */}
         <div className="space-y-6">
           {isWidgetVisible(layout, "aiSummary") && (
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/8 via-card to-card shadow-card">
+          <Card className="border-[#C5D0C4]/70 bg-gradient-to-br from-[#EEF1ED] via-card to-card shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-primary" />
-                AI 데일리 요약
+                <Sparkles className="h-4 w-4 text-[#5C7358]" />
+                매종이 데일리 요약
               </CardTitle>
               <CardDescription>현재 워크스페이스 현황 요약</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p className="flex gap-2">
-                <span className="text-primary">•</span>
+                <span className="text-[#5C7358]">•</span>
                 전체 <strong>{data.postCount}건</strong>의 게시글이{" "}
                 <strong>{data.boardCount}개</strong> 게시판에 등록되어 있습니다.
               </p>
               <p className="flex gap-2">
-                <span className="text-primary">•</span>
+                <span className="text-[#5C7358]">•</span>
                 누적 댓글 <strong>{data.commentCount}건</strong>, 사용자{" "}
                 <strong>{data.userCount}명</strong>이 활동 중입니다.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+              <Button asChild variant="outline" size="sm" className="mt-2 w-full border-[#C5D0C4]">
                 <Link href="/ai-agent">
                   <Bot className="h-4 w-4" />
-                  AI 에이전트 열기
+                  매종이 열기
                 </Link>
               </Button>
             </CardContent>
