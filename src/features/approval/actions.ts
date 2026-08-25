@@ -173,6 +173,10 @@ export async function saveDocumentAction(
         }),
       ),
     );
+    const { ingestApproval } = await import("@/lib/ai/ingest");
+    void ingestApproval(docId).catch((e) =>
+      console.error("[approval] ingest:", e),
+    );
   }
 
   revalidatePath("/approval");

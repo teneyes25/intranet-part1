@@ -9,6 +9,8 @@ import { embedText } from "./embeddings";
 import { hybridSearch } from "./hybrid-search";
 import { sanitizeRichText } from "@/lib/sanitize";
 
+import { DRAFT_SYSTEM_PROMPT } from "./persona";
+
 export interface DraftRequest {
   title: string;
   purpose: string;
@@ -20,15 +22,7 @@ export interface DraftResult {
   mode: "generative" | "fallback";
 }
 
-const SYSTEM_PROMPT = `당신은 대한민국 행정안전부의 「행정업무운영 편람」과 공문서 작성 지침을 숙지한 전문 행정문서 작성 도우미입니다.
-사용자가 제시한 제목/목적에 맞는 사내 전자결재 기안서 본문을 한국어 공문체(간결·정중·객관)로 작성하세요.
-
-작성 규칙:
-- 항목을 <h2> 제목으로 구조화하고 본문은 <p> 또는 <ul><li> 로 작성합니다.
-  권장 구성: 1. 기안 목적 / 2. 추진 배경 / 3. 세부 내용 / 4. 기대 효과 / 5. 협조 및 조치 사항
-- 과장이나 추측 없이 사실 기반으로 작성합니다.
-- 확정되지 않은 수치·일정·금액은 대괄호 자리표시자(예: [금액], [일자])로 표기합니다.
-- 출력은 본문 HTML 만 반환합니다. 머리말/맺음말/코드펜스(\`\`\`)는 절대 포함하지 마세요.`;
+const SYSTEM_PROMPT = DRAFT_SYSTEM_PROMPT;
 
 function fallbackDraft(req: DraftRequest): string {
   const purpose = req.purpose || "[기안 목적을 입력하세요]";

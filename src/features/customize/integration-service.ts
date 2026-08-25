@@ -3,7 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 
 /** SNS 연동 UI에 노출하지 않는 내부 provider */
-const INTERNAL_PROVIDERS = new Set(["news_auto_collect"]);
+const INTERNAL_PROVIDERS = new Set(["news_auto_collect", "market_report_monthly"]);
 
 export function listIntegrations() {
   return prisma.integrationSetting.findMany({

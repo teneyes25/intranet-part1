@@ -1,7 +1,10 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { ingestAllPosts, ingestBoardPosts } from "@/lib/ai/ingest";
+import {
+  ingestAllIntranetKnowledge,
+  ingestBoardPosts,
+} from "@/lib/ai/ingest";
 import { countChunks } from "@/lib/ai/vector-store";
 
 export function listIngestJobs(limit = 20) {
@@ -26,10 +29,19 @@ export async function runIngestJob(params: {
   });
 
   try {
-    const postsProcessed =
-      params.scope === "all"
-        ? await ingestAllPosts()
-        : await ingestBoardPosts(params.boardKeys ?? []);
+    let postsProcessed = 0;
+    let documentsProcessed = 0;
+    let approvalsProcessed = 0;
+
+    if (params.scope === "all") {
+      const r = await ingestAllIntranetKnowledge();
+      postsProcessed = r.posts;
+      documentsProcessed = r.documents;
+      approvalsProcessed = r.approvals;
+    } else {
+      postsProcessed = await ingestBoardPosts(params.boardKeys ?? []);
+    }
+
     const chunksTotal = await countChunks();
 
     await prisma.aiIngestJob.update({
@@ -42,7 +54,16 @@ export async function runIngestJob(params: {
       },
     });
 
-    return { jobId: job.id, postsProcessed, chunksTotal };
+    return {
+      jobId: job.id,
+      postsProcessed,
+      documentsProcessed,
+      approvalsProcessed,
+      chunksTotal,
+      /** @deprecated sync UI 호환 */
+      ingested: postsProcessed + documentsProcessed + approvalsProcessed,
+      chunks: chunksTotal,
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "ingest failed";
     await prisma.aiIngestJob.update({

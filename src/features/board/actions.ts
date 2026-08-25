@@ -340,6 +340,8 @@ export async function addCommentAction(
     data: { postId: post.id, authorId: session.user.id, content },
   });
 
+  reindexPost(post.id);
+
   revalidatePath(`/boards/${post.board.key}/${post.id}`);
   return { ok: true, error: null };
 }
@@ -361,5 +363,6 @@ export async function deleteCommentAction(formData: FormData): Promise<void> {
   if (!canManagePost(session.user, comment.authorId)) return;
 
   await prisma.comment.delete({ where: { id: comment.id } });
+  reindexPost(comment.postId);
   revalidatePath(`/boards/${comment.post.board.key}/${comment.postId}`);
 }

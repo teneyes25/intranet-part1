@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { getDefaultApprovalDocumentCategoryId } from "@/features/documents/category-service";
+import { ingestApproval, ingestSharedDocument } from "@/lib/ai/ingest";
 
 /** 결재 완료 문서를 문서함에 보관 (카테고리 필수 연동) */
 export async function archiveApprovalToDocuments(documentId: string) {
@@ -37,7 +38,7 @@ export async function archiveApprovalToDocuments(documentId: string) {
   const plain = doc.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   const description = `${doc.drafter.name} 기안 · ${plain.slice(0, 120)}${plain.length > 120 ? "…" : ""}`;
 
-  await prisma.sharedDocument.create({
+  const archived = await prisma.sharedDocument.create({
     data: {
       title: doc.title,
       description,
@@ -47,5 +48,13 @@ export async function archiveApprovalToDocuments(documentId: string) {
       approvalDocumentId: doc.id,
       tags: ["전자결재", "완료"],
     },
+    select: { id: true },
   });
+
+  void ingestApproval(doc.id).catch((e) =>
+    console.error("[archive-approval] ingest approval:", e),
+  );
+  void ingestSharedDocument(archived.id).catch((e) =>
+    console.error("[archive-approval] ingest document:", e),
+  );
 }

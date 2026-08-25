@@ -21,16 +21,91 @@ async function searchPostsFulltext(query: string, limit: number) {
   }));
 }
 
-/** Reciprocal Rank Fusion — 벡터 + FTS 하이브리드 검색 후 rerank */
+async function searchDocumentsKeyword(query: string, limit: number) {
+  if (!query || query.length < 2) return [] as SearchResult[];
+  const docs = await prisma.sharedDocument.findMany({
+    where: {
+      OR: [
+        { title: { contains: query, mode: "insensitive" } },
+        { description: { contains: query, mode: "insensitive" } },
+        { category: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    take: limit,
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      url: true,
+      category: true,
+      approvalDocumentId: true,
+      boardKey: true,
+      postId: true,
+    },
+  });
+  return docs.map((d, i) => ({
+    id: `doc:${d.id}`,
+    sourceType: "document",
+    sourceId: d.id,
+    title: `[문서함] ${d.title}`,
+    url:
+      d.url ||
+      (d.postId && d.boardKey
+        ? `/boards/${d.boardKey}/${d.postId}`
+        : d.approvalDocumentId
+          ? `/approval/${d.approvalDocumentId}`
+          : "/documents"),
+    content: (d.description ?? d.title).slice(0, 400),
+    score: 1 - i * 0.03,
+  }));
+}
+
+async function searchApprovalsKeyword(query: string, limit: number) {
+  if (!query || query.length < 2) return [] as SearchResult[];
+  const docs = await prisma.approvalDocument.findMany({
+    where: {
+      status: { not: "DRAFT" },
+      OR: [
+        { title: { contains: query, mode: "insensitive" } },
+        { content: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    take: limit,
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true, content: true },
+  });
+  return docs.map((d, i) => ({
+    id: `apr:${d.id}`,
+    sourceType: "approval",
+    sourceId: d.id,
+    title: `[전자결재] ${d.title}`,
+    url: `/approval/${d.id}`,
+    content: d.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 400),
+    score: 1 - i * 0.03,
+  }));
+}
+
+/** Reciprocal Rank Fusion — 벡터 + FTS/키워드 하이브리드 검색 */
 export async function hybridSearch(
   query: string,
   embedding: number[],
   k: number,
   sourceType?: string,
 ): Promise<SearchResult[]> {
-  const [vectorHits, textHits] = await Promise.all([
+  const [vectorHits, textHits, docHits, aprHits] = await Promise.all([
     similaritySearch(embedding, k * 2, sourceType),
-    searchPostsFulltext(query, k * 2).catch(() => [] as Awaited<ReturnType<typeof searchPostsFulltext>>),
+    sourceType && sourceType !== "post"
+      ? Promise.resolve([])
+      : searchPostsFulltext(query, k * 2).catch(
+          () => [] as Awaited<ReturnType<typeof searchPostsFulltext>>,
+        ),
+    !sourceType || sourceType === "document"
+      ? searchDocumentsKeyword(query, k).catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
+    !sourceType || sourceType === "approval"
+      ? searchApprovalsKeyword(query, k).catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
   ]);
 
   const textAsResults: SearchResult[] = textHits.map((h, i) => ({
@@ -61,6 +136,8 @@ export async function hybridSearch(
 
   addRanked(vectorHits, 1);
   addRanked(textAsResults, 0.8);
+  addRanked(docHits, 0.7);
+  addRanked(aprHits, 0.7);
 
   return [...merged.values()]
     .sort((a, b) => b.rrf - a.rrf)

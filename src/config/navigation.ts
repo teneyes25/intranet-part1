@@ -96,7 +96,7 @@ const STATIC_GROUPS: NavGroup[] = [
   {
     label: "도구",
     items: [
-      { title: "AI 에이전트", href: "/ai-agent", icon: Bot },
+      { title: "매종이", href: "/ai-agent", icon: Bot },
       { title: "통합 검색", href: "/search", icon: Search },
       { title: "도움말", href: "/help", icon: HelpCircle },
       { title: "대리점 가이드", href: "/help/dealer", icon: Store, roles: ["DEALER"] },
