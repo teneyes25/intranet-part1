@@ -273,16 +273,47 @@ async function main() {
   }
   console.log("✅ seeded news keywords");
 
-  // 뉴스 분야 카테고리
-  const { ensureNewsCategories } = await import(
-    "@/features/news/category-service"
-  );
-  await ensureNewsCategories();
+  // 뉴스 분야 카테고리 (seed는 tsx로 실행되므로 server-only 모듈 import 금지)
+  const defaultNewsCats = [
+    "건설",
+    "유통",
+    "소비재",
+    "프랜차이즈",
+    "AI",
+    "경제",
+    "미래",
+  ];
+  for (const [i, name] of defaultNewsCats.entries()) {
+    await prisma.newsCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: (i + 1) * 10 },
+    });
+  }
   console.log("✅ seeded news categories");
 
   // 업무 카테고리
-  const { ensureJobCategories } = await import("@/features/jobs/service");
-  await ensureJobCategories();
+  const defaultJobs = [
+    "영업",
+    "총무",
+    "인사",
+    "디자인",
+    "웹디자인",
+    "재무",
+    "물류",
+    "배송",
+    "기획관리",
+    "판매",
+    "이사",
+    "대표이사",
+  ];
+  for (const [i, name] of defaultJobs.entries()) {
+    await prisma.jobCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: (i + 1) * 10 },
+    });
+  }
   console.log("✅ seeded job categories");
 
   // 문서함 샘플

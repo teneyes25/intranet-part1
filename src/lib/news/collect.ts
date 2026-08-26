@@ -5,10 +5,7 @@ import { sanitizeRichText } from "@/lib/sanitize";
 import { ingestPost } from "@/lib/ai/ingest";
 import { getActiveKeywords } from "@/features/news/keyword-service";
 import { selectKeywordsForToday } from "@/lib/news/select-keywords";
-import {
-  AUTO_COLLECT_POST_CATEGORY,
-  parseDefaultKeywordsFromEnv,
-} from "@/lib/news/config";
+import { AUTO_COLLECT_POST_CATEGORY } from "@/lib/news/config";
 import { fetchNews, type NewsItem } from "./sources";
 import { scrubNewsSummaryLine, summarizeNews } from "./summarize";
 
@@ -88,7 +85,7 @@ export interface CollectResult {
 }
 
 export async function collectAndPublish(): Promise<CollectResult[]> {
-  let activeKeywords = await getActiveKeywords();
+  const activeKeywords = await getActiveKeywords();
 
   if (activeKeywords.length === 0) {
     console.warn(
