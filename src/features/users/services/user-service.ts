@@ -17,6 +17,12 @@ export function listUsers() {
       isActive: true,
       approvalStatus: true,
       dealer: { select: { name: true, code: true } },
+      jobs: {
+        select: {
+          jobCategoryId: true,
+          jobCategory: { select: { id: true, name: true } },
+        },
+      },
       createdAt: true,
     },
   });

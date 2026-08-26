@@ -43,15 +43,74 @@ export async function getMyLeaveSummary(userId: string) {
     take: 50,
     include: {
       approver: { select: { id: true, name: true } },
+      approvalDocument: { select: { id: true, status: true } },
     },
   });
   return {
     year,
     accruedDays: balance.accruedDays,
     usedDays: balance.usedDays,
+    accruedAt: balance.accruedAt,
     remainingDays: remainingDays(balance.accruedDays, balance.usedDays),
     requests,
   };
+}
+
+/** 인사/관리자: 전원 발생·사용 현황 */
+export async function listLeaveBalancesForHr(year = currentLeaveYear()) {
+  const users = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      approvalStatus: "APPROVED",
+      role: { in: ["ADMIN", "HEADQUARTER"] },
+    },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      jobs: {
+        select: { jobCategory: { select: { name: true } } },
+      },
+      leaveBalances: {
+        where: { year },
+        take: 1,
+      },
+    },
+  });
+
+  return users.map((u) => {
+    const bal = u.leaveBalances[0];
+    const accrued = bal?.accruedDays ?? DEFAULT_ACCRUED_DAYS;
+    const used = bal?.usedDays ?? 0;
+    return {
+      userId: u.id,
+      name: u.name,
+      email: u.email,
+      jobs: u.jobs.map((j) => j.jobCategory.name),
+      year,
+      accruedDays: accrued,
+      usedDays: used,
+      remainingDays: remainingDays(accrued, used),
+      accruedAt: bal?.accruedAt ?? null,
+    };
+  });
+}
+
+/** 인사/관리자·본인: 사용 내역 (승인·대기·반려) */
+export async function listLeaveUsageHistory(opts?: {
+  userId?: string;
+  take?: number;
+}) {
+  return prisma.leaveRequest.findMany({
+    where: opts?.userId ? { userId: opts.userId } : undefined,
+    orderBy: { createdAt: "desc" },
+    take: opts?.take ?? 100,
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      approvalDocument: { select: { id: true, status: true } },
+    },
+  });
 }
 
 export async function listPendingLeaveRequests() {
@@ -60,6 +119,7 @@ export async function listPendingLeaveRequests() {
     orderBy: { createdAt: "asc" },
     include: {
       user: { select: { id: true, name: true, email: true, role: true } },
+      approvalDocument: { select: { id: true } },
     },
   });
 }

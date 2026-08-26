@@ -18,36 +18,57 @@ import {
   toggleUserActiveAction,
   updateUserPhoneAction,
 } from "@/features/users/actions";
+import { updateUserJobsAction } from "@/features/jobs/actions";
+
+type JobOption = { id: string; name: string };
 
 interface UserTableProps {
   users: UserListItem[];
   currentUserId: string;
+  jobCategories?: JobOption[];
 }
 
-export function UserTable({ users, currentUserId }: UserTableProps) {
+export function UserTable({
+  users,
+  currentUserId,
+  jobCategories = [],
+}: UserTableProps) {
   const pending = users.filter((u) => u.approvalStatus === "PENDING");
   const others = users.filter((u) => u.approvalStatus !== "PENDING");
 
   return (
     <div className="space-y-6">
-      {pending.length > 0 && <PendingSection users={pending} />}
+      {pending.length > 0 && (
+        <PendingSection users={pending} jobCategories={jobCategories} />
+      )}
       <UserListTable
         users={others}
         title="전체 사용자"
         currentUserId={currentUserId}
         showManage
+        jobCategories={jobCategories}
       />
     </div>
   );
 }
 
-function PendingSection({ users }: { users: UserListItem[] }) {
+function PendingSection({
+  users,
+  jobCategories,
+}: {
+  users: UserListItem[];
+  jobCategories: JobOption[];
+}) {
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-amber-600">
         승인 대기 ({users.length}명)
       </h3>
-      <UserListTable users={users} showActions />
+      <UserListTable
+        users={users}
+        showActions
+        jobCategories={jobCategories}
+      />
     </div>
   );
 }
@@ -58,14 +79,16 @@ function UserListTable({
   showActions = false,
   showManage = false,
   currentUserId,
+  jobCategories = [],
 }: {
   users: UserListItem[];
   title?: string;
   showActions?: boolean;
   showManage?: boolean;
   currentUserId?: string;
+  jobCategories?: JobOption[];
 }) {
-  const colSpan = showActions || showManage ? 7 : 6;
+  const colSpan = showActions || showManage ? 8 : 7;
   return (
     <div className="overflow-hidden rounded-lg border">
       {title && (
@@ -80,6 +103,7 @@ function UserListTable({
               <th className="px-4 py-3 font-medium">이름</th>
               <th className="px-4 py-3 font-medium">이메일</th>
               <th className="px-4 py-3 font-medium">휴대폰</th>
+              <th className="px-4 py-3 font-medium">업무</th>
               <th className="px-4 py-3 font-medium">권한</th>
               <th className="px-4 py-3 font-medium">소속</th>
               <th className="px-4 py-3 font-medium">상태</th>
@@ -112,6 +136,19 @@ function UserListTable({
                     </span>
                   )}
                 </td>
+                <td className="px-4 py-3 align-top">
+                  {showManage || showActions ? (
+                    <JobsEditor
+                      userId={u.id}
+                      selectedIds={u.jobs.map((j) => j.jobCategoryId)}
+                      options={jobCategories}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {u.jobs.map((j) => j.jobCategory.name).join(", ") || "-"}
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
                     {ROLE_LABELS[u.role]}
@@ -141,6 +178,74 @@ function UserListTable({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function JobsEditor({
+  userId,
+  selectedIds,
+  options,
+}: {
+  userId: string;
+  selectedIds: string[];
+  options: JobOption[];
+}) {
+  const [pending, startTransition] = useTransition();
+  const [selected, setSelected] = useState<string[]>(selectedIds);
+
+  function toggle(id: string) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function save() {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("userId", userId);
+      for (const id of selected) fd.append("jobIds", id);
+      const r = await updateUserJobsAction(fd);
+      if (r.error) toast.error(r.error);
+      else toast.success("업무를 저장했습니다.");
+    });
+  }
+
+  if (options.length === 0) {
+    return <span className="text-xs text-muted-foreground">업무 없음</span>;
+  }
+
+  return (
+    <div className="min-w-[12rem] space-y-1.5">
+      <div className="flex max-h-28 max-w-[14rem] flex-wrap gap-1 overflow-y-auto">
+        {options.map((o) => {
+          const on = selected.includes(o.id);
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => toggle(o.id)}
+              className={
+                on
+                  ? "rounded border border-primary bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
+                  : "rounded border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted"
+              }
+            >
+              {o.name}
+            </button>
+          );
+        })}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-7 px-2 text-xs"
+        disabled={pending}
+        onClick={save}
+      >
+        {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "업무 저장"}
+      </Button>
     </div>
   );
 }

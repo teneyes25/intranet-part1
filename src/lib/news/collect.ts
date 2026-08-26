@@ -91,14 +91,10 @@ export async function collectAndPublish(): Promise<CollectResult[]> {
   let activeKeywords = await getActiveKeywords();
 
   if (activeKeywords.length === 0) {
-    for (const kw of parseDefaultKeywordsFromEnv()) {
-      await prisma.newsKeyword.upsert({
-        where: { keyword: kw.keyword },
-        update: { category: kw.category, isActive: true },
-        create: kw,
-      });
-    }
-    activeKeywords = await getActiveKeywords();
+    console.warn(
+      "[news-collect] 활성 키워드가 없습니다. 관리자 화면에서 키워드를 활성화하세요.",
+    );
+    return [];
   }
 
   const selected = await selectKeywordsForToday(activeKeywords);

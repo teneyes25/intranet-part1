@@ -1,70 +1,161 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Loader2, Play, Trash2 } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { Loader2, Play, Plus, Save, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import type { NewsCategory, NewsKeyword } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
+  addNewsCategoryAction,
   addNewsKeywordAction,
+  deleteNewsCategoryAction,
   deleteNewsKeywordAction,
-  toggleNewsKeywordAction,
+  saveAllNewsKeywordsAction,
   triggerNewsCollectAction,
+  updateNewsCategoryAction,
 } from "@/features/news/actions";
-import { MAX_NEWS_KEYWORDS, NEWS_CATEGORIES } from "@/features/news/keyword-constants";
-import type { NewsKeyword } from "@prisma/client";
+import { MAX_NEWS_KEYWORDS } from "@/features/news/keyword-constants";
 
-export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
+type Row = {
+  id: string;
+  keyword: string;
+  category: string;
+  isActive: boolean;
+};
+
+export function NewsKeywordManager({
+  keywords,
+  categories,
+}: {
+  keywords: NewsKeyword[];
+  categories: NewsCategory[];
+}) {
   const [pending, startTransition] = useTransition();
   const [collectMsg, setCollectMsg] = useState<string | null>(null);
+  const [rows, setRows] = useState<Row[]>(
+    keywords.map((k) => ({
+      id: k.id,
+      keyword: k.keyword,
+      category: k.category,
+      isActive: k.isActive,
+    })),
+  );
+  const catNames = useMemo(() => categories.map((c) => c.name), [categories]);
+
+  function saveAll() {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("payload", JSON.stringify(rows));
+      const r = await saveAllNewsKeywordsAction(fd);
+      if (r.error) toast.error(r.error);
+      else toast.success("키워드 변경 내용을 저장했습니다.");
+    });
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          등록 {keywords.length}/{MAX_NEWS_KEYWORDS} · 게시 카테고리: 자동수집 · 관리자 로그인 시 1일 1회
+          등록 {rows.length}/{MAX_NEWS_KEYWORDS} · 변경 후 「변경 내용 저장」을 눌러야 DB에
+          유지됩니다.
         </p>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              setCollectMsg(null);
-              const r = await triggerNewsCollectAction();
-              const published =
-                r.results?.filter((x) => x.status === "published").length ?? 0;
-              const errors =
-                r.results?.filter((x) => x.status === "error").length ?? 0;
-              const skipped =
-                r.results?.filter((x) => x.status === "skipped").length ?? 0;
-              const noResult =
-                r.results?.filter((x) => x.status === "no-result").length ?? 0;
-              setCollectMsg(
-                `수집 완료 — 게시 ${published}건 · 오류 ${errors} · 중복 ${skipped} · 결과없음 ${noResult}`,
-              );
-            })
-          }
-        >
-          {pending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="h-4 w-4" />
-          )}
-          지금 수집 테스트
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={saveAll} disabled={pending}>
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            변경 내용 저장
+          </Button>
+          <Button
+            variant="outline"
+            size="default"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                setCollectMsg(null);
+                const r = await triggerNewsCollectAction();
+                const published =
+                  r.results?.filter((x) => x.status === "published").length ?? 0;
+                setCollectMsg(`수집 완료 — 게시 ${published}건`);
+              })
+            }
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            지금 수집 테스트
+          </Button>
+        </div>
       </div>
       {collectMsg && (
-        <p className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+        <p className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
           {collectMsg}
         </p>
       )}
 
+      {/* Categories CRUD */}
+      <section className="space-y-3 rounded-xl border p-4">
+        <h3 className="text-sm font-semibold">분야(카테고리) 관리</h3>
+        <form
+          className="flex flex-wrap gap-2"
+          action={(fd) =>
+            startTransition(async () => {
+              const r = await addNewsCategoryAction(fd);
+              if (r.error) toast.error(r.error);
+              else toast.success("카테고리를 추가했습니다.");
+            })
+          }
+        >
+          <Input name="name" placeholder="새 분야 이름" className="max-w-xs" required />
+          <Button type="submit" disabled={pending}>
+            <Plus className="h-4 w-4" />
+            추가
+          </Button>
+        </form>
+        <ul className="space-y-2">
+          {categories.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center gap-2">
+              <form
+                className="flex flex-wrap items-center gap-2"
+                action={(fd) =>
+                  startTransition(async () => {
+                    const r = await updateNewsCategoryAction(fd);
+                    if (r.error) toast.error(r.error);
+                    else toast.success("카테고리를 수정했습니다.");
+                  })
+                }
+              >
+                <input type="hidden" name="id" value={c.id} />
+                <Input name="name" defaultValue={c.name} className="h-9 w-40" />
+                <Button type="submit" size="sm" variant="outline" disabled={pending}>
+                  수정
+                </Button>
+              </form>
+              <form
+                action={(fd) =>
+                  startTransition(async () => {
+                    if (!window.confirm(`「${c.name}」 카테고리를 삭제할까요?`)) return;
+                    const r = await deleteNewsCategoryAction(fd);
+                    if (r.error) toast.error(r.error);
+                    else toast.success("삭제했습니다.");
+                  })
+                }
+              >
+                <input type="hidden" name="id" value={c.id} />
+                <Button type="submit" size="sm" variant="ghost" disabled={pending}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Add keyword */}
       <form
         action={(fd) =>
           startTransition(async () => {
-            await addNewsKeywordAction(fd);
+            const r = await addNewsKeywordAction(fd);
+            if (r?.error) toast.error(r.error);
+            else toast.success("키워드를 추가했습니다.");
           })
         }
         className="flex flex-wrap gap-2"
@@ -73,30 +164,27 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
           name="keyword"
           placeholder="검색 키워드"
           className="max-w-xs"
-          disabled={keywords.length >= MAX_NEWS_KEYWORDS}
+          disabled={rows.length >= MAX_NEWS_KEYWORDS}
         />
         <select
           name="category"
           className="h-10 rounded-md border bg-background px-3 text-sm"
-          defaultValue="건설"
+          defaultValue={catNames[0] ?? ""}
         >
-          {NEWS_CATEGORIES.map((c) => (
+          {catNames.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
           ))}
         </select>
-        <Button
-          type="submit"
-          disabled={keywords.length >= MAX_NEWS_KEYWORDS || pending}
-        >
-          추가
+        <Button type="submit" disabled={rows.length >= MAX_NEWS_KEYWORDS || pending}>
+          키워드 추가
         </Button>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-border/60 shadow-card">
+      <div className="overflow-hidden rounded-xl border shadow-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
               <th className="px-4 py-3">키워드</th>
               <th className="px-4 py-3">분야</th>
@@ -105,33 +193,68 @@ export function NewsKeywordManager({ keywords }: { keywords: NewsKeyword[] }) {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {keywords.map((kw) => (
-              <tr key={kw.id}>
-                <td className="px-4 py-3 font-medium">{kw.keyword}</td>
-                <td className="px-4 py-3">
-                  <Badge variant="secondary">{kw.category}</Badge>
-                </td>
-                <td className="px-4 py-3">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      startTransition(() =>
-                        toggleNewsKeywordAction(kw.id, !kw.isActive),
+            {rows.map((row, idx) => (
+              <tr key={row.id}>
+                <td className="px-4 py-2">
+                  <Input
+                    value={row.keyword}
+                    onChange={(e) =>
+                      setRows((prev) =>
+                        prev.map((r, i) =>
+                          i === idx ? { ...r, keyword: e.target.value } : r,
+                        ),
                       )
                     }
-                  >
-                    {kw.isActive ? "활성" : "비활성"}
-                  </Button>
+                    className="h-9"
+                  />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-2">
+                  <select
+                    value={row.category}
+                    onChange={(e) =>
+                      setRows((prev) =>
+                        prev.map((r, i) =>
+                          i === idx ? { ...r, category: e.target.value } : r,
+                        ),
+                      )
+                    }
+                    className="h-9 rounded-md border bg-background px-2 text-sm"
+                  >
+                    {catNames.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-2">
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={row.isActive}
+                      onChange={(e) =>
+                        setRows((prev) =>
+                          prev.map((r, i) =>
+                            i === idx ? { ...r, isActive: e.target.checked } : r,
+                          ),
+                        )
+                      }
+                    />
+                    활성
+                  </label>
+                </td>
+                <td className="px-4 py-2">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     onClick={() =>
-                      startTransition(() => deleteNewsKeywordAction(kw.id))
+                      startTransition(async () => {
+                        if (!window.confirm("이 키워드를 삭제할까요?")) return;
+                        await deleteNewsKeywordAction(row.id);
+                        setRows((prev) => prev.filter((r) => r.id !== row.id));
+                        toast.success("삭제했습니다.");
+                      })
                     }
                   >
                     <Trash2 className="h-4 w-4" />

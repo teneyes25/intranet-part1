@@ -256,6 +256,10 @@ export async function approveAction(
         data: { status: "COMPLETED", completedAt: new Date() },
       });
       await archiveApprovalToDocuments(docId);
+      const { settleLeaveOnApprovalComplete } = await import(
+        "@/features/leave/approval-bridge"
+      );
+      await settleLeaveOnApprovalComplete(docId);
       await createNotification({
         userId: doc.drafterId,
         type: "APPROVAL_RESULT",
@@ -264,6 +268,7 @@ export async function approveAction(
         link: `/approval/${docId}`,
       });
       revalidatePath("/documents");
+      revalidatePath("/leave");
       void writeAudit({
         action: "APPROVAL_APPROVE",
         userId,
@@ -320,6 +325,11 @@ export async function rejectAction(
     }),
   ]);
 
+  const { settleLeaveOnApprovalReject } = await import(
+    "@/features/leave/approval-bridge"
+  );
+  await settleLeaveOnApprovalReject(docId, comment);
+
   await createNotification({
     userId: doc.drafterId,
     type: "APPROVAL_RESULT",
@@ -330,6 +340,7 @@ export async function rejectAction(
 
   revalidatePath(`/approval/${docId}`);
   revalidatePath("/approval");
+  revalidatePath("/leave");
   return { ok: true, error: null };
 }
 

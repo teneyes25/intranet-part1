@@ -126,6 +126,13 @@ const STATIC_GROUPS: NavGroup[] = [
       { title: "대리점 관리", href: "/admin/dealers", icon: Store, roles: ["ADMIN"] },
       { title: "Rollout", href: "/admin/rollout", icon: Rocket, roles: ["ADMIN"] },
       { title: "뉴스 키워드", href: "/admin/news-keywords", icon: Newspaper, roles: ["ADMIN"] },
+      {
+        title: "상품자료실 카테고리",
+        href: "/admin/product-categories",
+        icon: Package,
+        roles: ["ADMIN"],
+      },
+      { title: "업무 카테고리", href: "/admin/jobs", icon: Users, roles: ["ADMIN"] },
       { title: "문서함 카테고리", href: "/admin/document-categories", icon: FolderOpen, roles: ["ADMIN"] },
       { title: "활동 로그", href: "/admin/activity", icon: Activity, roles: ["ADMIN"] },
       { title: "포털 커스터마이징", href: "/admin/customize", icon: Settings, roles: ["ADMIN"] },

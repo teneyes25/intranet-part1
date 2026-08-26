@@ -2,7 +2,9 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 
-export { MAX_NEWS_KEYWORDS, NEWS_CATEGORIES } from "@/features/news/keyword-constants";
+export { MAX_NEWS_KEYWORDS } from "@/features/news/keyword-constants";
+/** @deprecated DB NewsCategory 사용 — 하위 호환 기본값 */
+export { DEFAULT_NEWS_CATEGORIES as NEWS_CATEGORIES } from "@/features/news/category-service";
 import { MAX_NEWS_KEYWORDS } from "@/features/news/keyword-constants";
 
 export function listNewsKeywords() {

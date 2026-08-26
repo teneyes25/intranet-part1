@@ -196,10 +196,10 @@ async function main() {
     },
     {
       key: "leave",
-      name: "휴가 신청서",
-      description: "연차/병가 등 휴가 신청 양식",
+      name: "연차 유급휴가 사용신청서",
+      description: "연차·반차 사용 신청 (기안문 자동 생성)",
       content:
-        "<h2>1. 신청인</h2><p></p><h2>2. 휴가 종류</h2><p>연차 / 병가 / 경조사 / 기타</p><h2>3. 휴가 기간</h2><p>____년 __월 __일 ~ ____년 __월 __일 (총 __일)</p><h2>4. 사유</h2><p></p><h2>5. 업무 인수인계</h2><p></p>",
+        "<h1 style=\"text-align:center;letter-spacing:0.25em;\">연차 유급휴가 사용신청서</h1><h2>1. 신청자 정보</h2><p>소속 / 성명 / 직책(업무) / 잔여 연차 수</p><h2>2. 신청 내역</h2><p>연차 종류(연차·반차) / 시작·종료 / 사유 / 비상 연락처</p><h2>3. 결재</h2><p>담당 → 인사 → 이사</p>",
     },
     {
       key: "trip",
@@ -266,11 +266,24 @@ async function main() {
   for (const [i, kw] of newsKeywords.entries()) {
     await prisma.newsKeyword.upsert({
       where: { keyword: kw.keyword },
-      update: { category: kw.category, isActive: true, sortOrder: i },
+      // 관리자 활성/비활성·순서를 덮어쓰지 않음
+      update: {},
       create: { ...kw, sortOrder: i },
     });
   }
   console.log("✅ seeded news keywords");
+
+  // 뉴스 분야 카테고리
+  const { ensureNewsCategories } = await import(
+    "@/features/news/category-service"
+  );
+  await ensureNewsCategories();
+  console.log("✅ seeded news categories");
+
+  // 업무 카테고리
+  const { ensureJobCategories } = await import("@/features/jobs/service");
+  await ensureJobCategories();
+  console.log("✅ seeded job categories");
 
   // 문서함 샘플
   const cats = await prisma.documentCategory.findMany();

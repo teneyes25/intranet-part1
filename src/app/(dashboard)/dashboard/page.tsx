@@ -327,7 +327,7 @@ export default async function DashboardPage() {
                     <li key={p.id}>
                       <Link
                         href={`/boards/${p.board.key}/${p.id}`}
-                        className="flex items-center gap-3 px-6 py-3.5 text-sm transition-all duration-200 hover:bg-primary/5"
+                        className="flex items-center gap-3 px-6 py-3.5 text-sm transition-all duration-200 hover:bg-[#EEF1ED]/80"
                       >
                         {p.isPinned && (
                           <Pin className="h-3.5 w-3.5 shrink-0 text-destructive" />
