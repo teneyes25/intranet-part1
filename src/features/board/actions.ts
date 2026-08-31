@@ -181,14 +181,15 @@ export async function createPostAction(
 
   reindexPost(postId);
 
-  const authorName =
-    (await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { name: true },
-    }))?.name ?? session.user.name ?? "작성자";
+  const author = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, phone: true },
+  });
+  const authorName = author?.name ?? session.user.name ?? "작성자";
 
   const sendContactNotify =
     boardKey === "notices" && formData.get("sendContactNotify") === "on";
+  const senderPhoneRaw = String(formData.get("smsSenderPhone") ?? "").trim();
 
   void import("@/features/notifications/post-fanout")
     .then(({ fanoutNewPostNotifications }) =>
@@ -200,13 +201,19 @@ export async function createPostAction(
         authorId: session.user.id,
         authorName,
         sendContactNotify,
+        contentHtml: sanitizeRichText(contentRaw),
+        senderPhone: senderPhoneRaw || author?.phone || null,
       }),
     )
     .catch((e) => console.error("[post-notify]", e));
 
   revalidatePath(`/boards/${boardKey}`);
   revalidatePath("/", "layout");
-  redirect(`/boards/${boardKey}/${postId}`);
+  redirect(
+    boardKey === "notices"
+      ? `/boards/${boardKey}/${postId}?sms=1`
+      : `/boards/${boardKey}/${postId}`,
+  );
 }
 
 // ──────────────────────────────────────────────

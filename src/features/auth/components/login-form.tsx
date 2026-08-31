@@ -33,9 +33,7 @@ export function LoginForm() {
     setLoading(false);
 
     if (!res || res.error) {
-      setError(
-        "이메일 또는 비밀번호가 올바르지 않습니다. (초기: admin@intranet.local / password1234 — 복구: npm run office:reset-admin)",
-      );
+      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
       return;
     }
 
@@ -52,7 +50,7 @@ export function LoginForm() {
           type="text"
           inputMode="email"
           autoComplete="username"
-          placeholder="admin@intranet.local"
+          placeholder="name@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required

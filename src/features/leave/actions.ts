@@ -46,6 +46,23 @@ export async function submitLeaveRequestAction(
     String(formData.get("emergencyContact") ?? "").trim() ||
     dbUser.phone ||
     null;
+  const contentHtml = String(formData.get("content") ?? "").trim() || null;
+  const titleOverride = String(formData.get("title") ?? "").trim() || null;
+
+  let customApprovers: { id: string; title: string }[] | null = null;
+  const stepsRaw = String(formData.get("steps") ?? "").trim();
+  if (stepsRaw) {
+    try {
+      const parsed = JSON.parse(stepsRaw) as { approverId: string; title?: string }[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        customApprovers = parsed
+          .filter((s) => s?.approverId)
+          .map((s) => ({ id: s.approverId, title: s.title?.trim() || "결재" }));
+      }
+    } catch {
+      return { error: "결재선 형식이 올바르지 않습니다." };
+    }
+  }
 
   if (!start) return { error: "시작일을 확인하세요." };
   if (leaveType === "HALF") end = start;
@@ -61,6 +78,9 @@ export async function submitLeaveRequestAction(
       endDate: end,
       reason,
       emergencyContact,
+      customApprovers,
+      contentHtml,
+      titleOverride,
     });
     revalidatePath("/leave");
     revalidatePath("/approval");

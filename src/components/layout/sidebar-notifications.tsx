@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 interface NotificationItem {
@@ -27,7 +26,7 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}일 전`;
 }
 
-/** 사이드바용 새 글·알림 패널 */
+/** 사이드바용 새 알림 패널 — 확인(읽음)한 항목은 숨김 */
 export function SidebarNotifications({
   collapsed = false,
   onNavigate,
@@ -40,7 +39,7 @@ export function SidebarNotifications({
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications");
+      const res = await fetch("/api/notifications?unreadOnly=1");
       if (!res.ok) return;
       const data = await res.json();
       setItems((data.items ?? []).slice(0, 5));
@@ -62,9 +61,7 @@ export function SidebarNotifications({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    setItems((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
+    setItems((prev) => prev.filter((n) => n.id !== id));
     setUnread((u) => Math.max(0, u - 1));
   }
 
@@ -92,7 +89,7 @@ export function SidebarNotifications({
       <div className="mb-2 flex items-center justify-between px-1">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
           <Bell className="h-3 w-3" />
-          알림
+          새 알림
         </p>
         {unread > 0 && (
           <Badge
@@ -112,14 +109,7 @@ export function SidebarNotifications({
           {items.map((n) => {
             const inner = (
               <>
-                <span
-                  className={cn(
-                    "line-clamp-1 text-xs",
-                    n.read
-                      ? "font-normal text-sidebar-foreground/60"
-                      : "font-semibold text-sidebar-foreground",
-                  )}
-                >
+                <span className="line-clamp-1 text-xs font-semibold text-sidebar-foreground">
                   {n.title}
                 </span>
                 {n.body && (
@@ -132,10 +122,8 @@ export function SidebarNotifications({
                 </span>
               </>
             );
-            const className = cn(
-              "flex w-full flex-col rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent",
-              !n.read && "bg-sidebar-accent/50",
-            );
+            const className =
+              "flex w-full flex-col rounded-md bg-sidebar-accent/50 px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent";
             return (
               <li key={n.id}>
                 {n.link ? (
@@ -143,7 +131,7 @@ export function SidebarNotifications({
                     href={n.link}
                     className={className}
                     onClick={() => {
-                      if (!n.read) void markRead(n.id);
+                      void markRead(n.id);
                       onNavigate?.();
                     }}
                   >
@@ -154,7 +142,7 @@ export function SidebarNotifications({
                     type="button"
                     className={className}
                     onClick={() => {
-                      if (!n.read) void markRead(n.id);
+                      void markRead(n.id);
                     }}
                   >
                     {inner}
@@ -170,7 +158,7 @@ export function SidebarNotifications({
         onClick={onNavigate}
         className="mt-2 block px-1 text-[11px] text-sidebar-primary hover:underline"
       >
-        모든 알림 보기
+        알림 전체 보기
       </Link>
     </div>
   );

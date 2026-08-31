@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  countUnreadNotifications,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -10,9 +11,13 @@ import { withApiGuard } from "@/lib/security/api-guard";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = withApiGuard({ tier: "api" }, async (_req, { session }) => {
-  const items = await listNotifications(session!.user.id, 30);
-  const unread = items.filter((n) => !n.read).length;
+export const GET = withApiGuard({ tier: "api" }, async (req, { session }) => {
+  const url = new URL(req.url);
+  const unreadOnly = url.searchParams.get("unreadOnly") !== "0";
+  const items = await listNotifications(session!.user.id, 30, { unreadOnly });
+  const unread = unreadOnly
+    ? items.length
+    : await countUnreadNotifications(session!.user.id);
   return NextResponse.json({ items, unread });
 });
 

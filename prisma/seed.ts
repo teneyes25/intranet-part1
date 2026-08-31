@@ -12,7 +12,8 @@ async function main() {
         "Docker 사용 시: npm run office:db-seed",
     );
   }
-  const password = await bcrypt.hash("password1234", 10);
+  const adminPassword = await bcrypt.hash("admin1234!!", 10);
+  const demoPassword = await bcrypt.hash("password1234", 10);
 
   const rolloutGroups = [
     { key: "group-1", name: "Rollout Group 1 (1~20)", sortOrder: 1 },
@@ -75,13 +76,15 @@ async function main() {
   for (const u of seedUsers) {
     const email = u.email.trim().toLowerCase();
     const mustChangeOnCreate = u.role === Role.ADMIN;
+    const passwordHash =
+      u.role === Role.ADMIN ? adminPassword : demoPassword;
     const created = await prisma.user.upsert({
       where: { email },
       update: {
         name: u.name,
         role: u.role,
         dealerId: u.dealerId,
-        passwordHash: password,
+        passwordHash,
         isActive: true,
         approvalStatus: "APPROVED",
         // 재시드 시 초기 비밀번호로 복구 — 바로 로그인 가능
@@ -93,14 +96,15 @@ async function main() {
         name: u.name,
         role: u.role,
         dealerId: u.dealerId,
-        passwordHash: password,
+        passwordHash,
         isActive: true,
         approvalStatus: "APPROVED",
         mustChangePassword: mustChangeOnCreate,
       },
     });
     if (u.role === Role.ADMIN) adminId = created.id;
-    console.log(`✅ seeded user: ${email} (${u.role}) password=password1234`);
+    const pwHint = u.role === Role.ADMIN ? "admin1234!!" : "password1234";
+    console.log(`✅ seeded user: ${email} (${u.role}) password=${pwHint}`);
   }
 
   // 게시판 (베이스 보드 시스템)

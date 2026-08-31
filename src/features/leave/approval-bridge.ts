@@ -3,7 +3,7 @@ import "server-only";
 import type { LeaveType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { findUsersByJobName, userHasJob } from "@/features/jobs/service";
+import { findUsersByJobName } from "@/features/jobs/service";
 import {
   calcLeaveDays,
   currentLeaveYear,
@@ -91,19 +91,12 @@ function escape(s: string) {
 }
 
 /**
- * 결재선:
- * - 일반: 인사 → 이사
- * - 인사 신청: 이사
- * - 이사 신청: 대표이사
+ * 기본 결재선: 인사담당자 → 이사
+ * (신청자는 기안자. 결재선에 직접 지정하지 않으면 이 기본값 사용)
  */
 export async function resolveLeaveApprovers(applicantId: string) {
-  const isHr = await userHasJob(applicantId, "인사");
-  const isDirector = await userHasJob(applicantId, "이사");
-  const isCeo = await userHasJob(applicantId, "대표이사");
-
   const hrList = await findUsersByJobName("인사");
   const directors = await findUsersByJobName("이사");
-  const ceos = await findUsersByJobName("대표이사");
 
   const pick = (
     list: { id: string; name: string }[],
@@ -114,30 +107,17 @@ export async function resolveLeaveApprovers(applicantId: string) {
     return u && u.id !== excludeId ? { ...u, title } : null;
   };
 
-  if (isCeo) {
-    // 대표이사는 추가 결재 없이 본인 확인용 관리자 폴백 가능 — 정책상 이사만
-    const d = pick(directors, "이사", applicantId);
-    if (d) return [d];
-    return [] as { id: string; name: string; title: string }[];
-  }
-
-  if (isDirector) {
-    const ceo = pick(ceos, "대표이사", applicantId);
-    if (!ceo) throw new Error("대표이사 업무 담당자를 찾을 수 없습니다. 관리자에게 문의하세요.");
-    return [ceo];
-  }
-
-  if (isHr) {
-    const d = pick(directors, "이사", applicantId);
-    if (!d) throw new Error("이사 업무 담당자를 찾을 수 없습니다. 관리자에게 문의하세요.");
-    return [d];
-  }
-
   const hr = pick(hrList, "인사담당자", applicantId);
   const dir = pick(directors, "이사", applicantId);
-  if (!hr) throw new Error("인사업무 담당자를 찾을 수 없습니다. 관리자에게 문의하세요.");
-  if (!dir) throw new Error("이사 업무 담당자를 찾을 수 없습니다. 관리자에게 문의하세요.");
-  return [hr, dir];
+  const steps: { id: string; name: string; title: string }[] = [];
+  if (hr) steps.push(hr);
+  if (dir) steps.push(dir);
+  if (steps.length === 0) {
+    throw new Error(
+      "기본 결재선(인사·이사)을 찾을 수 없습니다. 결재자를 직접 지정하거나 관리자에게 문의하세요.",
+    );
+  }
+  return steps;
 }
 
 export function computeLeaveDays(
@@ -159,6 +139,11 @@ export async function submitLeaveAsApproval(params: {
   endDate: Date;
   reason: string | null;
   emergencyContact: string | null;
+  /** 사용자가 직접 지정한 결재선 (없으면 기본: 인사→이사) */
+  customApprovers?: { id: string; title: string }[] | null;
+  /** 기안문 HTML 직접 편집 시 */
+  contentHtml?: string | null;
+  titleOverride?: string | null;
 }) {
   const days = computeLeaveDays(params.leaveType, params.startDate, params.endDate);
   if (days <= 0) throw new Error("기간을 확인하세요.");
@@ -180,9 +165,24 @@ export async function submitLeaveAsApproval(params: {
   });
   if (overlap > 0) throw new Error("같은 기간에 이미 신청·승인된 연차가 있습니다.");
 
-  const approvers = await resolveLeaveApprovers(params.userId);
+  let approvers: { id: string; name: string; title: string }[];
+  if (params.customApprovers && params.customApprovers.length > 0) {
+    const ids = params.customApprovers.map((a) => a.id);
+    const users = await prisma.user.findMany({
+      where: { id: { in: ids }, isActive: true },
+      select: { id: true, name: true },
+    });
+    const map = new Map(users.map((u) => [u.id, u]));
+    approvers = params.customApprovers.map((a) => {
+      const u = map.get(a.id);
+      if (!u) throw new Error("결재자 지정이 올바르지 않습니다.");
+      return { id: u.id, name: u.name, title: a.title || "결재" };
+    });
+  } else {
+    approvers = await resolveLeaveApprovers(params.userId);
+  }
   if (approvers.length === 0) {
-    throw new Error("결재자를 지정할 수 없습니다. 업무(인사/이사/대표이사) 배정을 확인하세요.");
+    throw new Error("결재자를 지정할 수 없습니다. 업무(인사/이사) 배정을 확인하세요.");
   }
 
   const jobs = await prisma.userJob.findMany({
@@ -200,21 +200,27 @@ export async function submitLeaveAsApproval(params: {
   });
   const documentCategoryId = await getDefaultApprovalDocumentCategoryId();
 
-  const content = buildLeaveDraftHtml({
-    affiliation: user?.dealer?.name ?? (user?.role === "ADMIN" ? "본사" : "본사"),
-    name: params.userName,
-    jobTitles: jobs.map((j) => j.jobCategory.name).join(", "),
-    remainingDays: remaining,
-    leaveType: params.leaveType,
-    startDate: params.startDate,
-    endDate: params.endDate,
-    days,
-    reason: params.reason ?? "",
-    emergencyContact:
-      params.emergencyContact ?? params.phone ?? "",
-  });
+  const content =
+    params.contentHtml?.trim()
+      ? sanitizeRichText(params.contentHtml)
+      : buildLeaveDraftHtml({
+          affiliation:
+            user?.dealer?.name ?? (user?.role === "ADMIN" ? "본사" : "본사"),
+          name: params.userName,
+          jobTitles: jobs.map((j) => j.jobCategory.name).join(", "),
+          remainingDays: remaining,
+          leaveType: params.leaveType,
+          startDate: params.startDate,
+          endDate: params.endDate,
+          days,
+          reason: params.reason ?? "",
+          emergencyContact:
+            params.emergencyContact ?? params.phone ?? "",
+        });
 
-  const title = `[연차] ${params.userName} · ${params.leaveType === "HALF" ? "반차" : "연차"} ${days}일 (${fmtDate(params.startDate)}~${fmtDate(params.endDate)})`;
+  const title =
+    params.titleOverride?.trim() ||
+    `[연차] ${params.userName} · ${params.leaveType === "HALF" ? "반차" : "연차"} ${days}일 (${fmtDate(params.startDate)}~${fmtDate(params.endDate)})`;
 
   const doc = await prisma.approvalDocument.create({
     data: {

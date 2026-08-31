@@ -33,6 +33,7 @@ import { PageLayoutRenderer } from "@/features/page-layout/components/layout-ren
 import { getPostDetailPageLayoutForView } from "@/features/page-layout/service";
 import { CommentForm } from "@/features/board/components/comment-form";
 import { ConfirmDeleteForm } from "@/features/board/components/confirm-delete-form";
+import { NoticeSmsPanel } from "@/features/board/components/notice-sms-panel";
 import { formatDateTime, formatFileSize } from "@/features/board/utils";
 import {
   AttachmentMeta,
@@ -44,10 +45,13 @@ export const metadata: Metadata = { title: "게시글" };
 
 export default async function PostDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ key: string; postId: string }>;
+  searchParams?: Promise<{ sms?: string }>;
 }) {
   const { key, postId } = await params;
+  const sp = searchParams ? await searchParams : {};
   const user = await requireUser();
   const post = await getPostDetail(postId);
   if (!post || post.board.key !== key) notFound();
@@ -56,6 +60,8 @@ export default async function PostDetailPage({
 
   await incrementViewCount(postId);
   const canManage = canManagePost(user, post.authorId);
+  const showSms =
+    key === "notices" && (canManage || user.role === "ADMIN");
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -68,6 +74,14 @@ export default async function PostDetailPage({
 
       {detailLayout?.html && detailLayout.isPublished && (
         <PageLayoutRenderer html={detailLayout.html} css={detailLayout.css} />
+      )}
+
+      {showSms && (
+        <NoticeSmsPanel
+          postId={post.id}
+          authorPhone={post.author.phone}
+          defaultOpen={sp.sms === "1"}
+        />
       )}
 
       <Card>

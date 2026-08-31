@@ -45,7 +45,7 @@ export function NotificationBell() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications");
+      const res = await fetch("/api/notifications?unreadOnly=1");
       if (!res.ok) return;
       const data = await res.json();
       setItems(data.items ?? []);
@@ -67,9 +67,7 @@ export function NotificationBell() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    setItems((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
+    setItems((prev) => prev.filter((n) => n.id !== id));
     setUnread((u) => Math.max(0, u - 1));
   }
 
@@ -79,9 +77,9 @@ export function NotificationBell() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ all: true }),
     });
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setItems([]);
     setUnread(0);
-    toast.success("모든 알림을 읽음 처리했습니다.");
+    toast.success("확인한 알림을 숨겼습니다. 전체 목록에서 다시 볼 수 있습니다.");
   }
 
   return (
@@ -103,7 +101,7 @@ export function NotificationBell() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>알림</span>
+          <span>새 알림</span>
           <div className="flex items-center gap-2">
             {unread > 0 && (
               <Badge variant="secondary">{unread}</Badge>
@@ -113,7 +111,7 @@ export function NotificationBell() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                aria-label="모두 읽음"
+                aria-label="모두 확인"
                 onClick={(e) => {
                   e.preventDefault();
                   void markAllRead();
@@ -140,18 +138,14 @@ export function NotificationBell() {
               key={n.id}
               className="flex cursor-pointer flex-col items-start gap-0.5 py-2"
               onClick={() => {
-                if (!n.read) void markRead(n.id);
+                void markRead(n.id);
                 setOpen(false);
               }}
               asChild={!!n.link}
             >
               {n.link ? (
                 <Link href={n.link} className="w-full">
-                  <span
-                    className={`text-sm ${n.read ? "font-normal" : "font-semibold"}`}
-                  >
-                    {n.title}
-                  </span>
+                  <span className="text-sm font-semibold">{n.title}</span>
                   {n.body && (
                     <span className="text-xs text-muted-foreground">{n.body}</span>
                   )}
@@ -161,11 +155,7 @@ export function NotificationBell() {
                 </Link>
               ) : (
                 <>
-                  <span
-                    className={`text-sm ${n.read ? "font-normal" : "font-semibold"}`}
-                  >
-                    {n.title}
-                  </span>
+                  <span className="text-sm font-semibold">{n.title}</span>
                   {n.body && (
                     <span className="text-xs text-muted-foreground">{n.body}</span>
                   )}
@@ -179,7 +169,7 @@ export function NotificationBell() {
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="justify-center text-sm">
-          <Link href="/notifications">모든 알림 보기</Link>
+          <Link href="/notifications">알림 전체 보기</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

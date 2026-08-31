@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useTransition } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -11,90 +11,38 @@ import { Label } from "@/components/ui/label";
 import {
   cancelLeaveRequestAction,
   setAccruedLeaveAction,
-  submitLeaveRequestAction,
-  type LeaveActionState,
 } from "@/features/leave/actions";
-
-const initial: LeaveActionState = {};
 
 export function LeaveRequestForm({
   defaultPhone,
 }: {
   defaultPhone?: string | null;
 }) {
-  const [state, action, pending] = useActionState(submitLeaveRequestAction, initial);
-  const [leaveType, setLeaveType] = useState<"FULL" | "HALF">("FULL");
+  void defaultPhone;
+
+  function openDraftWindow() {
+    const w = 920;
+    const h = 900;
+    const left = Math.max(0, Math.round((window.screen.width - w) / 2));
+    const top = Math.max(0, Math.round((window.screen.height - h) / 2));
+    window.open(
+      "/leave/apply",
+      "leave-apply",
+      `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`,
+    );
+  }
 
   return (
-    <form action={action} className="space-y-3">
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">연차 종류</legend>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="leaveType"
-              value="FULL"
-              checked={leaveType === "FULL"}
-              onChange={() => setLeaveType("FULL")}
-            />
-            일반 연차
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="leaveType"
-              value="HALF"
-              checked={leaveType === "HALF"}
-              onChange={() => setLeaveType("HALF")}
-            />
-            반차 (0.5일 차감)
-          </label>
-        </div>
-      </fieldset>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="startDate">시작일</Label>
-          <Input id="startDate" name="startDate" type="date" required />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="endDate">종료일</Label>
-          {leaveType === "HALF" ? (
-            <>
-              <Input id="endDate" type="date" disabled />
-              <input type="hidden" name="endDate" value="" />
-              <p className="text-xs text-muted-foreground">반차는 시작일 기준 0.5일입니다.</p>
-            </>
-          ) : (
-            <Input id="endDate" name="endDate" type="date" required />
-          )}
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="reason">신청 사유</Label>
-        <Input id="reason" name="reason" placeholder="개인 사유, 여행 등" />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="emergencyContact">비상 연락처</Label>
-        <Input
-          id="emergencyContact"
-          name="emergencyContact"
-          placeholder="010-0000-0000"
-          defaultValue={defaultPhone ?? ""}
-        />
-      </div>
-      {state.error && (
-        <p className="text-sm text-destructive">{state.error}</p>
-      )}
-      <p className="text-xs text-muted-foreground">
-        신청 시 「연차 유급휴가 사용신청서」 기안문으로 전자결재가 생성됩니다.
-        결재선: 일반 → 인사 → 이사 / 인사 신청 → 이사 / 이사 신청 → 대표이사
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        「연차 유급휴가 사용신청서」 기안 창에서 내용을 직접 입력·수정하고
+        결재선을 지정할 수 있습니다. 결재선을 지정하지 않으면 기본선
+        (신청자 → 인사담당자 → 이사)이 적용됩니다.
       </p>
-      <Button type="submit" disabled={pending}>
-        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-        기안문으로 신청
+      <Button type="button" onClick={openDraftWindow}>
+        기안문으로 신청 (새 창)
       </Button>
-    </form>
+    </div>
   );
 }
 

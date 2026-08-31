@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 초기 관리자(admin@intranet.local) 비밀번호를 password1234 로 복구.
+ * 초기 관리자(admin@intranet.local) 비밀번호를 admin1234!! 로 복구.
  * usage: npm run office:reset-admin
  *
  * - Docker Postgres(intranet 사용자, 127.0.0.1:5432) 대상
@@ -16,7 +16,7 @@ import { resolveOfficeDatabaseUrl } from "./lib/office-db-url.mjs";
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ADMIN_EMAIL = "admin@intranet.local";
-const ADMIN_PASSWORD = "password1234";
+const ADMIN_PASSWORD = "admin1234!!";
 
 async function main() {
   const { databaseUrl, env } = resolveOfficeDatabaseUrl(root);

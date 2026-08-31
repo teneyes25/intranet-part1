@@ -23,11 +23,16 @@ function solapiAuthHeader(apiKey: string, apiSecret: string): string {
 }
 
 /** SMS 발송 — Solapi / 웹훅 / 로그(스텁) */
-export async function sendSms(toRaw: string, text: string): Promise<SendResult> {
+export async function sendSms(
+  toRaw: string,
+  text: string,
+  opts?: { from?: string | null },
+): Promise<SendResult> {
   const to = normalizePhone(toRaw);
   if (!to) {
     return { ok: false, channel: "sms", provider: "none", error: "invalid_phone" };
   }
+  const fromOverride = opts?.from ? normalizePhone(opts.from) : null;
 
   const webhook = process.env.SMS_WEBHOOK_URL?.trim();
   if (webhook) {
@@ -35,7 +40,12 @@ export async function sendSms(toRaw: string, text: string): Promise<SendResult> 
       const res = await fetch(webhook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, text, channel: "sms" }),
+        body: JSON.stringify({
+          to,
+          text,
+          channel: "sms",
+          from: fromOverride || undefined,
+        }),
       });
       if (!res.ok) {
         return {
@@ -58,7 +68,10 @@ export async function sendSms(toRaw: string, text: string): Promise<SendResult> 
 
   const apiKey = process.env.SOLAPI_API_KEY?.trim();
   const apiSecret = process.env.SOLAPI_API_SECRET?.trim();
-  const from = process.env.SOLAPI_FROM?.trim();
+  const from =
+    fromOverride ||
+    process.env.SOLAPI_FROM?.trim() ||
+    "";
   if (apiKey && apiSecret && from) {
     try {
       const res = await fetch("https://api.solapi.com/messages/v4/send", {
@@ -95,7 +108,9 @@ export async function sendSms(toRaw: string, text: string): Promise<SendResult> 
     }
   }
 
-  console.log(`[sms:log] to=${to} text=${text.slice(0, 200)}`);
+  console.log(
+    `[sms:log] to=${to} from=${fromOverride || "-"} text=${text.slice(0, 200)}`,
+  );
   return { ok: true, channel: "log", provider: "log" };
 }
 
@@ -118,6 +133,7 @@ export function isKakaoAlimtalkConfigured(): boolean {
 export async function sendContactAlert(
   toRaw: string,
   text: string,
+  opts?: { from?: string | null },
 ): Promise<SendResult> {
   if (isKakaoAlimtalkConfigured()) {
     const to = normalizePhone(toRaw);
@@ -127,7 +143,10 @@ export async function sendContactAlert(
     try {
       const apiKey = process.env.SOLAPI_API_KEY!;
       const apiSecret = process.env.SOLAPI_API_SECRET!;
-      const from = process.env.SOLAPI_FROM?.trim() || undefined;
+      const from =
+        (opts?.from ? normalizePhone(opts.from) : null) ||
+        process.env.SOLAPI_FROM?.trim() ||
+        undefined;
       const res = await fetch("https://api.solapi.com/messages/v4/send", {
         method: "POST",
         headers: {
@@ -163,7 +182,7 @@ export async function sendContactAlert(
     }
   }
 
-  return sendSms(toRaw, text);
+  return sendSms(toRaw, text, opts);
 }
 
 export function messagingStatusSummary(): string {
