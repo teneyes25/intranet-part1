@@ -17,6 +17,10 @@ export function remainingDays(accrued: number, used: number) {
   return Math.round((accrued - used) * 10) / 10;
 }
 
+function roundLeaveDays(days: number) {
+  return Math.round(days * 10) / 10;
+}
+
 /** 사용자·연도의 연차 잔여 확보 (없으면 기본 발생연차로 생성) */
 export async function ensureLeaveBalance(
   userId: string,
@@ -34,9 +38,37 @@ export async function ensureLeaveBalance(
   });
 }
 
+/**
+ * 승인된 연차 신청 일수 합계로 usedDays를 동기화합니다.
+ * 인사 입력 발생일수(accruedDays)에서 잔여 = 발생 − 사용 으로 자동 반영됩니다.
+ */
+export async function syncLeaveUsedDaysFromApproved(
+  userId: string,
+  year = currentLeaveYear(),
+) {
+  const balance = await ensureLeaveBalance(userId, year);
+  const approved = await prisma.leaveRequest.findMany({
+    where: { userId, status: "APPROVED" },
+    select: { days: true, startDate: true },
+  });
+  const used = roundLeaveDays(
+    approved
+      .filter((row) => currentLeaveYear(row.startDate) === year)
+      .reduce((sum, row) => sum + row.days, 0),
+  );
+
+  if (used !== balance.usedDays) {
+    return prisma.leaveBalance.update({
+      where: { id: balance.id },
+      data: { usedDays: used },
+    });
+  }
+  return balance;
+}
+
 export async function getMyLeaveSummary(userId: string) {
   const year = currentLeaveYear();
-  const balance = await ensureLeaveBalance(userId, year);
+  const balance = await syncLeaveUsedDaysFromApproved(userId, year);
   const requests = await prisma.leaveRequest.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -79,22 +111,22 @@ export async function listLeaveBalancesForHr(year = currentLeaveYear()) {
     },
   });
 
-  return users.map((u) => {
-    const bal = u.leaveBalances[0];
-    const accrued = bal?.accruedDays ?? DEFAULT_ACCRUED_DAYS;
-    const used = bal?.usedDays ?? 0;
-    return {
-      userId: u.id,
-      name: u.name,
-      email: u.email,
-      jobs: u.jobs.map((j) => j.jobCategory.name),
-      year,
-      accruedDays: accrued,
-      usedDays: used,
-      remainingDays: remainingDays(accrued, used),
-      accruedAt: bal?.accruedAt ?? null,
-    };
-  });
+  return Promise.all(
+    users.map(async (u) => {
+      const balance = await syncLeaveUsedDaysFromApproved(u.id, year);
+      return {
+        userId: u.id,
+        name: u.name,
+        email: u.email,
+        jobs: u.jobs.map((j) => j.jobCategory.name),
+        year,
+        accruedDays: balance.accruedDays,
+        usedDays: balance.usedDays,
+        remainingDays: remainingDays(balance.accruedDays, balance.usedDays),
+        accruedAt: balance.accruedAt,
+      };
+    }),
+  );
 }
 
 /** 인사/관리자·본인: 사용 내역 (승인·대기·반려) */

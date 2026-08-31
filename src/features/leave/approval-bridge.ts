@@ -7,8 +7,8 @@ import { findUsersByJobName } from "@/features/jobs/service";
 import {
   calcLeaveDays,
   currentLeaveYear,
-  ensureLeaveBalance,
   remainingDays,
+  syncLeaveUsedDaysFromApproved,
 } from "@/features/leave/queries";
 import { getDefaultApprovalDocumentCategoryId } from "@/features/documents/category-service";
 import { sanitizeRichText, sanitizePlainText } from "@/lib/sanitize";
@@ -149,7 +149,7 @@ export async function submitLeaveAsApproval(params: {
   if (days <= 0) throw new Error("기간을 확인하세요.");
 
   const year = currentLeaveYear(params.startDate);
-  const balance = await ensureLeaveBalance(params.userId, year);
+  const balance = await syncLeaveUsedDaysFromApproved(params.userId, year);
   const remaining = remainingDays(balance.accruedDays, balance.usedDays);
   if (days > remaining) {
     throw new Error(`잔여 연차(${remaining}일)를 초과합니다.`);
@@ -275,7 +275,7 @@ export async function submitLeaveAsApproval(params: {
   return { leaveId: leave.id, approvalId: doc.id };
 }
 
-/** 결재 완료 시 연차 차감 */
+/** 결재 완료 시 연차 차감 (발생 연차 − 승인 사용일수) */
 export async function settleLeaveOnApprovalComplete(documentId: string) {
   const leave = await prisma.leaveRequest.findFirst({
     where: { approvalDocumentId: documentId },
@@ -283,7 +283,7 @@ export async function settleLeaveOnApprovalComplete(documentId: string) {
   if (!leave || leave.status !== "PENDING") return;
 
   const year = currentLeaveYear(leave.startDate);
-  const balance = await ensureLeaveBalance(leave.userId, year);
+  const balance = await syncLeaveUsedDaysFromApproved(leave.userId, year);
   const remaining = remainingDays(balance.accruedDays, balance.usedDays);
   if (leave.days > remaining) {
     await prisma.leaveRequest.update({
@@ -304,9 +304,12 @@ export async function settleLeaveOnApprovalComplete(documentId: string) {
     }),
     prisma.leaveBalance.update({
       where: { id: balance.id },
-      data: { usedDays: balance.usedDays + leave.days },
+      data: { usedDays: { increment: leave.days } },
     }),
   ]);
+
+  // 승인 합계 기준으로 재동기화 (드리프트·중복 방지)
+  await syncLeaveUsedDaysFromApproved(leave.userId, year);
 
   await createNotification({
     userId: leave.userId,

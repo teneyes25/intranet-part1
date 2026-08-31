@@ -164,7 +164,7 @@ export function HrAccrualTable({
                     />
                   </div>
                   <div className="pb-1 text-xs text-muted-foreground">
-                    사용 {r.usedDays} · 잔여 {r.remainingDays}
+                    사용 {r.usedDays}(승인 자동차감) · 잔여 {r.remainingDays}
                   </div>
                   <Button type="submit" size="sm" disabled={pending}>
                     {pending ? (

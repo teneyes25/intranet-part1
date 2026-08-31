@@ -675,6 +675,18 @@ model LeaveMonthEndMailLog {
   @@map("leave_month_end_mail_logs")
 }
 
+/// 월말 연차 촉진 공지 등록 로그 (연·월당 1회)
+model LeavePromoteNoticeLog {
+  id        String   @id @default(cuid())
+  year      Int
+  month     Int
+  postId    String?
+  createdAt DateTime @default(now())
+
+  @@unique([year, month])
+  @@map("leave_promote_notice_logs")
+}
+
 /// 사용자 알림 (In-app)
 model Notification {
   id        String           @id @default(cuid())

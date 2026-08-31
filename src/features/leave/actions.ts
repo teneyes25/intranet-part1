@@ -9,7 +9,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { isHrStaff } from "@/features/jobs/service";
 import {
   currentLeaveYear,
-  ensureLeaveBalance,
+  syncLeaveUsedDaysFromApproved,
 } from "@/features/leave/queries";
 import { submitLeaveAsApproval } from "@/features/leave/approval-bridge";
 
@@ -127,7 +127,8 @@ export async function setAccruedLeaveAction(formData: FormData) {
   if (!userId || !Number.isFinite(accrued) || accrued < 0) {
     return { error: "입력값을 확인하세요." };
   }
-  const balance = await ensureLeaveBalance(userId, year);
+  // 승인된 사용일수를 먼저 반영한 뒤 발생일수 검증
+  const balance = await syncLeaveUsedDaysFromApproved(userId, year);
   if (accrued < balance.usedDays) {
     return { error: `사용 연차(${balance.usedDays}일)보다 작을 수 없습니다.` };
   }
