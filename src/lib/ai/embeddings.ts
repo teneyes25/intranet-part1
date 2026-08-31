@@ -14,10 +14,13 @@ let extractorPromise: Promise<Extractor> | null = null;
 function getExtractor(): Promise<Extractor> {
   if (!extractorPromise) {
     // 최초 호출 시 모델을 내려받아 캐시한다(이후 오프라인 동작).
-    extractorPromise = pipeline(
-      "feature-extraction",
-      EMBEDDING_MODEL,
-    ) as unknown as Promise<Extractor>;
+    extractorPromise = (
+      pipeline("feature-extraction", EMBEDDING_MODEL) as unknown as Promise<Extractor>
+    ).catch((error) => {
+      // 실패 시 캐시를 비워 다음 요청에서 재시도
+      extractorPromise = null;
+      throw error;
+    });
   }
   return extractorPromise;
 }

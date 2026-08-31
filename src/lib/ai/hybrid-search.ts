@@ -86,6 +86,63 @@ async function searchApprovalsKeyword(query: string, limit: number) {
   }));
 }
 
+/** 임베딩 없이 FTS·키워드만으로 검색 (벡터/임베딩 장애 시 폴백) */
+export async function keywordOnlySearch(
+  query: string,
+  k: number,
+  sourceType?: string,
+): Promise<SearchResult[]> {
+  const [textHits, docHits, aprHits] = await Promise.all([
+    sourceType && sourceType !== "post"
+      ? Promise.resolve([])
+      : searchPostsFulltext(query, k * 2).catch(
+          () => [] as Awaited<ReturnType<typeof searchPostsFulltext>>,
+        ),
+    !sourceType || sourceType === "document"
+      ? searchDocumentsKeyword(query, k).catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
+    !sourceType || sourceType === "approval"
+      ? searchApprovalsKeyword(query, k).catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
+  ]);
+
+  const textAsResults: SearchResult[] = textHits.map((h, i) => ({
+    id: `fts:${h.id}`,
+    sourceType: "post",
+    sourceId: h.id,
+    title: h.title,
+    url: `/boards/${h.boardKey}/${h.id}`,
+    content: h.snippet,
+    score: 1 - i * 0.03,
+  }));
+
+  const merged = new Map<string, SearchResult & { rrf: number }>();
+  const addRanked = (items: SearchResult[], weight: number) => {
+    items.forEach((item, rank) => {
+      const key = `${item.sourceType}:${item.sourceId}`;
+      const rrf = weight / (RRF_K + rank + 1);
+      const prev = merged.get(key);
+      if (prev) {
+        prev.rrf += rrf;
+        prev.score = Math.max(prev.score, item.score);
+      } else {
+        merged.set(key, { ...item, rrf });
+      }
+    });
+  };
+  addRanked(textAsResults, 0.8);
+  addRanked(docHits, 0.7);
+  addRanked(aprHits, 0.7);
+
+  return [...merged.values()]
+    .sort((a, b) => b.rrf - a.rrf)
+    .slice(0, k)
+    .map(({ rrf, ...rest }) => {
+      void rrf;
+      return rest;
+    });
+}
+
 /** Reciprocal Rank Fusion — 벡터 + FTS/키워드 하이브리드 검색 */
 export async function hybridSearch(
   query: string,
@@ -94,7 +151,10 @@ export async function hybridSearch(
   sourceType?: string,
 ): Promise<SearchResult[]> {
   const [vectorHits, textHits, docHits, aprHits] = await Promise.all([
-    similaritySearch(embedding, k * 2, sourceType),
+    similaritySearch(embedding, k * 2, sourceType).catch((e) => {
+      console.error("[hybrid-search] vector search failed:", e);
+      return [] as SearchResult[];
+    }),
     sourceType && sourceType !== "post"
       ? Promise.resolve([])
       : searchPostsFulltext(query, k * 2).catch(

@@ -2,8 +2,8 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { embedText } from "./embeddings";
-import { hybridSearch } from "./hybrid-search";
-import { similaritySearch, type SearchResult } from "./vector-store";
+import { hybridSearch, keywordOnlySearch } from "./hybrid-search";
+import { type SearchResult } from "./vector-store";
 import { RETRIEVE_TOP_K } from "./config";
 import { getLlmRuntimeConfig } from "./llm-runtime";
 import {
@@ -35,6 +35,7 @@ export interface ChatResult {
 }
 
 type ChatIntent =
+  | "greeting"
   | "news_summary"
   | "market_report"
   | "draft_advice"
@@ -42,7 +43,15 @@ type ChatIntent =
   | "general";
 
 function detectIntent(question: string): ChatIntent {
-  const q = question.toLowerCase();
+  const q = question.toLowerCase().trim();
+  if (
+    /^(안녕|안녕하세요|하이|헬로|hello|hi[!?.\s]*$|반가워|좋은\s*(아침|오후|저녁)|자기소개|너는\s*누구|이름이\s*뭐|소개\s*해)/i.test(
+      q,
+    ) ||
+    /자기\s*소개|너는\s*누구|이름이\s*뭐야|매종이\s*(야|인가|소개)/.test(q)
+  ) {
+    return "greeting";
+  }
   if (
     /시장조사|시장.?동향|월간.?보고|마켓.?리포트|market.?report|시장.?분석|마케팅.?전략|침구|매트리스/.test(
       q,
@@ -111,6 +120,7 @@ function postsToResults(
 }
 
 function buildContext(results: SearchResult[]): string {
+  if (results.length === 0) return "(관련 내부 자료 없음 — 일반 업무 지원으로 답변하세요.)";
   return results
     .map((r, i) => `[${i + 1}] ${r.title ?? "(제목 없음)"}\n${r.content}`)
     .join("\n\n");
@@ -130,6 +140,8 @@ function buildExtractiveAnswer(results: SearchResult[]): string {
 
 function intentHint(intent: ChatIntent): string {
   switch (intent) {
+    case "greeting":
+      return "밝게 짧게 인사·자기소개 후 무엇을 도와드릴지 물어보세요.";
     case "news_summary":
       return "최신 뉴스를 시간순으로 요약하고 핵심만 3~5개 bullet로 정리하세요.";
     case "market_report":
@@ -140,6 +152,25 @@ function intentHint(intent: ChatIntent): string {
       return "유사 사례/관련 자료를 비교하고 공통점·차이점을 간략히 설명하세요.";
     default:
       return "";
+  }
+}
+
+/** 임베딩 가능하면 하이브리드, 실패 시 키워드만 */
+async function retrieveContext(
+  question: string,
+  k: number,
+): Promise<SearchResult[]> {
+  try {
+    const qvec = await embedText(question);
+    return await hybridSearch(question, qvec, k);
+  } catch (e) {
+    console.error("[ai/chat] embed/hybrid failed, keyword fallback:", e);
+    try {
+      return await keywordOnlySearch(question, k);
+    } catch (e2) {
+      console.error("[ai/chat] keyword search failed:", e2);
+      return [];
+    }
   }
 }
 
@@ -155,9 +186,10 @@ async function generateWithLlm(
     throw new Error("LLM API 키가 없습니다.");
   }
   const apiKey = cfg.apiKey || "ollama";
+  const base = cfg.baseUrl.replace(/\/$/, "");
   const system = `${CHAT_SYSTEM_PROMPT}\n${buildJobContextPrompt(jobTitles)}\n${intentHint(intent)}`;
 
-  const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+  const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -175,9 +207,13 @@ async function generateWithLlm(
         },
       ],
     }),
+    signal: AbortSignal.timeout(45_000),
   });
 
-  if (!res.ok) throw new Error(`LLM 응답 오류: ${res.status}`);
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`LLM 응답 오류: ${res.status} ${detail.slice(0, 200)}`);
+  }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
   };
@@ -193,40 +229,73 @@ export async function answerQuestion(
 ): Promise<ChatResult> {
   let jobTitles = opts?.jobTitles ?? [];
   if (opts?.userId && jobTitles.length === 0) {
-    const jobs = await prisma.userJob.findMany({
-      where: { userId: opts.userId },
-      include: { jobCategory: { select: { name: true } } },
-    });
-    jobTitles = jobs.map((j) => j.jobCategory.name);
+    try {
+      const jobs = await prisma.userJob.findMany({
+        where: { userId: opts.userId },
+        include: { jobCategory: { select: { name: true } } },
+      });
+      jobTitles = jobs.map((j) => j.jobCategory.name);
+    } catch (e) {
+      console.error("[ai/chat] job lookup failed:", e);
+    }
   }
 
   const intent = detectIntent(question);
+
+  // 인사·자기소개는 RAG 없이 바로 응대 (임베딩 장애와 무관)
+  if (intent === "greeting") {
+    const cfg = await getLlmRuntimeConfig();
+    const canGenerate = Boolean(cfg.apiKey) || cfg.provider === "ollama";
+    if (canGenerate) {
+      try {
+        const answer = await generateWithLlm(
+          question,
+          "(인사/자기소개 — 내부 자료 검색 생략)",
+          history,
+          intent,
+          jobTitles,
+        );
+        return { answer, sources: [], mode: "generative", intent };
+      } catch (e) {
+        console.error("[ai/chat] greeting LLM failed, static greeting:", e);
+      }
+    }
+    return {
+      answer: GREETING_MESSAGE,
+      sources: [],
+      mode: "extractive",
+      intent,
+    };
+  }
+
   let results: SearchResult[] = [];
 
-  if (intent === "news_summary") {
-    const news = await fetchLatestNews(6);
-    results = postsToResults(news, "뉴스");
-    if (results.length === 0) {
-      const qvec = await embedText(question);
-      results = await similaritySearch(qvec, RETRIEVE_TOP_K);
+  try {
+    if (intent === "news_summary") {
+      const news = await fetchLatestNews(6);
+      results = postsToResults(news, "뉴스");
+      if (results.length === 0) {
+        results = await retrieveContext(question, RETRIEVE_TOP_K);
+      }
+    } else if (intent === "market_report") {
+      const reports = await fetchLatestMarketReports(3);
+      results = postsToResults(reports, "시장조사");
+      const more = await retrieveContext(question, RETRIEVE_TOP_K);
+      const seen = new Set(results.map((r) => r.sourceId));
+      for (const r of more) {
+        if (!seen.has(r.sourceId)) results.push(r);
+      }
+      results = results.slice(0, RETRIEVE_TOP_K + 3);
+    } else {
+      const k =
+        intent === "related_cases" || intent === "draft_advice"
+          ? RETRIEVE_TOP_K + 3
+          : RETRIEVE_TOP_K;
+      results = await retrieveContext(question, k);
     }
-  } else if (intent === "market_report") {
-    const reports = await fetchLatestMarketReports(3);
-    results = postsToResults(reports, "시장조사");
-    const qvec = await embedText(question);
-    const more = await hybridSearch(question, qvec, RETRIEVE_TOP_K);
-    const seen = new Set(results.map((r) => r.sourceId));
-    for (const r of more) {
-      if (!seen.has(r.sourceId)) results.push(r);
-    }
-    results = results.slice(0, RETRIEVE_TOP_K + 3);
-  } else {
-    const qvec = await embedText(question);
-    const k =
-      intent === "related_cases" || intent === "draft_advice"
-        ? RETRIEVE_TOP_K + 3
-        : RETRIEVE_TOP_K;
-    results = await hybridSearch(question, qvec, k);
+  } catch (e) {
+    console.error("[ai/chat] retrieval failed:", e);
+    results = [];
   }
 
   const sources: ChatSource[] = results.map((r) => ({
@@ -236,17 +305,9 @@ export async function answerQuestion(
     snippet: r.content.replace(/\s+/g, " ").slice(0, 200),
   }));
 
-  if (results.length === 0) {
-    return {
-      answer: `${AI_AGENT_NAME}예요. 관련된 내부 자료를 아직 찾지 못했어요. 게시글·문서함·전자결재를 등록하시거나, 관리자에게 지식 동기화를 요청해 주세요.`,
-      sources: [],
-      mode: "extractive",
-      intent,
-    };
-  }
-
   const cfg = await getLlmRuntimeConfig();
   const canGenerate = Boolean(cfg.apiKey) || cfg.provider === "ollama";
+
   if (canGenerate) {
     try {
       const answer = await generateWithLlm(
@@ -260,6 +321,15 @@ export async function answerQuestion(
     } catch (e) {
       console.error("[ai/chat] LLM 생성 실패, 추출형으로 폴백:", e);
     }
+  }
+
+  if (results.length === 0) {
+    return {
+      answer: `${AI_AGENT_NAME}예요. 지금은 관련 내부 자료를 찾지 못했거나 검색 준비가 덜 되었어요. 「매종이」메뉴에서 잠시 후 다시 물어보거나, 관리자에게 지식 동기화·LLM 설정을 확인해 달라고 해 주세요.`,
+      sources: [],
+      mode: "extractive",
+      intent,
+    };
   }
 
   return {

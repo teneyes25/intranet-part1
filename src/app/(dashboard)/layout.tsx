@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { BrandingStyles } from "@/components/branding/branding-styles";
+import { MaejongiHomeBanner } from "@/features/ai/components/maejongi-home-banner";
 import { getActiveEmergencyNotice } from "@/features/system/system-service";
 import { getEffectiveBranding } from "@/lib/dealer/branding";
 import { requireUser } from "@/lib/auth/session";
@@ -49,6 +50,7 @@ export default async function DashboardLayout({
       >
         {children}
       </AppShell>
+      <MaejongiHomeBanner floating />
     </>
   );
 }

@@ -43,7 +43,11 @@ export const POST = withApiGuard({ tier: "ai" }, async (req, { session, ip }) =>
     const result = await answerQuestion(question, mergedHistory, {
       userId: session!.user.id,
     });
-    await appendAiMessages(conv.id, question, result.answer, result.sources);
+    try {
+      await appendAiMessages(conv.id, question, result.answer, result.sources);
+    } catch (persistError) {
+      console.error("[api/ai/chat] persist failed:", persistError);
+    }
 
     void writeAudit({
       action: "AI_CHAT",
@@ -55,8 +59,15 @@ export const POST = withApiGuard({ tier: "ai" }, async (req, { session, ip }) =>
     return NextResponse.json({ ...result, conversationId: conv.id });
   } catch (e) {
     console.error("[api/ai/chat]", e);
+    const detail = e instanceof Error ? e.message : "";
+    const hint =
+      /LLM|api.?key|fetch|ECONNREFUSED|timeout/i.test(detail)
+        ? " LLM 연결(Ollama/OpenAI) 또는 API 키를 관리자 → 매종이 LLM에서 확인해 주세요."
+        : /임베딩|embed|onnx|transformers/i.test(detail)
+          ? " 지식 검색 준비 중이거나 실패했습니다. 잠시 후 다시 시도해 주세요."
+          : "";
     return NextResponse.json(
-      { error: "AI 처리 중 오류가 발생했습니다." },
+      { error: `AI 처리 중 오류가 발생했습니다.${hint}` },
       { status: 500 },
     );
   }

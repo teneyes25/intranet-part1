@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2, Send, X } from "lucide-react";
+import { Loader2, MessageCircle, Send, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,15 @@ import { cn } from "@/lib/utils";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-/** 홈 우측 상단 매종이 대화 배너 + 팝업 */
-export function MaejongiHomeBanner() {
+/**
+ * 전역 플로팅 매종이 배너 (우측 하단 고정).
+ * AppShell에 마운트해 홈 외 화면에서도 항상 보이게 합니다.
+ */
+export function MaejongiHomeBanner({
+  floating = true,
+}: {
+  floating?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -53,13 +60,15 @@ export function MaejongiHomeBanner() {
             history: messages.slice(-6),
           }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
-              content: data.error || "잠시 후 다시 시도해 주세요.",
+              content:
+                (typeof data.error === "string" && data.error) ||
+                "잠시 후 다시 시도해 주세요. LLM·지식 동기화 설정을 관리자에게 확인해 주세요.",
             },
           ]);
           return;
@@ -67,48 +76,73 @@ export function MaejongiHomeBanner() {
         if (data.conversationId) setConversationId(data.conversationId);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.answer as string },
+          {
+            role: "assistant",
+            content:
+              (data.answer as string) ||
+              "답변을 만들지 못했어요. 다시 한 번 물어봐 주세요.",
+          },
         ]);
       } catch {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "연결에 문제가 있어요. 다시 시도해 주세요." },
+          {
+            role: "assistant",
+            content: "연결에 문제가 있어요. 네트워크 후 다시 시도해 주세요.",
+          },
         ]);
       }
     });
   }
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className={cn(
+        "group flex items-center gap-3 rounded-2xl border border-[#D5DCD6] bg-white px-3 py-2 text-left shadow-md transition",
+        "hover:-translate-y-0.5 hover:shadow-lg",
+        floating && "max-w-[280px]",
+      )}
+      aria-label={`${AI_AGENT_NAME}에게 물어보기`}
+    >
+      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#EEF1ED] ring-2 ring-[#C5CFC6]">
+        <Image
+          src={AI_AGENT_AVATAR}
+          alt={AI_AGENT_NAME}
+          width={48}
+          height={48}
+          className="h-full w-full object-cover"
+          unoptimized
+          priority
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-[#1C1F1D]">
+          {AI_AGENT_NAME}에게 물어보기
+        </span>
+        <span className="block truncate text-xs text-muted-foreground">
+          업무·기안·시장 조언을 도와드려요
+        </span>
+      </span>
+      {floating && (
+        <MessageCircle className="h-4 w-4 shrink-0 text-[#5C7358] opacity-70 group-hover:opacity-100" />
+      )}
+    </button>
+  );
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          "group flex max-w-sm items-center gap-3 rounded-2xl border border-[#D5DCD6] bg-white/90 px-3 py-2 text-left shadow-sm transition",
-          "hover:-translate-y-0.5 hover:shadow-md",
-        )}
-      >
-        <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#EEF1ED] ring-2 ring-[#C5CFC6]">
-          <Image
-            src={AI_AGENT_AVATAR}
-            alt={AI_AGENT_NAME}
-            fill
-            className="object-cover"
-            sizes="48px"
-          />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold text-[#1C1F1D]">
-            {AI_AGENT_NAME}에게 물어보기
-          </span>
-          <span className="block truncate text-xs text-muted-foreground">
-            업무·기안·시장 조언을 도와드려요
-          </span>
-        </span>
-      </button>
+      {floating ? (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-40 sm:bottom-6 sm:right-6">
+          <div className="pointer-events-auto">{trigger}</div>
+        </div>
+      ) : (
+        trigger
+      )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end p-3 sm:items-start sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-end p-3 sm:items-end sm:p-6">
           <button
             type="button"
             className="absolute inset-0 bg-black/30"
@@ -121,9 +155,10 @@ export function MaejongiHomeBanner() {
                 <Image
                   src={AI_AGENT_AVATAR}
                   alt={AI_AGENT_NAME}
-                  fill
-                  className="object-cover"
-                  sizes="40px"
+                  width={40}
+                  height={40}
+                  className="h-full w-full object-cover"
+                  unoptimized
                 />
               </span>
               <div className="min-w-0 flex-1">
