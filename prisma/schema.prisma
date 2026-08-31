@@ -63,6 +63,7 @@ model User {
   leaveRequests   LeaveRequest[] @relation("LeaveRequester")
   leaveApprovals  LeaveRequest[] @relation("LeaveApprover")
   jobs            UserJob[]
+  documentCategoriesOwned DocumentCategory[] @relation("DocumentCategoryOwner")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -308,18 +309,24 @@ model ProductCategory {
   @@map("product_categories")
 }
 
-/// 문서함 카테고리 (관리자 관리)
+/// 문서함 (회사 공용 또는 사용자 개인)
 model DocumentCategory {
   id          String             @id @default(cuid())
   name        String
   slug        String             @unique
   description String?
   sortOrder   Int                @default(0)
+  /// 문서번호용 업무종류 코드 (예: 인사, 총무, 전자결재)
+  workTypeCode String?
+  /// null = 공용(관리자), 값 있음 = 사용자 개인 문서함
+  ownerId     String?
+  owner       User?              @relation("DocumentCategoryOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   documents   SharedDocument[]
   approvals   ApprovalDocument[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
+  @@index([ownerId])
   @@map("document_categories")
 }
 
@@ -332,6 +339,14 @@ model SharedDocument {
   category           String?
   documentCategoryId String?
   documentCategory   DocumentCategory? @relation(fields: [documentCategoryId], references: [id], onDelete: SetNull)
+  /// 문서번호 (예: 2026-인사-0831001)
+  documentNumber     String?
+  /// 기안일자
+  draftedAt          DateTime?
+  /// 결재일자
+  approvedAt         DateTime?
+  /// 등록(확정)일자
+  registeredAt       DateTime?
   /// 외부 URL 또는 내부 게시글/결재 링크
   url                String?
   boardKey           String?
@@ -344,6 +359,7 @@ model SharedDocument {
 
   @@index([category])
   @@index([documentCategoryId])
+  @@index([documentNumber])
   @@map("shared_documents")
 }
 
@@ -436,6 +452,10 @@ model ApprovalDocument {
   template           ApprovalTemplate?  @relation(fields: [templateId], references: [id])
   documentCategoryId String?
   documentCategory   DocumentCategory?  @relation(fields: [documentCategoryId], references: [id], onDelete: SetNull)
+  /// 문서번호 (완료 시 부여) 년도-업무종류-월일000
+  documentNumber     String?            @unique
+  /// 등록(확정)일자 — 문서함 보관 시점
+  registeredAt       DateTime?
   archivedDocument   SharedDocument?
   linkedOrder        Order?
   leaveRequest       LeaveRequest?
@@ -443,7 +463,9 @@ model ApprovalDocument {
   currentOrder       Int                @default(1)
   isDemo             Boolean            @default(false)
   steps              ApprovalStep[]
+  /// 기안(상신) 일자
   submittedAt        DateTime?
+  /// 최종 결재 일자
   completedAt        DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -452,6 +474,18 @@ model ApprovalDocument {
   @@index([status])
   @@index([documentCategoryId])
   @@map("approval_documents")
+}
+
+/// 문서번호 일련번호 (년도+업무종류+월일 단위)
+model DocumentNumberSeq {
+  id       String @id @default(cuid())
+  year     Int
+  workType String
+  monthDay String
+  lastSeq  Int    @default(0)
+
+  @@unique([year, workType, monthDay])
+  @@map("document_number_seqs")
 }
 
 /// 결재선의 개별 결재자 단계. stepOrder 가 같으면 병렬, 다르면 순차.

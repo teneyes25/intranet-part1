@@ -284,7 +284,7 @@ export function ApprovalForm({
       </div>
 
       <div>
-        <Label htmlFor="docCat">문서함 카테고리</Label>
+        <Label htmlFor="docCat">문서함 (필수)</Label>
         <select
           id="docCat"
           value={documentCategoryId}
@@ -292,7 +292,7 @@ export function ApprovalForm({
           required
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring sm:max-w-md"
         >
-          <option value="">카테고리 선택 (필수)</option>
+          <option value="">문서함 선택 (필수)</option>
           {documentCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -300,7 +300,8 @@ export function ApprovalForm({
           ))}
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          결재 완료 시 선택한 문서함 카테고리로 자동 보관됩니다.
+          기안 시 문서함을 지정해야 합니다. 결재 완료 시 문서번호가 부여되며 해당 문서함에
+          보관됩니다.
         </p>
       </div>
 
@@ -308,9 +309,9 @@ export function ApprovalForm({
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-primary" />
-          AI 기안 작성 지원
+          매종이 기안 작성 지원
           <span className="text-xs font-normal text-muted-foreground">
-            (행정안전부 공문 작성 지침 기반)
+            (6하원칙 · 행정안전부 공문 양식)
           </span>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">

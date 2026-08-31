@@ -8,37 +8,64 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/features/board/utils";
-import { backfillDocumentCategoryLinks } from "@/features/documents/category-service";
+import {
+  backfillDocumentCategoryLinks,
+  listDocumentCategories,
+} from "@/features/documents/category-service";
+import { DocumentFolderManager } from "@/features/documents/components/document-folder-manager";
 
 export const metadata: Metadata = { title: "문서함" };
 
 type DocItem = Awaited<
   ReturnType<
     typeof prisma.sharedDocument.findMany<{
-      include: { documentCategory: true; approvalDocument: { select: { id: true; status: true } } };
+      include: {
+        documentCategory: true;
+        approvalDocument: {
+          select: {
+            id: true;
+            status: true;
+            documentNumber: true;
+            submittedAt: true;
+            completedAt: true;
+            registeredAt: true;
+          };
+        };
+      };
     }>
   >
 >[number];
 
 export default async function DocumentsPage() {
-  await requireUser();
-
-  // 관리자 카테고리 변경·시드 레거시 문자열이 문서함에 반영되도록 연결
+  const user = await requireUser();
   await backfillDocumentCategoryLinks();
 
   const [docs, categories] = await Promise.all([
     prisma.sharedDocument.findMany({
       include: {
         documentCategory: true,
-        approvalDocument: { select: { id: true, status: true } },
+        approvalDocument: {
+          select: {
+            id: true,
+            status: true,
+            documentNumber: true,
+            submittedAt: true,
+            completedAt: true,
+            registeredAt: true,
+          },
+        },
       },
       orderBy: { updatedAt: "desc" },
     }),
-    prisma.documentCategory.findMany({ orderBy: { sortOrder: "asc" } }),
+    listDocumentCategories({ userId: user.id, includeOwned: true }),
   ]);
 
+  const visibleCats = categories.filter(
+    (c) => !c.ownerId || c.ownerId === user.id || user.role === "ADMIN",
+  );
+
   const grouped = new Map<string, DocItem[]>();
-  for (const cat of categories) grouped.set(cat.id, []);
+  for (const cat of visibleCats) grouped.set(cat.id, []);
   grouped.set("_uncategorized", []);
 
   for (const d of docs) {
@@ -51,18 +78,34 @@ export default async function DocumentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="문서함"
-        description="전자결재 완료 문서를 카테고리별로 보관합니다. 카테고리는 전자결재 기안·관리자 설정과 연동됩니다."
+        description="전자결재 완료 문서를 보관합니다. 문서번호·기안/결재/등록일자가 표시됩니다."
       />
 
-      {categories.length === 0 && docs.length === 0 ? (
+      <DocumentFolderManager
+        folders={visibleCats.map((c) => ({
+          id: c.id,
+          name: c.name,
+          workTypeCode: c.workTypeCode,
+          ownerId: c.ownerId,
+          _count: c._count,
+        }))}
+        allFolders={visibleCats.map((c) => ({
+          id: c.id,
+          name: c.name,
+          workTypeCode: c.workTypeCode,
+          ownerId: c.ownerId,
+        }))}
+      />
+
+      {visibleCats.length === 0 && docs.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            등록된 카테고리·문서가 없습니다. 관리자 → 문서함 카테고리에서 추가하세요.
+            등록된 문서함이 없습니다. 위에서 문서함을 추가하세요.
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-8">
-          {categories.map((cat) => {
+          {visibleCats.map((cat) => {
             const items = grouped.get(cat.id) ?? [];
             return (
               <section key={cat.id}>
@@ -70,12 +113,13 @@ export default async function DocumentsPage() {
                   <h3 className="text-sm font-semibold">{cat.name}</h3>
                   <span className="text-xs text-muted-foreground">
                     {items.length}건
-                    {cat.description ? ` · ${cat.description}` : ""}
+                    {cat.workTypeCode ? ` · 업무종류 ${cat.workTypeCode}` : ""}
+                    {cat.ownerId ? " · 내 문서함" : " · 공용"}
                   </span>
                 </div>
                 {items.length === 0 ? (
                   <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                    이 카테고리에 보관된 문서가 없습니다. 전자결재 완료 시 해당 카테고리로 자동 보관됩니다.
+                    보관된 문서가 없습니다.
                   </p>
                 ) : (
                   <DocGrid docs={items} />
@@ -106,6 +150,8 @@ function DocGrid({ docs }: { docs: DocItem[] }) {
             : "/documents");
         const external = href.startsWith("http");
         const label = d.documentCategory?.name ?? d.category;
+        const docNo =
+          d.documentNumber || d.approvalDocument?.documentNumber || null;
         return (
           <Link
             key={d.id}
@@ -114,8 +160,13 @@ function DocGrid({ docs }: { docs: DocItem[] }) {
           >
             <Card className="h-full transition-shadow hover:shadow-md">
               <CardContent className="p-4">
-                <div className="mb-2 flex items-center gap-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
+                  {docNo && (
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {docNo}
+                    </Badge>
+                  )}
                   {label && (
                     <Badge variant="secondary" className="text-[10px]">
                       {label}
@@ -136,9 +187,14 @@ function DocGrid({ docs }: { docs: DocItem[] }) {
                     {d.description}
                   </p>
                 )}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {formatDate(d.updatedAt)}
-                </p>
+                <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+                  {d.draftedAt && <p>기안 {formatDate(d.draftedAt)}</p>}
+                  {d.approvedAt && <p>결재 {formatDate(d.approvedAt)}</p>}
+                  {d.registeredAt && <p>등록 {formatDate(d.registeredAt)}</p>}
+                  {!d.draftedAt && !d.approvedAt && !d.registeredAt && (
+                    <p>{formatDate(d.updatedAt)}</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </Link>

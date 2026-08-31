@@ -15,7 +15,7 @@ export default async function AiAgentPage() {
     <div>
       <PageHeader
         title="매종이"
-        description="프렌치메종 신입사원 AI — 시장조사·뉴스·기안 조언·사내 자료 학습 도우미. 대화는 개인별로 저장되며 7일 후 자동 삭제됩니다."
+        description="주식회사프렌치메종 신입사원 AI — 업무 지원·뉴스·시장 컨설팅·마케팅 전략·전자결재 기안 도우미. 담당 업무에 맞춰 응대하며, 대화는 개인별로 저장되고 7일 후 자동 삭제됩니다."
       />
       <AiChat
         canSync={user.role === "ADMIN"}

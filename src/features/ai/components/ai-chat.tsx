@@ -49,10 +49,10 @@ interface ConversationItem {
 
 const SUGGESTIONS = [
   "안녕 매종이야? 자기소개 해줘",
+  "내 업무에 맞춰 오늘 할 일 조언해줘",
   "최신 뉴스 요약해줘",
-  "이번 달 시장조사 보고서 알려줘",
-  "휴가 기안서 작성 조언해줘",
-  "공지사항 핵심 내용 알려줘",
+  "침구·매트리스 시장 동향 알려줘",
+  "전자결재 기안문 초안 도와줘",
 ];
 
 function formatWhen(iso: string) {

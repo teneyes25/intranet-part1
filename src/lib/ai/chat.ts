@@ -4,13 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { embedText } from "./embeddings";
 import { hybridSearch } from "./hybrid-search";
 import { similaritySearch, type SearchResult } from "./vector-store";
+import { RETRIEVE_TOP_K } from "./config";
+import { getLlmRuntimeConfig } from "./llm-runtime";
 import {
-  RETRIEVE_TOP_K,
-  OPENAI_API_KEY,
-  OPENAI_CHAT_MODEL,
-  OPENAI_BASE_URL,
-} from "./config";
-import { CHAT_SYSTEM_PROMPT, AI_AGENT_NAME } from "./persona";
+  CHAT_SYSTEM_PROMPT,
+  AI_AGENT_NAME,
+  buildJobContextPrompt,
+  GREETING_MESSAGE,
+} from "./persona";
+
+export { GREETING_MESSAGE };
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -41,7 +44,7 @@ type ChatIntent =
 function detectIntent(question: string): ChatIntent {
   const q = question.toLowerCase();
   if (
-    /시장조사|시장.?동향|월간.?보고|마켓.?리포트|market.?report|시장.?분석/.test(
+    /시장조사|시장.?동향|월간.?보고|마켓.?리포트|market.?report|시장.?분석|마케팅.?전략|침구|매트리스/.test(
       q,
     )
   ) {
@@ -55,7 +58,9 @@ function detectIntent(question: string): ChatIntent {
     return "news_summary";
   }
   if (
-    /기안|공문|결재.*조언|기안서|문서.*작성|편람|행정안전부/.test(q)
+    /기안|공문|결재.*조언|기안서|문서.*작성|편람|행정안전부|6하|품의|보고서.?작성/.test(
+      q,
+    )
   ) {
     return "draft_advice";
   }
@@ -128,9 +133,9 @@ function intentHint(intent: ChatIntent): string {
     case "news_summary":
       return "최신 뉴스를 시간순으로 요약하고 핵심만 3~5개 bullet로 정리하세요.";
     case "market_report":
-      return "시장조사·월간 보고서 관점에서 동향과 시사점을 정리하세요. 보고서 본문이 있으면 요약을 우선하세요.";
+      return "침구·매트리스·홈리빙 시장과 마케팅 관점에서 동향·시사점을 정리하세요.";
     case "draft_advice":
-      return "기안서 작성 조언으로, 구성·표현·주의점을 신입사원답게 친절히 제안하세요.";
+      return "기안서 작성 조언으로 6하원칙·공문 구성·표현을 신입사원답게 친절히 제안하세요. 필요하면 HTML 초안 구조를 제시하세요.";
     case "related_cases":
       return "유사 사례/관련 자료를 비교하고 공통점·차이점을 간략히 설명하세요.";
     default:
@@ -138,23 +143,31 @@ function intentHint(intent: ChatIntent): string {
   }
 }
 
-async function generateWithOpenAI(
+async function generateWithLlm(
   question: string,
   context: string,
   history: ChatMessage[],
   intent: ChatIntent,
+  jobTitles: string[],
 ): Promise<string> {
-  const res = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+  const cfg = await getLlmRuntimeConfig();
+  if (!cfg.apiKey && cfg.provider !== "ollama") {
+    throw new Error("LLM API 키가 없습니다.");
+  }
+  const apiKey = cfg.apiKey || "ollama";
+  const system = `${CHAT_SYSTEM_PROMPT}\n${buildJobContextPrompt(jobTitles)}\n${intentHint(intent)}`;
+
+  const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: OPENAI_CHAT_MODEL,
+      model: cfg.chatModel,
       temperature: 0.35,
       messages: [
-        { role: "system", content: `${CHAT_SYSTEM_PROMPT}\n${intentHint(intent)}` },
+        { role: "system", content: system },
         ...history.slice(-6),
         {
           role: "user",
@@ -164,19 +177,29 @@ async function generateWithOpenAI(
     }),
   });
 
-  if (!res.ok) throw new Error(`OpenAI 응답 오류: ${res.status}`);
+  if (!res.ok) throw new Error(`LLM 응답 오류: ${res.status}`);
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
   };
   const answer = data.choices?.[0]?.message?.content?.trim();
-  if (!answer) throw new Error("OpenAI 응답이 비어 있습니다.");
+  if (!answer) throw new Error("LLM 응답이 비어 있습니다.");
   return answer;
 }
 
 export async function answerQuestion(
   question: string,
   history: ChatMessage[] = [],
+  opts?: { userId?: string; jobTitles?: string[] },
 ): Promise<ChatResult> {
+  let jobTitles = opts?.jobTitles ?? [];
+  if (opts?.userId && jobTitles.length === 0) {
+    const jobs = await prisma.userJob.findMany({
+      where: { userId: opts.userId },
+      include: { jobCategory: { select: { name: true } } },
+    });
+    jobTitles = jobs.map((j) => j.jobCategory.name);
+  }
+
   const intent = detectIntent(question);
   let results: SearchResult[] = [];
 
@@ -222,17 +245,20 @@ export async function answerQuestion(
     };
   }
 
-  if (OPENAI_API_KEY) {
+  const cfg = await getLlmRuntimeConfig();
+  const canGenerate = Boolean(cfg.apiKey) || cfg.provider === "ollama";
+  if (canGenerate) {
     try {
-      const answer = await generateWithOpenAI(
+      const answer = await generateWithLlm(
         question,
         buildContext(results),
         history,
         intent,
+        jobTitles,
       );
       return { answer, sources, mode: "generative", intent };
     } catch (e) {
-      console.error("[ai/chat] OpenAI 생성 실패, 추출형으로 폴백:", e);
+      console.error("[ai/chat] LLM 생성 실패, 추출형으로 폴백:", e);
     }
   }
 

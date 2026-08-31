@@ -42,6 +42,7 @@ import { requireUser } from "@/lib/auth/session";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { canAccessBoard } from "@/lib/auth/access";
 import { BrandExternalLinks } from "@/features/dashboard/components/brand-external-links";
+import { MaejongiHomeBanner } from "@/features/ai/components/maejongi-home-banner";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -139,6 +140,7 @@ export default async function DashboardPage() {
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{today}</p>
         </div>
+        <MaejongiHomeBanner />
       </div>
 
       <BrandExternalLinks />

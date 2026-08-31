@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { ApprovalForm } from "@/features/approval/components/approval-form";
-import { listDocumentCategories } from "@/features/documents/category-service";
+import { listSelectableDocumentCategories } from "@/features/documents/category-service";
 import {
   getTemplates,
   getApproverCandidates,
@@ -17,7 +17,7 @@ export default async function NewApprovalPage() {
   const [templates, candidatesRaw, documentCategories] = await Promise.all([
     getTemplates(),
     getApproverCandidates(user.id),
-    listDocumentCategories(),
+    listSelectableDocumentCategories(user.id),
   ]);
 
   const candidates = candidatesRaw.map((c) => ({

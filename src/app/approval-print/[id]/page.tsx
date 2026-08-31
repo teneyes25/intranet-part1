@@ -101,8 +101,8 @@ export default async function ApprovalPrintPage({
             <th className="w-28 border border-gray-400 bg-gray-50 px-3 py-1.5 text-left">
               문서번호
             </th>
-            <td className="border border-gray-400 px-3 py-1.5">
-              AP-{doc.id.slice(-8).toUpperCase()}
+            <td className="border border-gray-400 px-3 py-1.5 font-mono">
+              {doc.documentNumber || `AP-${doc.id.slice(-8).toUpperCase()}`}
             </td>
             <th className="w-24 border border-gray-400 bg-gray-50 px-3 py-1.5 text-left">
               상태
@@ -123,6 +123,20 @@ export default async function ApprovalPrintPage({
             </th>
             <td className="border border-gray-400 px-3 py-1.5">
               {formatDateTime(doc.submittedAt ?? doc.createdAt)}
+            </td>
+          </tr>
+          <tr>
+            <th className="border border-gray-400 bg-gray-50 px-3 py-1.5 text-left">
+              결재일
+            </th>
+            <td className="border border-gray-400 px-3 py-1.5">
+              {doc.completedAt ? formatDateTime(doc.completedAt) : "-"}
+            </td>
+            <th className="border border-gray-400 bg-gray-50 px-3 py-1.5 text-left">
+              등록(확정)일
+            </th>
+            <td className="border border-gray-400 px-3 py-1.5">
+              {doc.registeredAt ? formatDateTime(doc.registeredAt) : "-"}
             </td>
           </tr>
           <tr>

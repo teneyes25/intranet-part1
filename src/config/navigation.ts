@@ -127,6 +127,12 @@ const STATIC_GROUPS: NavGroup[] = [
       { title: "Rollout", href: "/admin/rollout", icon: Rocket, roles: ["ADMIN"] },
       { title: "뉴스 키워드", href: "/admin/news-keywords", icon: Newspaper, roles: ["ADMIN"] },
       {
+        title: "매종이 LLM",
+        href: "/admin/ai-models",
+        icon: Bot,
+        roles: ["ADMIN"],
+      },
+      {
         title: "상품자료실 카테고리",
         href: "/admin/product-categories",
         icon: Package,

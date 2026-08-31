@@ -65,13 +65,17 @@ export async function saveDocumentAction(
   let documentCategoryId =
     String(formData.get("documentCategoryId") ?? "").trim() || null;
 
-  // 문서함 연동: 미선택 시 기본「전자결재」카테고리
   if (!documentCategoryId) {
-    const { getDefaultApprovalDocumentCategoryId } = await import(
-      "@/features/documents/category-service"
-    );
-    documentCategoryId = await getDefaultApprovalDocumentCategoryId();
+    return { error: "문서함을 반드시 선택하세요." };
   }
+  const catOk = await prisma.documentCategory.findFirst({
+    where: {
+      id: documentCategoryId,
+      OR: [{ ownerId: null }, { ownerId: userId }],
+    },
+    select: { id: true },
+  });
+  if (!catOk) return { error: "선택한 문서함을 사용할 수 없습니다." };
 
   const content = sanitizeRichText(String(formData.get("content") ?? ""));
 

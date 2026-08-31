@@ -243,15 +243,19 @@ async function main() {
 
   // 문서함 카테고리
   const docCats = [
-    { name: "정책", slug: "policy", description: "사내 정책·지침" },
-    { name: "보안", slug: "security", description: "보안·개인정보" },
-    { name: "운영", slug: "operations", description: "운영·업무 매뉴얼" },
-    { name: "전자결재", slug: "approval", description: "결재 완료 문서" },
+    { name: "정책", slug: "policy", description: "사내 정책·지침", workTypeCode: "정책" },
+    { name: "보안", slug: "security", description: "보안·개인정보", workTypeCode: "보안" },
+    { name: "운영", slug: "operations", description: "운영·업무 매뉴얼", workTypeCode: "운영" },
+    { name: "전자결재", slug: "approval", description: "결재 완료 문서", workTypeCode: "전자결재" },
   ];
   for (const c of docCats) {
     await prisma.documentCategory.upsert({
       where: { slug: c.slug },
-      update: { name: c.name, description: c.description },
+      update: {
+        name: c.name,
+        description: c.description,
+        workTypeCode: c.workTypeCode,
+      },
       create: c,
     });
   }
