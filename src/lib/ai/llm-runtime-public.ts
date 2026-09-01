@@ -20,7 +20,8 @@ export const PRESET_PROVIDERS: {
   {
     id: "ollama",
     label: "Ollama (로컬 오픈 LLM)",
-    baseUrl: "http://127.0.0.1:11434/v1",
+    // Docker 앱 → 호스트 Ollama. 호스트에서 직접 실행 시 127.0.0.1 로 바꿔도 됨.
+    baseUrl: "http://host.docker.internal:11434/v1",
     defaultModel: "llama3.2",
     apiKeyHint: "ollama (임의 값 가능)",
   },

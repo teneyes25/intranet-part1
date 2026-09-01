@@ -12,7 +12,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://api.openai.com https://openrouter.ai https://openapi.naver.com http://127.0.0.1:11434 http://localhost:11434",
+    "connect-src 'self' https://api.openai.com https://openrouter.ai https://openapi.naver.com http://127.0.0.1:11434 http://localhost:11434 http://host.docker.internal:11434",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

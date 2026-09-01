@@ -17,14 +17,25 @@ export type { LlmProviderKind, LlmRuntimeConfig };
 
 const LLM_PROVIDER_KEY = "llm";
 
-const DEFAULTS: LlmRuntimeConfig = {
-  provider: ENV_BASE.includes("11434") ? "ollama" : "openai",
-  baseUrl: ENV_BASE || "https://api.openai.com/v1",
-  apiKey: ENV_KEY || (ENV_BASE.includes("11434") ? "ollama" : ""),
-  chatModel: ENV_MODEL || "gpt-4o-mini",
-  availableModels: [],
-  lastModelSyncAt: null,
-};
+/** Docker 컨테이너에서 호스트 PC의 Ollama로 접속할 때 사용 */
+const OLLAMA_DOCKER_BASE = "http://host.docker.internal:11434/v1";
+
+function buildDefaults(): LlmRuntimeConfig {
+  const envLooksOllama = ENV_BASE.includes("11434") || ENV_BASE.includes("ollama");
+  const preferOllama = envLooksOllama || !ENV_KEY;
+  return {
+    provider: preferOllama ? "ollama" : "openai",
+    baseUrl:
+      ENV_BASE ||
+      (preferOllama ? OLLAMA_DOCKER_BASE : "https://api.openai.com/v1"),
+    apiKey: ENV_KEY || (preferOllama ? "ollama" : ""),
+    chatModel: ENV_MODEL || (preferOllama ? "llama3.2" : "gpt-4o-mini"),
+    availableModels: [],
+    lastModelSyncAt: null,
+  };
+}
+
+const DEFAULTS: LlmRuntimeConfig = buildDefaults();
 
 function asConfig(raw: unknown): LlmRuntimeConfig {
   if (!raw || typeof raw !== "object") return { ...DEFAULTS };
@@ -44,6 +55,18 @@ function asConfig(raw: unknown): LlmRuntimeConfig {
     lastModelSyncAt:
       typeof m.lastModelSyncAt === "string" ? m.lastModelSyncAt : null,
   };
+}
+
+/**
+ * DB에 LLM 설정이 없으면 Ollama 기본값으로 한 번 저장해 둔다.
+ * (사무실에서 Provider를 따로 고르지 않아도 매종이가 Ollama를 쓰도록)
+ */
+export async function ensureDefaultLlmRuntimeConfig(): Promise<LlmRuntimeConfig> {
+  const existing = await prisma.integrationSetting.findUnique({
+    where: { provider: LLM_PROVIDER_KEY },
+  });
+  if (existing) return getLlmRuntimeConfig();
+  return saveLlmRuntimeConfig(buildDefaults());
 }
 
 export async function getLlmRuntimeConfig(): Promise<LlmRuntimeConfig> {

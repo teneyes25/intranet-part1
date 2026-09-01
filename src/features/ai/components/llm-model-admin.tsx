@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  applyOllamaPresetAction,
   saveLlmSettingsAction,
   syncLlmModelsAction,
 } from "@/features/ai/llm-admin-actions";
@@ -21,7 +22,7 @@ export function LlmModelAdmin({ initial }: { initial: LlmRuntimeConfig }) {
   const [pending, start] = useTransition();
   const [provider, setProvider] = useState<LlmProviderKind>(initial.provider);
   const [baseUrl, setBaseUrl] = useState(initial.baseUrl);
-  const [apiKey, setApiKey] = useState(initial.apiKey);
+  const [apiKey, setApiKey] = useState(initial.apiKey || "ollama");
   const [chatModel, setChatModel] = useState(initial.chatModel);
   const [models, setModels] = useState(initial.availableModels);
   const [lastSync, setLastSync] = useState(initial.lastModelSyncAt);
@@ -32,11 +33,57 @@ export function LlmModelAdmin({ initial }: { initial: LlmRuntimeConfig }) {
     setProvider(id);
     setBaseUrl(p.baseUrl);
     setChatModel(p.defaultModel);
-    if (id === "ollama" && !apiKey) setApiKey("ollama");
+    if (id === "ollama") setApiKey(apiKey || "ollama");
   }
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-[#C5CFC6] bg-[#F7F8F6] p-4 text-sm">
+        <p className="font-medium text-[#1C1F1D]">Ollama로 빠르게 지정</p>
+        <p className="mt-1 text-muted-foreground">
+          호스트 PC에 Ollama가 실행 중이고{" "}
+          <code className="rounded bg-white px-1">ollama pull llama3.2</code> 를
+          했다면, 아래 버튼으로 Provider를 Ollama로 저장합니다.
+        </p>
+        <Button
+          type="button"
+          className="mt-3"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const r = await applyOllamaPresetAction();
+              if (r.error) {
+                toast.error(r.error);
+                return;
+              }
+              if (r.config) {
+                setProvider(r.config.provider);
+                setBaseUrl(r.config.baseUrl);
+                setApiKey(r.config.apiKey || "ollama");
+                setChatModel(r.config.chatModel);
+              }
+              if (r.models) setModels(r.models);
+              setLastSync(new Date().toISOString());
+              if (r.syncError) {
+                toast.success("Ollama로 저장했습니다. 모델 동기화는 실패 — Ollama 실행·모델 pull을 확인하세요.");
+                toast.error(r.syncError);
+              } else {
+                toast.success(
+                  `Ollama Provider 저장 완료 (모델 ${r.models?.length ?? 0}개)`,
+                );
+              }
+            })
+          }
+        >
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          Ollama로 지정·저장
+        </Button>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {PRESET_PROVIDERS.map((p) => (
           <button
