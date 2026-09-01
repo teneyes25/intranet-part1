@@ -1,6 +1,7 @@
 import "server-only";
 
-import { pipeline } from "@huggingface/transformers";
+import { mkdirSync, writeFileSync, unlinkSync } from "node:fs";
+import path from "node:path";
 
 import { EMBEDDING_MODEL } from "./config";
 
@@ -9,18 +10,64 @@ type Extractor = (
   options: { pooling: "mean"; normalize: boolean },
 ) => Promise<{ tolist: () => number[][] }>;
 
+/**
+ * Docker(nextjs 유저)에서는 node_modules 아래 .cache 생성이 EACCES 난다.
+ * 쓰기 가능한 경로(uploads 또는 /tmp)로 캐시를 강제한다.
+ */
+function pickWritableCacheRoot(): string {
+  const candidates = [
+    process.env.TRANSFORMERS_CACHE?.trim(),
+    process.env.HF_HOME?.trim(),
+    path.join(process.cwd(), "uploads", "hf-cache"),
+    "/tmp/hf-cache",
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    try {
+      mkdirSync(path.join(candidate, "hub"), { recursive: true });
+      mkdirSync(path.join(candidate, "xdg"), { recursive: true });
+      const probe = path.join(candidate, `.write-test-${process.pid}`);
+      writeFileSync(probe, "ok");
+      unlinkSync(probe);
+      return candidate;
+    } catch {
+      // try next
+    }
+  }
+  return "/tmp/hf-cache";
+}
+
+function ensureWritableHfCache() {
+  const cacheRoot = pickWritableCacheRoot();
+  process.env.TRANSFORMERS_CACHE = cacheRoot;
+  process.env.HF_HOME = cacheRoot;
+  process.env.HF_HUB_CACHE = path.join(cacheRoot, "hub");
+  process.env.XDG_CACHE_HOME = path.join(cacheRoot, "xdg");
+  try {
+    mkdirSync(path.join(cacheRoot, "hub"), { recursive: true });
+    mkdirSync(path.join(cacheRoot, "xdg"), { recursive: true });
+  } catch (e) {
+    console.error("[ai/embeddings] cache mkdir failed:", cacheRoot, e);
+  }
+  return cacheRoot;
+}
+
+ensureWritableHfCache();
+
 let extractorPromise: Promise<Extractor> | null = null;
 
 function getExtractor(): Promise<Extractor> {
   if (!extractorPromise) {
-    // 최초 호출 시 모델을 내려받아 캐시한다(이후 오프라인 동작).
-    extractorPromise = (
-      pipeline("feature-extraction", EMBEDDING_MODEL) as unknown as Promise<Extractor>
-    ).catch((error) => {
-      // 실패 시 캐시를 비워 다음 요청에서 재시도
-      extractorPromise = null;
-      throw error;
-    });
+    const cacheRoot = ensureWritableHfCache();
+    console.log(`[ai/embeddings] HF cache → ${cacheRoot}`);
+    extractorPromise = import("@huggingface/transformers")
+      .then(({ pipeline }) =>
+        pipeline("feature-extraction", EMBEDDING_MODEL) as unknown as Promise<Extractor>,
+      )
+      .catch((error) => {
+        extractorPromise = null;
+        throw error;
+      });
   }
   return extractorPromise;
 }

@@ -53,6 +53,9 @@ if [ "${RUN_DEALER_DEMO_SEED}" = "true" ]; then
   node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed-dealer-demo.ts || echo "[entrypoint] dealer demo seed skipped"
 fi
 
+echo "[entrypoint] ensuring writable AI cache dirs..."
+mkdir -p /app/uploads/hf-cache/hub /app/uploads/hf-cache/xdg /tmp/hf-cache/hub /tmp/hf-cache/xdg 2>/dev/null || true
+
 echo "[entrypoint] starting server on port ${PORT:-3000}..."
 # health 체크로 cron 폴백 등록 (instrumentation 보조)
 ( sleep 8 && wget -q -O- "http://127.0.0.1:${PORT:-3000}/api/health" >/dev/null 2>&1 || true ) &
