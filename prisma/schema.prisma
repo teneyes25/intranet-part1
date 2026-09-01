@@ -64,6 +64,7 @@ model User {
   leaveApprovals  LeaveRequest[] @relation("LeaveApprover")
   jobs            UserJob[]
   documentCategoriesOwned DocumentCategory[] @relation("DocumentCategoryOwner")
+  aiKnowledgeMaterials AiKnowledgeMaterial[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -851,7 +852,7 @@ model PageLayoutVersion {
 model AiIngestJob {
   id              String    @id @default(cuid())
   triggeredById   String
-  scope           String    /// all | boards
+  scope           String    /// all | boards | curated
   boardKeys       String[]  @default([])
   status          String    /// pending | running | completed | failed
   postsProcessed  Int       @default(0)
@@ -862,6 +863,36 @@ model AiIngestJob {
 
   @@index([startedAt])
   @@map("ai_ingest_jobs")
+}
+
+/// 매종이 지식 학습 정책 (singleton)
+model AiLearningSettings {
+  id               String   @id @default("default")
+  /// 인트라넷 전체(게시글·문서함·전자결재) 학습 — 기본 ON
+  learnAllIntranet Boolean  @default(true)
+  /// 관리자가 지정·업로드한 추가 학습 자료
+  learnCurated     Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  @@map("ai_learning_settings")
+}
+
+/// 관리자가 지정·업로드한 매종이 추가 학습 자료
+model AiKnowledgeMaterial {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  fileName    String?
+  storageKey  String?
+  mimeType    String?
+  isActive    Boolean  @default(true)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, createdAt])
+  @@map("ai_knowledge_materials")
 }
 
 /// 결재선 기본 템플릿 (부서·직급별)

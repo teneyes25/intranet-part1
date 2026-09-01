@@ -206,6 +206,55 @@ export async function removeApproval(docId: string): Promise<void> {
   await deleteSource("approval", docId);
 }
 
+/** 관리자 지정·업로드 학습 자료 */
+export async function ingestKnowledgeMaterial(materialId: string): Promise<void> {
+  const row = await prisma.aiKnowledgeMaterial.findUnique({
+    where: { id: materialId },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      fileName: true,
+      isActive: true,
+    },
+  });
+  if (!row || !row.isActive) {
+    await deleteSource("knowledge", materialId);
+    return;
+  }
+  const text = [
+    "매종이 지정 학습 자료",
+    row.title,
+    row.fileName ? `원본 파일: ${row.fileName}` : "",
+    row.content,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  await chunkAndUpsert({
+    sourceType: "knowledge",
+    sourceId: row.id,
+    title: `[지정학습] ${row.title}`,
+    url: `/admin/ai-models#knowledge-${row.id}`,
+    text,
+  });
+}
+
+export async function removeKnowledgeMaterial(materialId: string): Promise<void> {
+  await deleteSource("knowledge", materialId);
+}
+
+export async function ingestAllKnowledgeMaterials(): Promise<number> {
+  const rows = await prisma.aiKnowledgeMaterial.findMany({
+    where: { isActive: true },
+    select: { id: true },
+  });
+  for (const r of rows) {
+    await ingestKnowledgeMaterial(r.id);
+  }
+  return rows.length;
+}
+
 /** 전체 게시글 일괄 인제스트 */
 export async function ingestAllPosts(): Promise<number> {
   const posts = await prisma.post.findMany({ select: { id: true } });
@@ -253,20 +302,33 @@ export async function ingestAllApprovals(): Promise<number> {
   return docs.length;
 }
 
-/** 인트라넷 전체 지식(게시글·문서함·전자결재) 재학습 */
-export async function ingestAllIntranetKnowledge(): Promise<{
+/** 인트라넷 전체 지식(게시글·문서함·전자결재·지정 학습자료) 재학습 */
+export async function ingestAllIntranetKnowledge(opts?: {
+  includePosts?: boolean;
+  includeDocuments?: boolean;
+  includeApprovals?: boolean;
+  includeCurated?: boolean;
+}): Promise<{
   posts: number;
   documents: number;
   approvals: number;
+  curated: number;
   total: number;
 }> {
-  const posts = await ingestAllPosts();
-  const documents = await ingestAllSharedDocuments();
-  const approvals = await ingestAllApprovals();
+  const includePosts = opts?.includePosts !== false;
+  const includeDocuments = opts?.includeDocuments !== false;
+  const includeApprovals = opts?.includeApprovals !== false;
+  const includeCurated = opts?.includeCurated !== false;
+
+  const posts = includePosts ? await ingestAllPosts() : 0;
+  const documents = includeDocuments ? await ingestAllSharedDocuments() : 0;
+  const approvals = includeApprovals ? await ingestAllApprovals() : 0;
+  const curated = includeCurated ? await ingestAllKnowledgeMaterials() : 0;
   return {
     posts,
     documents,
     approvals,
-    total: posts + documents + approvals,
+    curated,
+    total: posts + documents + approvals + curated,
   };
 }

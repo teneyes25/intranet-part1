@@ -11,6 +11,13 @@ import {
   type LlmProviderKind,
   type LlmRuntimeConfig,
 } from "@/lib/ai/llm-runtime";
+import { runIngestJob } from "@/features/customize/ai-ingest-service";
+import {
+  createKnowledgeMaterial,
+  deleteKnowledgeMaterial,
+  saveLearningSettings,
+  updateKnowledgeMaterial,
+} from "@/features/ai/knowledge-service";
 
 export async function getLlmSettingsAction() {
   await requireRole(["ADMIN"]);
@@ -63,6 +70,87 @@ export async function syncLlmModelsAction() {
   revalidatePath("/admin/ai-models");
   if (result.error) return { error: result.error, models: result.models };
   return { ok: true as const, models: result.models };
+}
+
+/** 인트라넷 지식 동기화 (기본: 전체 + 지정 자료) */
+export async function syncKnowledgeAction(formData?: FormData) {
+  const user = await requireRole(["ADMIN"]);
+  const scopeRaw = String(formData?.get("scope") ?? "all");
+  const scope =
+    scopeRaw === "boards" || scopeRaw === "curated" ? scopeRaw : "all";
+  const boardKeys =
+    formData?.getAll("boardKeys").map(String).filter(Boolean) ?? [];
+  try {
+    const result = await runIngestJob({
+      triggeredById: user.id,
+      scope,
+      boardKeys,
+    });
+    revalidatePath("/admin/ai-models");
+    revalidatePath("/admin/customize");
+    revalidatePath("/ai-agent");
+    return { ok: true as const, ...result };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "지식 동기화 실패" };
+  }
+}
+
+export async function saveLearningSettingsAction(formData: FormData) {
+  await requireRole(["ADMIN"]);
+  const learnAllIntranet = formData.get("learnAllIntranet") === "on";
+  let learnCurated = formData.get("learnCurated") === "on";
+  // 둘 다 끄면 학습 소스가 없어지므로 지정 자료는 유지
+  if (!learnAllIntranet && !learnCurated) learnCurated = true;
+  const saved = await saveLearningSettings({
+    learnAllIntranet,
+    learnCurated,
+  });
+  revalidatePath("/admin/ai-models");
+  return { ok: true as const, settings: saved };
+}
+
+export async function createKnowledgeMaterialAction(formData: FormData) {
+  const user = await requireRole(["ADMIN"]);
+  const title = String(formData.get("title") ?? "");
+  const content = String(formData.get("content") ?? "");
+  const file = formData.get("file");
+  try {
+    const row = await createKnowledgeMaterial({
+      userId: user.id,
+      title,
+      content,
+      file: file instanceof File && file.size > 0 ? file : null,
+    });
+    revalidatePath("/admin/ai-models");
+    return { ok: true as const, id: row.id };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "자료 등록 실패" };
+  }
+}
+
+export async function toggleKnowledgeMaterialAction(formData: FormData) {
+  await requireRole(["ADMIN"]);
+  const id = String(formData.get("id") ?? "");
+  const isActive = formData.get("isActive") === "true";
+  try {
+    await updateKnowledgeMaterial({ id, isActive });
+    revalidatePath("/admin/ai-models");
+    return { ok: true as const };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "변경 실패" };
+  }
+}
+
+export async function deleteKnowledgeMaterialAction(formData: FormData) {
+  await requireRole(["ADMIN"]);
+  const id = String(formData.get("id") ?? "");
+  try {
+    await deleteKnowledgeMaterial(id);
+    revalidatePath("/admin/ai-models");
+    return { ok: true as const };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "삭제 실패" };
+  }
 }
 
 export type { LlmRuntimeConfig };

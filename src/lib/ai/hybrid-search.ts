@@ -86,13 +86,38 @@ async function searchApprovalsKeyword(query: string, limit: number) {
   }));
 }
 
+async function searchKnowledgeKeyword(query: string, limit: number) {
+  if (!query || query.length < 2) return [] as SearchResult[];
+  const rows = await prisma.aiKnowledgeMaterial.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { title: { contains: query, mode: "insensitive" } },
+        { content: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    take: limit,
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true, content: true },
+  });
+  return rows.map((d, i) => ({
+    id: `knowledge:${d.id}`,
+    sourceType: "knowledge",
+    sourceId: d.id,
+    title: `[지정학습] ${d.title}`,
+    url: `/admin/ai-models#knowledge-${d.id}`,
+    content: d.content.replace(/\s+/g, " ").slice(0, 400),
+    score: 1 - i * 0.03,
+  }));
+}
+
 /** 임베딩 없이 FTS·키워드만으로 검색 (벡터/임베딩 장애 시 폴백) */
 export async function keywordOnlySearch(
   query: string,
   k: number,
   sourceType?: string,
 ): Promise<SearchResult[]> {
-  const [textHits, docHits, aprHits] = await Promise.all([
+  const [textHits, docHits, aprHits, knowledgeHits] = await Promise.all([
     sourceType && sourceType !== "post"
       ? Promise.resolve([])
       : searchPostsFulltext(query, k * 2).catch(
@@ -103,6 +128,9 @@ export async function keywordOnlySearch(
       : Promise.resolve([] as SearchResult[]),
     !sourceType || sourceType === "approval"
       ? searchApprovalsKeyword(query, k).catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
+    !sourceType || sourceType === "knowledge"
+      ? searchKnowledgeKeyword(query, k).catch(() => [] as SearchResult[])
       : Promise.resolve([] as SearchResult[]),
   ]);
 
@@ -133,6 +161,7 @@ export async function keywordOnlySearch(
   addRanked(textAsResults, 0.8);
   addRanked(docHits, 0.7);
   addRanked(aprHits, 0.7);
+  addRanked(knowledgeHits, 0.9);
 
   return [...merged.values()]
     .sort((a, b) => b.rrf - a.rrf)
@@ -150,7 +179,7 @@ export async function hybridSearch(
   k: number,
   sourceType?: string,
 ): Promise<SearchResult[]> {
-  const [vectorHits, textHits, docHits, aprHits] = await Promise.all([
+  const [vectorHits, textHits, docHits, aprHits, knowledgeHits] = await Promise.all([
     similaritySearch(embedding, k * 2, sourceType).catch((e) => {
       console.error("[hybrid-search] vector search failed:", e);
       return [] as SearchResult[];
@@ -165,6 +194,9 @@ export async function hybridSearch(
       : Promise.resolve([] as SearchResult[]),
     !sourceType || sourceType === "approval"
       ? searchApprovalsKeyword(query, k).catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
+    !sourceType || sourceType === "knowledge"
+      ? searchKnowledgeKeyword(query, k).catch(() => [] as SearchResult[])
       : Promise.resolve([] as SearchResult[]),
   ]);
 
@@ -198,6 +230,7 @@ export async function hybridSearch(
   addRanked(textAsResults, 0.8);
   addRanked(docHits, 0.7);
   addRanked(aprHits, 0.7);
+  addRanked(knowledgeHits, 0.9);
 
   return [...merged.values()]
     .sort((a, b) => b.rrf - a.rrf)
