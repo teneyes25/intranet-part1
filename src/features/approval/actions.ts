@@ -62,7 +62,7 @@ export async function saveDocumentAction(
   if (!title) return { error: "제목을 입력하세요." };
 
   const templateId = String(formData.get("templateId") ?? "").trim() || null;
-  let documentCategoryId =
+  const documentCategoryId =
     String(formData.get("documentCategoryId") ?? "").trim() || null;
 
   if (!documentCategoryId) {
