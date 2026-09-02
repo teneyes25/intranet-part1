@@ -78,6 +78,7 @@ export const config = {
     "/ai-agent/:path*",
     "/attendance/:path*",
     "/leave/:path*",
+    "/messenger/:path*",
     "/directions/:path*",
     "/admin/:path*",
     "/headquarter/:path*",
