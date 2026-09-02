@@ -97,6 +97,7 @@ const STATIC_GROUPS: NavGroup[] = [
     label: "도구",
     items: [
       { title: "매종이", href: "/ai-agent", icon: Bot },
+      { title: "사내 메신저", href: "/messenger", icon: MessageSquare },
       { title: "통합 검색", href: "/search", icon: Search },
       { title: "도움말", href: "/help", icon: HelpCircle },
       { title: "대리점 가이드", href: "/help/dealer", icon: Store, roles: ["DEALER"] },
@@ -141,6 +142,12 @@ const STATIC_GROUPS: NavGroup[] = [
       { title: "업무 카테고리", href: "/admin/jobs", icon: Users, roles: ["ADMIN"] },
       { title: "문서함 카테고리", href: "/admin/document-categories", icon: FolderOpen, roles: ["ADMIN"] },
       { title: "활동 로그", href: "/admin/activity", icon: Activity, roles: ["ADMIN"] },
+      {
+        title: "메신저 로그",
+        href: "/admin/messenger-logs",
+        icon: MessageSquare,
+        roles: ["ADMIN"],
+      },
       { title: "포털 커스터마이징", href: "/admin/customize", icon: Settings, roles: ["ADMIN"] },
       { title: "Visual Page Builder", href: "/admin/customize/page-builder", icon: LayoutPanelLeft, roles: ["ADMIN"] },
       { title: "시스템 상태", href: "/admin/system", icon: ServerCog, roles: ["ADMIN"] },

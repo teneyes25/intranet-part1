@@ -3,6 +3,8 @@
 import { signOut } from "next-auth/react";
 import { LogOut, User as UserIcon } from "lucide-react";
 
+import { logoutMessengerPresenceAction } from "@/features/messenger/actions";
+
 import {
   Avatar,
   AvatarFallback,
@@ -62,7 +64,11 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => {
+            void logoutMessengerPresenceAction()
+              .catch(() => undefined)
+              .finally(() => signOut({ callbackUrl: "/login" }));
+          }}
         >
           <LogOut className="h-4 w-4" />
           <span>로그아웃</span>

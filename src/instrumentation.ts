@@ -31,5 +31,13 @@ export async function register() {
     } catch (e) {
       console.error("[ai-chat] cleanup cron 등록 실패:", e);
     }
+    try {
+      const { startMessengerRetentionCron } = await import(
+        "@/features/messenger/scheduler"
+      );
+      startMessengerRetentionCron();
+    } catch (e) {
+      console.error("[messenger] cron 등록 실패:", e);
+    }
   }
 }

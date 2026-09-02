@@ -65,6 +65,10 @@ model User {
   jobs            UserJob[]
   documentCategoriesOwned DocumentCategory[] @relation("DocumentCategoryOwner")
   aiKnowledgeMaterials AiKnowledgeMaterial[]
+  messengerProfile MessengerProfile?
+  messengerRoomMembers MessengerRoomMember[]
+  messengerMessages    MessengerMessage[]
+  messengerLogs        MessengerLog[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -598,6 +602,8 @@ enum NotificationType {
   EMERGENCY
   LEAVE_REQUEST
   LEAVE_RESULT
+  MESSENGER
+  MESSENGER_BACKUP
 }
 
 /// 연차 신청 상태
@@ -1211,4 +1217,108 @@ model DealerTrade {
   @@index([fromDealerId, status])
   @@index([toDealerId, status])
   @@map("dealer_trades")
+}
+
+/// 사내 메신저 프로필 (사진·근무지·직책·직급·입사일). 업무는 UserJob 사용.
+model MessengerProfile {
+  userId          String    @id
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photoStorageKey String?
+  workplace       String?
+  title           String?
+  rank            String?
+  hiredAt         DateTime?
+  lastSeenAt      DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@map("messenger_profiles")
+}
+
+/// 1:1 또는 그룹 대화방. pairKey 는 1:1 고유키(정렬된 userId 결합).
+model MessengerRoom {
+  id        String                @id @default(cuid())
+  isGroup   Boolean               @default(false)
+  title     String?
+  pairKey   String?               @unique
+  members   MessengerRoomMember[]
+  messages  MessengerMessage[]
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@index([updatedAt])
+  @@map("messenger_rooms")
+}
+
+model MessengerRoomMember {
+  id         String        @id @default(cuid())
+  roomId     String
+  room       MessengerRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime?
+  joinedAt   DateTime      @default(now())
+
+  @@unique([roomId, userId])
+  @@index([userId])
+  @@map("messenger_room_members")
+}
+
+model MessengerMessage {
+  id          String                 @id @default(cuid())
+  roomId      String
+  room        MessengerRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User                   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body        String                 @default("")
+  createdAt   DateTime               @default(now())
+  attachments MessengerAttachment[]
+
+  @@index([roomId, createdAt])
+  @@index([createdAt])
+  @@map("messenger_messages")
+}
+
+model MessengerAttachment {
+  id         String            @id @default(cuid())
+  messageId  String
+  message    MessengerMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  filename   String
+  storageKey String
+  mimeType   String
+  size       Int
+  createdAt  DateTime          @default(now())
+
+  @@index([messageId])
+  @@map("messenger_attachments")
+}
+
+/// 관리자 전용 메신저 로그
+model MessengerLog {
+  id           String   @id @default(cuid())
+  action       String
+  actorId      String?
+  actor        User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  targetUserId String?
+  roomId       String?
+  messageId    String?
+  detail       String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@map("messenger_logs")
+}
+
+/// 월별 백업/삭제 안내 발송 여부
+model MessengerBackupNoticeLog {
+  id        String   @id @default(cuid())
+  userId    String
+  year      Int
+  month     Int
+  purged    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, year, month])
+  @@index([year, month])
+  @@map("messenger_backup_notice_logs")
 }

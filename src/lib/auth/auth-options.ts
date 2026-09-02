@@ -113,6 +113,19 @@ export const authOptions: NextAuthOptions = {
           success: true,
         });
 
+        void import("@/features/messenger/service")
+          .then(({ touchPresence, writeMessengerLog }) =>
+            Promise.all([
+              touchPresence(user.id),
+              writeMessengerLog({
+                action: "login",
+                actorId: user.id,
+                detail: user.email,
+              }),
+            ]),
+          )
+          .catch(() => undefined);
+
         // 시스템 관리자 로그인 시 뉴스 자동 수집 (1일 1회, 비동기)
         if (user.role === "ADMIN") {
           void import("@/lib/news/scheduler")
@@ -185,6 +198,21 @@ export const authOptions: NextAuthOptions = {
         session.user.mustChangePassword = token.mustChangePassword ?? false;
       }
       return session;
+    },
+  },
+  events: {
+    async signOut(message) {
+      const token = "token" in message ? message.token : undefined;
+      const id = token && typeof token.id === "string" ? token.id : null;
+      if (!id) return;
+      await import("@/features/messenger/service")
+        .then(({ clearPresence, writeMessengerLog }) =>
+          Promise.all([
+            clearPresence(id),
+            writeMessengerLog({ action: "logout", actorId: id }),
+          ]),
+        )
+        .catch(() => undefined);
     },
   },
 };

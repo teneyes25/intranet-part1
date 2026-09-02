@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { BrandingStyles } from "@/components/branding/branding-styles";
 import { MaejongiHomeBanner } from "@/features/ai/components/maejongi-home-banner";
+import { MessengerHomeWidget } from "@/features/messenger/components/messenger-widget";
+import { loadMessengerBootstrap } from "@/features/messenger/actions";
 import { getActiveEmergencyNotice } from "@/features/system/system-service";
 import { getEffectiveBranding } from "@/lib/dealer/branding";
 import { requireUser } from "@/lib/auth/session";
@@ -12,13 +14,14 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
-  const [emergency, branding, boards] = await Promise.all([
+  const [emergency, branding, boards, messenger] = await Promise.all([
     getActiveEmergencyNotice(),
     getEffectiveBranding(user.dealerId),
     prisma.board.findMany({
       select: { key: true, name: true, sortOrder: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
+    loadMessengerBootstrap().catch(() => null),
   ]);
 
   return (
@@ -51,6 +54,13 @@ export default async function DashboardLayout({
         {children}
       </AppShell>
       <MaejongiHomeBanner floating />
+      {messenger && (
+        <MessengerHomeWidget
+          meId={user.id}
+          directory={messenger.directory}
+          rooms={messenger.rooms}
+        />
+      )}
     </>
   );
 }
