@@ -34,6 +34,8 @@ export interface NavItem {
   title: string;
   href: string;
   icon: LucideIcon;
+  /** true 이면 인트라넷 본문 대신 작은 팝업 창을 연다 */
+  openPopup?: boolean;
   /** 지정 시 해당 role 만 노출 */
   roles?: Role[];
   /** 최소 권한 등급 (HEADQUARTER = 본사 이상) */
@@ -96,8 +98,8 @@ const STATIC_GROUPS: NavGroup[] = [
   {
     label: "도구",
     items: [
-      { title: "매종이", href: "/ai-agent", icon: Bot },
-      { title: "사내 메신저", href: "/messenger", icon: MessageSquare },
+      { title: "메종이", href: "/ai-agent", icon: Bot },
+      { title: "사내 메신저", href: "/messenger", icon: MessageSquare, openPopup: true },
       { title: "통합 검색", href: "/search", icon: Search },
       { title: "도움말", href: "/help", icon: HelpCircle },
       { title: "대리점 가이드", href: "/help/dealer", icon: Store, roles: ["DEALER"] },
@@ -128,7 +130,7 @@ const STATIC_GROUPS: NavGroup[] = [
       { title: "Rollout", href: "/admin/rollout", icon: Rocket, roles: ["ADMIN"] },
       { title: "뉴스 키워드", href: "/admin/news-keywords", icon: Newspaper, roles: ["ADMIN"] },
       {
-        title: "매종이 LLM",
+        title: "메종이 LLM",
         href: "/admin/ai-models",
         icon: Bot,
         roles: ["ADMIN"],

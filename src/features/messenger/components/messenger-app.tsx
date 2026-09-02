@@ -26,6 +26,7 @@ import {
   MESSENGER_MAX_FILE_SIZE,
   MESSENGER_MAX_FILES,
 } from "@/features/messenger/constants";
+import { formatPeerLabel } from "@/features/messenger/display";
 
 export type DirectoryUser = {
   id: string;
@@ -49,6 +50,7 @@ export type RoomSummary = {
     online: boolean;
     photoStorageKey: string | null;
     title: string | null;
+    jobs?: string[];
   }[];
   lastBody: string;
   lastAt: Date | string;
@@ -108,11 +110,13 @@ export function MessengerApp({
   directory: initialDirectory,
   rooms: initialRooms,
   compact,
+  variant = "page",
 }: {
   meId: string;
   directory: DirectoryUser[];
   rooms: RoomSummary[];
   compact?: boolean;
+  variant?: "page" | "window";
 }) {
   const [tab, setTab] = useState<"chat" | "people">("people");
   const [rooms, setRooms] = useState(initialRooms);
@@ -122,8 +126,11 @@ export function MessengerApp({
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [pending, start] = useTransition();
+  const [query, setQuery] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const isWindow = variant === "window";
+  const stacked = compact && !isWindow;
 
   const activeRoom = rooms.find((r) => r.id === roomId) ?? null;
 
@@ -176,6 +183,18 @@ export function MessengerApp({
     [directory],
   );
 
+  const filteredPeople = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return directory;
+    return directory.filter((u) => {
+      const hay = [u.name, u.title, u.rank, u.workplace, ...(u.jobs ?? [])]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [directory, query]);
+
   function openPeer(peerId: string) {
     start(async () => {
       const r = await openDmAction(peerId);
@@ -200,6 +219,7 @@ export function MessengerApp({
                     online: peer.online,
                     photoStorageKey: peer.photoStorageKey,
                     title: peer.title,
+                    jobs: peer.jobs,
                   },
                 ]
               : [],
@@ -233,14 +253,18 @@ export function MessengerApp({
   }
 
   return (
-    <div className={cn("flex h-full min-h-0", compact ? "flex-col" : "flex-row")}>
+    <div className={cn("flex h-full min-h-0", stacked ? "flex-col" : "flex-row")}>
       <aside
         className={cn(
           "flex flex-col border-r bg-[#F7F8F6]",
-          compact ? "h-40 shrink-0 border-b border-r-0" : "w-64",
+          stacked
+            ? "h-40 shrink-0 border-b border-r-0"
+            : isWindow
+              ? "w-[168px] shrink-0"
+              : "w-64",
         )}
       >
-        <div className="flex items-center gap-1 border-b p-2 text-xs">
+        <div className="flex items-center gap-1 border-b p-1.5 text-[11px]">
           <button
             type="button"
             className={cn(
@@ -249,7 +273,7 @@ export function MessengerApp({
             )}
             onClick={() => setTab("people")}
           >
-            회원 {onlineCount} 로그인
+            회원 {onlineCount}
           </button>
           <button
             type="button"
@@ -261,17 +285,31 @@ export function MessengerApp({
           >
             대화
           </button>
-          <Link href="/messenger/profile" className="ml-auto p-1" title="회원 설정">
+          <Link
+            href={isWindow ? "/messenger/pop/profile" : "/messenger/profile"}
+            className="ml-auto p-1"
+            title="회원 설정"
+          >
             <Settings className="h-4 w-4" />
           </Link>
         </div>
+        {tab === "people" && (
+          <div className="border-b p-1.5">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="이름·직책·업무"
+              className="h-7 text-xs"
+            />
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {tab === "people"
-            ? directory.map((u) => (
+            ? filteredPeople.map((u) => (
                 <button
                   key={u.id}
                   type="button"
-                  className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-white"
+                  className="flex w-full items-start gap-1.5 px-2 py-1.5 text-left hover:bg-white"
                   onClick={() => openPeer(u.id)}
                 >
                   <Avatar
@@ -279,20 +317,17 @@ export function MessengerApp({
                     name={u.name}
                     photo={u.photoStorageKey}
                     online={u.online}
+                    size={isWindow ? 28 : 36}
                   />
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium">
-                      {u.name}{" "}
-                      {u.online && (
-                        <span className="text-[10px] font-normal text-emerald-600">
-                          로그인
-                        </span>
-                      )}
+                    <span className="block truncate text-xs font-medium leading-tight">
+                      {formatPeerLabel(u)}
                     </span>
-                    <span className="block truncate text-[11px] text-muted-foreground">
-                      {[u.title, u.rank, u.jobs.join("/")].filter(Boolean).join(" · ") ||
-                        u.email}
-                    </span>
+                    {u.online && (
+                      <span className="text-[10px] font-normal text-emerald-600">
+                        로그인
+                      </span>
+                    )}
                   </span>
                 </button>
               ))
@@ -301,7 +336,7 @@ export function MessengerApp({
                   key={r.id}
                   type="button"
                   className={cn(
-                    "flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-white",
+                    "flex w-full items-start gap-1.5 px-2 py-1.5 text-left hover:bg-white",
                     r.id === roomId && "bg-white",
                   )}
                   onClick={() => {
@@ -314,10 +349,15 @@ export function MessengerApp({
                     name={r.title}
                     photo={r.peers[0]?.photoStorageKey}
                     online={r.peers[0]?.online}
+                    size={isWindow ? 28 : 36}
                   />
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium">{r.title}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-xs font-medium leading-tight">
+                      {r.peers[0]
+                        ? formatPeerLabel(r.peers[0])
+                        : r.title}
+                    </span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
                       {r.lastBody || "새 대화"}
                     </span>
                   </span>
@@ -328,13 +368,14 @@ export function MessengerApp({
 
       <section className="flex min-h-0 flex-1 flex-col">
         <div className="border-b px-3 py-2">
-          <p className="text-sm font-semibold">
-            {activeRoom?.title ?? "상대를 선택하세요"}
+          <p className="truncate text-sm font-semibold">
+            {activeRoom?.peers[0]
+              ? formatPeerLabel(activeRoom.peers[0])
+              : (activeRoom?.title ?? "상대를 선택하세요")}
           </p>
           {activeRoom?.peers[0] && (
             <p className="text-[11px] text-muted-foreground">
               {activeRoom.peers[0].online ? "로그인 중" : "오프라인"}
-              {activeRoom.peers[0].title ? ` · ${activeRoom.peers[0].title}` : ""}
             </p>
           )}
         </div>

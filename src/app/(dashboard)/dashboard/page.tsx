@@ -399,7 +399,7 @@ export default async function DashboardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Sparkles className="h-4 w-4 text-[#5C7358]" />
-                매종이 데일리 요약
+                메종이 데일리 요약
               </CardTitle>
               <CardDescription>현재 워크스페이스 현황 요약</CardDescription>
             </CardHeader>
@@ -417,7 +417,7 @@ export default async function DashboardPage() {
               <Button asChild variant="outline" size="sm" className="mt-2 w-full border-[#C5D0C4]">
                 <Link href="/ai-agent">
                   <Bot className="h-4 w-4" />
-                  매종이 열기
+                  메종이 열기
                 </Link>
               </Button>
             </CardContent>

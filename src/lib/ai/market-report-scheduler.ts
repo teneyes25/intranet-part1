@@ -38,13 +38,13 @@ async function claimMonthlySlot(ym: string): Promise<boolean> {
     where: { provider: PROVIDER_KEY },
     create: {
       provider: PROVIDER_KEY,
-      displayName: "매종이 월간 시장조사",
+      displayName: "메종이 월간 시장조사",
       isEnabled: true,
       metadata: { lastYm: ym },
     },
     update: {
       isEnabled: true,
-      displayName: "매종이 월간 시장조사",
+      displayName: "메종이 월간 시장조사",
       metadata: { lastYm: ym },
     },
   });

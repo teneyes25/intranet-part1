@@ -2,7 +2,7 @@ import { BrandingStyles } from "@/components/branding/branding-styles";
 import { getEffectiveBranding } from "@/lib/dealer/branding";
 import { requireUser } from "@/lib/auth/session";
 
-/** 기안 팝업 전용 — 사이드바/탑바/매종이 배너 없음 */
+/** 기안·메신저 팝업 전용 — 사이드바/탑바/메종이 배너 없음 */
 export default async function PopupLayout({
   children,
 }: {

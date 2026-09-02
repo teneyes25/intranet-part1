@@ -62,7 +62,7 @@ export const POST = withApiGuard({ tier: "ai" }, async (req, { session, ip }) =>
     const detail = e instanceof Error ? e.message : "";
     const hint =
       /LLM|api.?key|fetch|ECONNREFUSED|timeout/i.test(detail)
-        ? " LLM 연결(Ollama/OpenAI) 또는 API 키를 관리자 → 매종이 LLM에서 확인해 주세요."
+        ? " LLM 연결(Ollama/OpenAI) 또는 API 키를 관리자 → 메종이 LLM에서 확인해 주세요."
         : /임베딩|embed|onnx|transformers/i.test(detail)
           ? " 지식 검색 준비 중이거나 실패했습니다. 잠시 후 다시 시도해 주세요."
           : "";

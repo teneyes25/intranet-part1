@@ -93,7 +93,7 @@ async function releasePromoteMonth(year: number, month: number) {
 
 /**
  * 매월 말일(KST) 연차 사용 촉진 공지를 공지사항에 자동 등록 (연·월당 1회).
- * 글쓴이: 매종이. cron + 관리자 로그인 동시 트리거에도 중복 등록되지 않음.
+ * 글쓴이: 메종이. cron + 관리자 로그인 동시 트리거에도 중복 등록되지 않음.
  */
 export async function runMonthEndLeavePromoteNotice(opts?: {
   force?: boolean;

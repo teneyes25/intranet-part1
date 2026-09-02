@@ -2,7 +2,7 @@
  * Next.js instrumentation hook. 서버(Node 런타임) 부팅 시 1회 실행된다.
  * - 뉴스: 관리자 로그인 시 1일 1회 수집
  * - 연차: 매월 말일 09:05 KST 잔여연차 메일 cron
- * - 매종이: 매월 1일 시장조사 보고서 + 대화 7일 TTL 정리
+ * - 메종이: 매월 1일 시장조사 보고서 + 대화 7일 TTL 정리
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {

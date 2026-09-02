@@ -309,7 +309,7 @@ export function ApprovalForm({
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-primary" />
-          매종이 기안 작성 지원
+          메종이 기안 작성 지원
           <span className="text-xs font-normal text-muted-foreground">
             (6하원칙 · 행정안전부 공문 양식)
           </span>

@@ -231,7 +231,7 @@ export async function ingestKnowledgeMaterial(materialId: string): Promise<void>
     return;
   }
   const text = [
-    "매종이 지정 학습 자료",
+    "메종이 지정 학습 자료",
     row.title,
     row.fileName ? `원본 파일: ${row.fileName}` : "",
     row.content,

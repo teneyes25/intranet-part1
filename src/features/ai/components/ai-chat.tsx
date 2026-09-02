@@ -48,7 +48,7 @@ interface ConversationItem {
 }
 
 const SUGGESTIONS = [
-  "안녕 매종이야? 자기소개 해줘",
+  "안녕 메종이야? 자기소개 해줘",
   "오늘 서울 날씨 어때?",
   "오늘 정치·시사 주요 뉴스 요약해줘",
   "내 업무에 맞춰 오늘 할 일 조언해줘",
@@ -242,7 +242,7 @@ export function AiChat({
       setSyncMsg(
         `동기화 완료: 게시글 ${posts} · 문서 ${docs} · 결재 ${apr} / 청크 ${chunks}`,
       );
-      toast.success("매종이 지식 동기화 완료");
+      toast.success("메종이 지식 동기화 완료");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "동기화 실패";
       setSyncMsg(msg);
@@ -368,7 +368,7 @@ export function AiChat({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">
-                매종이
+                메종이
                 <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                   프렌치메종 신입사원
                 </span>
@@ -423,7 +423,7 @@ export function AiChat({
           className="flex-1 space-y-4 overflow-y-auto p-4"
           role="log"
           aria-live="polite"
-          aria-label="매종이 대화"
+          aria-label="메종이 대화"
         >
           {loadingConv && (
             <div className="flex justify-center py-8 text-sm text-muted-foreground">
@@ -437,7 +437,7 @@ export function AiChat({
               <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                 <Sparkles className="h-7 w-7" />
               </div>
-              <p className="mb-1 text-lg font-semibold">안녕하세요, 매종이에요!</p>
+              <p className="mb-1 text-lg font-semibold">안녕하세요, 메종이에요!</p>
               <p className="mb-4 max-w-md text-sm text-muted-foreground">
                 프렌치메종 신입사원으로서 시장조사, 뉴스 요약, 기안서 조언,
                 사내 자료 찾기를 도와드릴게요. 무엇이든 물어보세요.
@@ -487,7 +487,7 @@ export function AiChat({
               >
                 {m.role === "assistant" && (
                   <p className="text-[11px] font-medium text-amber-800 dark:text-amber-200">
-                    매종이
+                    메종이
                   </p>
                 )}
                 <div
@@ -559,7 +559,7 @@ export function AiChat({
               </div>
               <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                매종이가 자료를 찾아보는 중…
+                메종이가 자료를 찾아보는 중…
               </div>
             </div>
           )}
@@ -604,9 +604,9 @@ export function AiChat({
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="매종이에게 메시지 보내기…"
+            placeholder="메종이에게 메시지 보내기…"
             disabled={loading}
-            aria-label="매종이에게 질문"
+            aria-label="메종이에게 질문"
           />
           <Button
             type="submit"

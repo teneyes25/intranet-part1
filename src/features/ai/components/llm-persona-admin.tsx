@@ -29,9 +29,9 @@ export function LlmPersonaAdmin({
   return (
     <section className="space-y-4 rounded-lg border p-4">
       <div>
-        <h3 className="font-semibold">매종이 페르소나</h3>
+        <h3 className="font-semibold">메종이 페르소나</h3>
         <p className="text-sm text-muted-foreground">
-          시스템 관리자가 매종이의 성격·역할·답변 규칙을 직접 입력할 수 있습니다.
+          시스템 관리자가 메종이의 성격·역할·답변 규칙을 직접 입력할 수 있습니다.
           저장 즉시 대화에 반영됩니다.
         </p>
       </div>

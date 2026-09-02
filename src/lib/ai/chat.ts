@@ -51,7 +51,7 @@ function detectIntent(question: string): ChatIntent {
     /^(안녕|안녕하세요|하이|헬로|hello|hi[!?.\s]*$|반가워|좋은\s*(아침|오후|저녁)|자기소개|너는\s*누구|이름이\s*뭐|소개\s*해)/i.test(
       q,
     ) ||
-    /자기\s*소개|너는\s*누구|이름이\s*뭐야|매종이\s*(야|인가|소개)/.test(q)
+    /자기\s*소개|너는\s*누구|이름이\s*뭐야|(매종이|메종이|부메종)\s*(야|인가|소개)/.test(q)
   ) {
     return "greeting";
   }

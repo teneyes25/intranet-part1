@@ -5,7 +5,7 @@ import { AiChat } from "@/features/ai/components/ai-chat";
 import { listUserConversations } from "@/features/ai/conversation-service";
 import { requireUser } from "@/lib/auth/session";
 
-export const metadata: Metadata = { title: "매종이 · AI 에이전트" };
+export const metadata: Metadata = { title: "메종이 · AI 에이전트" };
 
 export default async function AiAgentPage() {
   const user = await requireUser();
@@ -14,7 +14,7 @@ export default async function AiAgentPage() {
   return (
     <div>
       <PageHeader
-        title="매종이"
+        title="메종이"
         description="주식회사프렌치메종 신입사원 AI — 업무 지원·뉴스·시장 컨설팅·마케팅 전략·전자결재 기안 도우미. 담당 업무에 맞춰 응대하며, 대화는 개인별로 저장되고 7일 후 자동 삭제됩니다."
       />
       <AiChat

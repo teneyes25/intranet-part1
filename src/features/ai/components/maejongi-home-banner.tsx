@@ -20,7 +20,7 @@ const POS_KEY = "intranet:maejongi-pos";
 const HIDE_KEY = "intranet:maejongi-hidden";
 
 /**
- * 홈/전역 매종이 위젯 — 드래그 이동, 숨김, 오버레이 없이 채팅(다른 기능 사용 가능)
+ * 홈/전역 메종이 위젯 — 드래그 이동, 숨김, 오버레이 없이 채팅(다른 기능 사용 가능)
  */
 export function MaejongiHomeBanner({
   floating = true,

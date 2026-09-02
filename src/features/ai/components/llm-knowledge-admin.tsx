@@ -60,8 +60,8 @@ export function LlmKnowledgeAdmin({
           <div>
             <h3 className="font-semibold">지식 동기화</h3>
             <p className="text-sm text-muted-foreground">
-              인트라넷 자료를 매종이 검색용 Vector DB에 반영합니다. 기본값은
-              <strong> 전체 학습 ON</strong>입니다. 매종이는 자료를 비판적으로
+              인트라넷 자료를 메종이 검색용 Vector DB에 반영합니다. 기본값은
+              <strong> 전체 학습 ON</strong>입니다. 메종이는 자료를 비판적으로
               검토하고, 오류·모순이 있으면 인정·주의를 말하도록 설정되어 있습니다.
             </p>
           </div>
@@ -238,7 +238,7 @@ export function LlmKnowledgeAdmin({
         <div>
           <h3 className="font-semibold">학습 자료 지정·업로드</h3>
           <p className="text-sm text-muted-foreground">
-            매종이가 특별히 학습할 정책·매뉴얼·FAQ 등을 직접 등록합니다.
+            메종이가 특별히 학습할 정책·매뉴얼·FAQ 등을 직접 등록합니다.
             텍스트 붙여넣기 또는 .txt/.md/.csv/.json 파일 업로드를 지원합니다.
           </p>
         </div>

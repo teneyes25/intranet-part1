@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { getVisibleNavGroups, type NavBoard, type NavItem } from "@/config/navigation";
+import { openMessengerPopup } from "@/features/messenger/open-popup";
 import type { Role } from "@/lib/auth/roles";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -81,7 +82,17 @@ function NavLink({
   );
 
   const link = (
-    <Link href={item.href} onClick={onNavigate} className={linkClasses}>
+    <Link
+      href={item.href}
+      onClick={(e) => {
+        if (item.openPopup) {
+          e.preventDefault();
+          openMessengerPopup();
+        }
+        onNavigate?.();
+      }}
+      className={linkClasses}
+    >
       <Icon className={cn("h-4 w-4 shrink-0 transition-colors", active && "text-sidebar-primary")} />
       {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
       {!collapsed && item.badge ? (

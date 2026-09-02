@@ -59,7 +59,7 @@ function asConfig(raw: unknown): LlmRuntimeConfig {
 
 /**
  * DB에 LLM 설정이 없으면 Ollama 기본값으로 한 번 저장해 둔다.
- * (사무실에서 Provider를 따로 고르지 않아도 매종이가 Ollama를 쓰도록)
+ * (사무실에서 Provider를 따로 고르지 않아도 메종이가 Ollama를 쓰도록)
  */
 export async function ensureDefaultLlmRuntimeConfig(): Promise<LlmRuntimeConfig> {
   const existing = await prisma.integrationSetting.findUnique({
@@ -95,14 +95,14 @@ export async function saveLlmRuntimeConfig(
     where: { provider: LLM_PROVIDER_KEY },
     create: {
       provider: LLM_PROVIDER_KEY,
-      displayName: "매종이 LLM",
+      displayName: "메종이 LLM",
       apiKey: next.apiKey || null,
       webhookUrl: next.baseUrl,
       isEnabled: true,
       metadata: next,
     },
     update: {
-      displayName: "매종이 LLM",
+      displayName: "메종이 LLM",
       apiKey: next.apiKey || null,
       webhookUrl: next.baseUrl,
       isEnabled: true,

@@ -44,9 +44,9 @@ export function AiLearningTab({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">매종이 Vector DB 재학습</CardTitle>
+          <CardTitle className="text-base">메종이 Vector DB 재학습</CardTitle>
           <CardDescription>
-            게시글·문서함·전자결재를 재임베딩하여 매종이(AI) 검색 품질을 갱신합니다.
+            게시글·문서함·전자결재를 재임베딩하여 메종이(AI) 검색 품질을 갱신합니다.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

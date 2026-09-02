@@ -1,42 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { GripVertical, MessageSquare, Minus, X } from "lucide-react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { MessageSquare, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   pingMessengerPresenceAction,
   refreshMessengerStateAction,
 } from "@/features/messenger/actions";
-import { MessengerApp, type DirectoryUser, type RoomSummary } from "./messenger-app";
+import { openMessengerPopup } from "@/features/messenger/open-popup";
 
-const POS_KEY = "intranet:messenger-pos";
 const HIDE_KEY = "intranet:messenger-hidden";
 
-export function MessengerHomeWidget({
-  meId,
-  directory,
-  rooms,
-}: {
-  meId: string;
-  directory: DirectoryUser[];
-  rooms: RoomSummary[];
-}) {
-  const [open, setOpen] = useState(false);
+export function MessengerHomeWidget() {
   const [hidden, setHidden] = useState(false);
-  const [pos, setPos] = useState({ x: 24, y: 88 });
-  const [people, setPeople] = useState(directory);
-  const [roomList, setRoomList] = useState(rooms);
-  const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const [online, setOnline] = useState(0);
 
   useEffect(() => {
     try {
-      const h = localStorage.getItem(HIDE_KEY);
-      if (h === "1") setHidden(true);
-      const p = localStorage.getItem(POS_KEY);
-      if (p) setPos(JSON.parse(p) as { x: number; y: number });
-      else setPos({ x: Math.max(16, window.innerWidth - 240), y: 16 });
+      if (localStorage.getItem(HIDE_KEY) === "1") setHidden(true);
     } catch {
       /* ignore */
     }
@@ -55,8 +36,7 @@ export function MessengerHomeWidget({
     async function pull() {
       const r = await refreshMessengerStateAction();
       if (cancelled || !("ok" in r) || !r.ok) return;
-      setPeople(r.directory);
-      setRoomList(r.rooms);
+      setOnline(r.directory.filter((d) => d.online).length);
     }
     void pull();
     const t = setInterval(() => void pull(), 15000);
@@ -66,38 +46,8 @@ export function MessengerHomeWidget({
     };
   }, []);
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("button,a,input,textarea,label")) return;
-    drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }, [pos]);
-
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!drag.current) return;
-    const next = {
-      x: Math.min(window.innerWidth - 80, Math.max(8, e.clientX - drag.current.dx)),
-      y: Math.min(window.innerHeight - 80, Math.max(8, e.clientY - drag.current.dy)),
-    };
-    setPos(next);
-  }, []);
-
-  const onPointerUp = useCallback(() => {
-    if (!drag.current) return;
-    drag.current = null;
-    setPos((p) => {
-      try {
-        localStorage.setItem(POS_KEY, JSON.stringify(p));
-      } catch {
-        /* ignore */
-      }
-      return p;
-    });
-  }, []);
-
   function hide() {
     setHidden(true);
-    setOpen(false);
     try {
       localStorage.setItem(HIDE_KEY, "1");
     } catch {
@@ -109,7 +59,7 @@ export function MessengerHomeWidget({
     return (
       <button
         type="button"
-        className="fixed bottom-4 left-4 z-40 rounded-full border bg-white px-3 py-1.5 text-xs shadow"
+        className="fixed bottom-16 right-4 z-40 rounded-full border bg-white px-3 py-1.5 text-xs shadow"
         onClick={() => {
           setHidden(false);
           try {
@@ -125,64 +75,33 @@ export function MessengerHomeWidget({
   }
 
   return (
-    <div
-      className="fixed z-40 w-max"
-      style={{ left: pos.x, top: pos.y }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-    >
-      {!open ? (
-        <div className="flex cursor-grab items-center gap-2 rounded-2xl border bg-white px-3 py-2 text-left shadow-md active:cursor-grabbing">
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="flex items-center gap-2 text-left"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6EAE6]">
-              <MessageSquare className="h-5 w-5 text-[#5C7358]" />
-            </span>
-            <span>
-              <span className="block text-sm font-semibold">사내 메신저</span>
-              <span className="block text-xs text-muted-foreground">
-                로그인 중 {people.filter((d) => d.online).length}명 · 드래그로 이동
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className="ml-1 rounded p-1 text-muted-foreground hover:bg-muted"
-            aria-label="메신저 숨기기"
-            onClick={(e) => {
-              e.stopPropagation();
-              hide();
-            }}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ) : (
-        <div className="flex h-[min(560px,75vh)] w-[min(420px,94vw)] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl">
-          <div className="flex cursor-grab items-center gap-2 border-b bg-[#F7F8F6] px-3 py-2 active:cursor-grabbing">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-            <MessageSquare className="h-4 w-4" />
-            <p className="flex-1 text-sm font-semibold">사내 메신저</p>
-            <Button asChild size="sm" variant="outline">
-              <Link href="/messenger">전체</Link>
-            </Button>
-            <Button type="button" size="icon" variant="ghost" onClick={() => setOpen(false)} title="최소화">
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Button type="button" size="icon" variant="ghost" onClick={hide} title="홈에서 숨기기">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1">
-            <MessengerApp meId={meId} directory={people} rooms={roomList} compact />
-          </div>
-        </div>
-      )}
+    <div className="fixed bottom-20 right-4 z-40 flex w-[168px] flex-col overflow-hidden rounded-2xl border bg-white shadow-lg">
+      <div className="flex items-center gap-1 border-b bg-[#F7F8F6] px-2 py-1">
+        <p className="flex-1 text-xs font-semibold">사내 메신저</p>
+        <button
+          type="button"
+          className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+          aria-label="메신저 숨기기"
+          onClick={hide}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => openMessengerPopup()}
+        className="flex items-center gap-2 px-2.5 py-2 text-left hover:bg-[#F7F8F6]"
+      >
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E6EAE6]">
+          <MessageSquare className="h-4 w-4 text-[#5C7358]" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-xs font-medium">새 창으로 대화</span>
+          <span className="block text-[10px] text-muted-foreground">
+            로그인 {online}명 · 카카오톡처럼
+          </span>
+        </span>
+      </button>
     </div>
   );
 }
