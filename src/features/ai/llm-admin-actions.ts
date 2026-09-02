@@ -99,13 +99,30 @@ export async function saveLearningSettingsAction(formData: FormData) {
   await requireRole(["ADMIN"]);
   const learnAllIntranet = formData.get("learnAllIntranet") === "on";
   let learnCurated = formData.get("learnCurated") === "on";
-  // 둘 다 끄면 학습 소스가 없어지므로 지정 자료는 유지
+  const allowCasualChat = formData.get("allowCasualChat") === "on";
   if (!learnAllIntranet && !learnCurated) learnCurated = true;
   const saved = await saveLearningSettings({
     learnAllIntranet,
     learnCurated,
+    allowCasualChat,
   });
   revalidatePath("/admin/ai-models");
+  return { ok: true as const, settings: saved };
+}
+
+export async function savePersonaAction(formData: FormData) {
+  await requireRole(["ADMIN"]);
+  const personaIdentity = String(formData.get("personaIdentity") ?? "");
+  const personaRules = String(formData.get("personaRules") ?? "");
+  const allowCasualChat = formData.get("allowCasualChat") === "on";
+  const reset = formData.get("reset") === "1";
+  const saved = await saveLearningSettings({
+    allowCasualChat,
+    personaIdentity: reset ? null : personaIdentity,
+    personaRules: reset ? null : personaRules,
+  });
+  revalidatePath("/admin/ai-models");
+  revalidatePath("/ai-agent");
   return { ok: true as const, settings: saved };
 }
 

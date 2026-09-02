@@ -60,9 +60,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # standalone 에 포함되지 않는 네이티브 패키지
-COPY --from=builder /app/node_modules/@huggingface ./node_modules/@huggingface
-COPY --from=builder /app/node_modules/onnxruntime-node ./node_modules/onnxruntime-node
-COPY --from=builder /app/node_modules/onnxruntime-common ./node_modules/onnxruntime-common
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@huggingface ./node_modules/@huggingface
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/onnxruntime-node ./node_modules/onnxruntime-node
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/onnxruntime-common ./node_modules/onnxruntime-common
 COPY --from=builder /app/node_modules/ioredis ./node_modules/ioredis
 COPY --from=builder /app/node_modules/pino ./node_modules/pino
 COPY --from=builder /app/node_modules/thread-stream ./node_modules/thread-stream

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
 import { LlmModelAdmin } from "@/features/ai/components/llm-model-admin";
 import { LlmKnowledgeAdmin } from "@/features/ai/components/llm-knowledge-admin";
+import { LlmPersonaAdmin } from "@/features/ai/components/llm-persona-admin";
 import { listIngestJobs } from "@/features/customize/ai-ingest-service";
 import {
   getLearningSettings,
@@ -31,9 +32,10 @@ export default async function AdminAiModelsPage() {
     <div className="space-y-8">
       <PageHeader
         title="매종이 LLM 모델"
-        description="Ollama Provider 설정, 지식 동기화, 지정 학습 자료 업로드를 한곳에서 관리합니다. 기본은 인트라넷 전체 학습이며, 매종이는 오류·모순을 인정·검증하도록 안내됩니다."
+        description="Ollama Provider, 페르소나, 지식 동기화, 지정 학습 자료를 관리합니다. 기본은 인트라넷 전체 학습이며 일상 대화·날씨도 허용됩니다."
       />
       <LlmModelAdmin initial={config} />
+      <LlmPersonaAdmin settings={settings} />
       <LlmKnowledgeAdmin
         settings={settings}
         materials={materials}

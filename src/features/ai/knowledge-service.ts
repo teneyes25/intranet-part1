@@ -9,12 +9,19 @@ import {
   ingestKnowledgeMaterial,
   removeKnowledgeMaterial,
 } from "@/lib/ai/ingest";
+import {
+  DEFAULT_PERSONA_IDENTITY,
+  DEFAULT_PERSONA_RULES,
+} from "@/lib/ai/persona-defaults";
 
 const TEXT_EXTS = new Set([".txt", ".md", ".csv", ".json", ".log"]);
 
 export type LearningSettings = {
   learnAllIntranet: boolean;
   learnCurated: boolean;
+  allowCasualChat: boolean;
+  personaIdentity: string;
+  personaRules: string;
 };
 
 export async function getLearningSettings(): Promise<LearningSettings> {
@@ -25,28 +32,64 @@ export async function getLearningSettings(): Promise<LearningSettings> {
       id: "default",
       learnAllIntranet: true,
       learnCurated: true,
+      allowCasualChat: true,
     },
   });
   return {
     learnAllIntranet: row.learnAllIntranet,
     learnCurated: row.learnCurated,
+    allowCasualChat: row.allowCasualChat,
+    personaIdentity: row.personaIdentity?.trim() || DEFAULT_PERSONA_IDENTITY,
+    personaRules: row.personaRules?.trim() || DEFAULT_PERSONA_RULES,
   };
 }
 
 export async function saveLearningSettings(
-  patch: Partial<LearningSettings>,
+  patch: Partial<{
+    learnAllIntranet: boolean;
+    learnCurated: boolean;
+    allowCasualChat: boolean;
+    personaIdentity: string | null;
+    personaRules: string | null;
+  }>,
 ): Promise<LearningSettings> {
   const current = await getLearningSettings();
   const next = {
     learnAllIntranet: patch.learnAllIntranet ?? current.learnAllIntranet,
     learnCurated: patch.learnCurated ?? current.learnCurated,
+    allowCasualChat: patch.allowCasualChat ?? current.allowCasualChat,
+    personaIdentity:
+      patch.personaIdentity === undefined
+        ? undefined
+        : patch.personaIdentity?.trim() || null,
+    personaRules:
+      patch.personaRules === undefined
+        ? undefined
+        : patch.personaRules?.trim() || null,
   };
   await prisma.aiLearningSettings.upsert({
     where: { id: "default" },
-    create: { id: "default", ...next },
-    update: next,
+    create: {
+      id: "default",
+      learnAllIntranet: next.learnAllIntranet,
+      learnCurated: next.learnCurated,
+      allowCasualChat: next.allowCasualChat,
+      personaIdentity: next.personaIdentity ?? null,
+      personaRules: next.personaRules ?? null,
+    },
+    update: {
+      learnAllIntranet: next.learnAllIntranet,
+      learnCurated: next.learnCurated,
+      allowCasualChat: next.allowCasualChat,
+      ...(patch.personaIdentity !== undefined
+        ? { personaIdentity: next.personaIdentity }
+        : {}),
+      ...(patch.personaRules !== undefined
+        ? { personaRules: next.personaRules }
+        : {}),
+    },
   });
-  return next;
+  return getLearningSettings();
 }
 
 export async function listKnowledgeMaterials(take = 100) {
@@ -87,7 +130,8 @@ export async function createKnowledgeMaterial(params: {
     if (isTextKnowledgeFile(params.file.name, saved.mimeType)) {
       const raw = await readFile(path.join(UPLOAD_DIR, saved.storageKey), "utf8");
       if (!content) content = raw.slice(0, 200_000);
-      else content = `${content}\n\n---\n파일 내용 (${params.file.name})\n${raw.slice(0, 200_000)}`;
+      else
+        content = `${content}\n\n---\n파일 내용 (${params.file.name})\n${raw.slice(0, 200_000)}`;
     } else if (!content) {
       content = `[첨부 파일] ${params.file.name}\n(바이너리 파일은 본문 텍스트를 함께 입력해 주세요. 파일명·메타만 학습됩니다.)`;
     }

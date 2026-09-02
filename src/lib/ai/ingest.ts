@@ -39,7 +39,15 @@ async function chunkAndUpsert(params: {
   const chunks = await splitter.splitText(params.text.trim());
   if (chunks.length === 0) return 0;
 
-  const embeddings = await embedTexts(chunks);
+  let embeddings: number[][];
+  try {
+    embeddings = await embedTexts(chunks);
+  } catch (e) {
+    // 임베딩 실패 시에도 동기화가 전부 죽지 않도록 — 키워드 검색용으로 영벡터 저장
+    console.error("[ai/ingest] embed failed, using zero vectors:", e);
+    const { EMBEDDING_DIM } = await import("./config");
+    embeddings = chunks.map(() => Array.from({ length: EMBEDDING_DIM }, () => 0));
+  }
   const items = chunks
     .map((content, idx) => {
       const embedding = embeddings[idx];

@@ -872,6 +872,12 @@ model AiLearningSettings {
   learnAllIntranet Boolean  @default(true)
   /// 관리자가 지정·업로드한 추가 학습 자료
   learnCurated     Boolean  @default(true)
+  /// 일상 대화·날씨·일반 뉴스 허용 (기본 ON)
+  allowCasualChat  Boolean  @default(true)
+  /// 관리자가 편집한 페르소나 본문 (비우면 코드 기본값)
+  personaIdentity  String?  @db.Text
+  /// 관리자가 편집한 추가 답변 규칙
+  personaRules     String?  @db.Text
   updatedAt        DateTime @updatedAt
 
   @@map("ai_learning_settings")

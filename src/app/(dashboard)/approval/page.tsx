@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FilePlus2, Inbox, FileEdit, CheckCircle2, Hourglass } from "lucide-react";
+import { Inbox, FileEdit, CheckCircle2, Hourglass } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/features/dashboard/components/stat-card";
 import { cn } from "@/lib/utils";
 import { requireUser } from "@/lib/auth/session";
 import { ApprovalList } from "@/features/approval/components/approval-list";
+import { NewApprovalPopupButton } from "@/features/approval/components/new-approval-popup-button";
 import {
   listInbox,
   listMyDrafts,
@@ -60,12 +60,7 @@ export default async function ApprovalPage({
           title="전자결재"
           description="기안서를 작성·상신하고 결재선에 따라 검토·승인합니다."
         />
-        <Button asChild>
-          <Link href="/approval/new">
-            <FilePlus2 className="h-4 w-4" />
-            새 기안
-          </Link>
-        </Button>
+        <NewApprovalPopupButton />
       </div>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-3">

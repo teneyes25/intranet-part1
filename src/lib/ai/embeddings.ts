@@ -10,10 +10,6 @@ type Extractor = (
   options: { pooling: "mean"; normalize: boolean },
 ) => Promise<{ tolist: () => number[][] }>;
 
-/**
- * Docker(nextjs 유저)에서는 node_modules 아래 .cache 생성이 EACCES 난다.
- * 쓰기 가능한 경로(uploads 또는 /tmp)로 캐시를 강제한다.
- */
 function pickWritableCacheRoot(): string {
   const candidates = [
     process.env.TRANSFORMERS_CACHE?.trim(),
@@ -25,7 +21,6 @@ function pickWritableCacheRoot(): string {
   for (const candidate of candidates) {
     try {
       mkdirSync(path.join(candidate, "hub"), { recursive: true });
-      mkdirSync(path.join(candidate, "xdg"), { recursive: true });
       const probe = path.join(candidate, `.write-test-${process.pid}`);
       writeFileSync(probe, "ok");
       unlinkSync(probe);
@@ -37,33 +32,28 @@ function pickWritableCacheRoot(): string {
   return "/tmp/hf-cache";
 }
 
-function ensureWritableHfCache() {
-  const cacheRoot = pickWritableCacheRoot();
-  process.env.TRANSFORMERS_CACHE = cacheRoot;
-  process.env.HF_HOME = cacheRoot;
-  process.env.HF_HUB_CACHE = path.join(cacheRoot, "hub");
-  process.env.XDG_CACHE_HOME = path.join(cacheRoot, "xdg");
-  try {
-    mkdirSync(path.join(cacheRoot, "hub"), { recursive: true });
-    mkdirSync(path.join(cacheRoot, "xdg"), { recursive: true });
-  } catch (e) {
-    console.error("[ai/embeddings] cache mkdir failed:", cacheRoot, e);
-  }
-  return cacheRoot;
-}
-
-ensureWritableHfCache();
-
 let extractorPromise: Promise<Extractor> | null = null;
 
-function getExtractor(): Promise<Extractor> {
+async function getExtractor(): Promise<Extractor> {
   if (!extractorPromise) {
-    const cacheRoot = ensureWritableHfCache();
-    console.log(`[ai/embeddings] HF cache → ${cacheRoot}`);
+    const cacheRoot = pickWritableCacheRoot();
+    mkdirSync(cacheRoot, { recursive: true });
+    process.env.TRANSFORMERS_CACHE = cacheRoot;
+    process.env.HF_HOME = cacheRoot;
+    process.env.HF_HUB_CACHE = path.join(cacheRoot, "hub");
+
     extractorPromise = import("@huggingface/transformers")
-      .then(({ pipeline }) =>
-        pipeline("feature-extraction", EMBEDDING_MODEL) as unknown as Promise<Extractor>,
-      )
+      .then(async (mod) => {
+        // process.env 만으로는 부족 — 패키지 기본값이 node_modules/.cache 라서 반드시 덮어쓴다
+        mod.env.cacheDir = cacheRoot;
+        mod.env.useFSCache = true;
+        mod.env.allowLocalModels = true;
+        console.log(`[ai/embeddings] env.cacheDir → ${mod.env.cacheDir}`);
+        return mod.pipeline(
+          "feature-extraction",
+          EMBEDDING_MODEL,
+        ) as unknown as Promise<Extractor>;
+      })
       .catch((error) => {
         extractorPromise = null;
         throw error;

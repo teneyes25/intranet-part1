@@ -7,11 +7,12 @@ import { type SearchResult } from "./vector-store";
 import { RETRIEVE_TOP_K } from "./config";
 import { getLlmRuntimeConfig } from "./llm-runtime";
 import {
-  CHAT_SYSTEM_PROMPT,
   AI_AGENT_NAME,
-  buildJobContextPrompt,
+  buildChatSystemPrompt,
   GREETING_MESSAGE,
 } from "./persona";
+import { getLearningSettings } from "@/features/ai/knowledge-service";
+import { fetchSeoulWeatherSummary } from "./weather";
 
 export { GREETING_MESSAGE };
 
@@ -36,6 +37,8 @@ export interface ChatResult {
 
 type ChatIntent =
   | "greeting"
+  | "weather"
+  | "casual"
   | "news_summary"
   | "market_report"
   | "draft_advice"
@@ -52,6 +55,9 @@ function detectIntent(question: string): ChatIntent {
   ) {
     return "greeting";
   }
+  if (/날씨|기온|비\s*올|우산|습도|바람|기상/.test(q)) {
+    return "weather";
+  }
   if (
     /시장조사|시장.?동향|월간.?보고|마켓.?리포트|market.?report|시장.?분석|마케팅.?전략|침구|매트리스/.test(
       q,
@@ -60,7 +66,7 @@ function detectIntent(question: string): ChatIntent {
     return "market_report";
   }
   if (
-    /뉴스|news|최신.*(소식|기사|뉴스)|오늘.*뉴스|이번.*뉴스|뉴스.*요약|요약.*뉴스/.test(
+    /뉴스|news|최신.*(소식|기사|뉴스)|오늘.*뉴스|이번.*뉴스|뉴스.*요약|요약.*뉴스|정치|시사/.test(
       q,
     )
   ) {
@@ -76,16 +82,34 @@ function detectIntent(question: string): ChatIntent {
   if (/사례|관련.*(자료|사례|글|게시)|유사|참고|비슷한|선례|전례|찾아/.test(q)) {
     return "related_cases";
   }
+  if (
+    /심심|농담|재미|취미|점심|저녁|주말|응원|고마워|감사|어떻게\s*지내|뭐해|뭐하니/.test(
+      q,
+    )
+  ) {
+    return "casual";
+  }
   return "general";
 }
 
-async function fetchLatestNews(limit = 5) {
+async function fetchLatestNews(limit = 5, political = false) {
   const board = await prisma.board.findUnique({ where: { key: "news" } });
   if (!board) return [];
   return prisma.post.findMany({
     where: {
       boardId: board.id,
       NOT: { category: "시장조사" },
+      ...(political
+        ? {
+            OR: [
+              { title: { contains: "정치" } },
+              { title: { contains: "국회" } },
+              { title: { contains: "대통령" } },
+              { content: { contains: "정치" } },
+              { category: { contains: "정치" } },
+            ],
+          }
+        : {}),
     },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -120,7 +144,7 @@ function postsToResults(
 }
 
 function buildContext(results: SearchResult[]): string {
-  if (results.length === 0) return "(관련 내부 자료 없음 — 일반 업무 지원으로 답변하세요.)";
+  if (results.length === 0) return "(관련 내부 자료 없음)";
   return results
     .map((r, i) => `[${i + 1}] ${r.title ?? "(제목 없음)"}\n${r.content}`)
     .join("\n\n");
@@ -142,12 +166,16 @@ function intentHint(intent: ChatIntent): string {
   switch (intent) {
     case "greeting":
       return "밝게 짧게 인사·자기소개 후 무엇을 도와드릴지 물어보세요.";
+    case "weather":
+      return "제공된 날씨 관측값을 바탕으로 오늘 날씨를 친절히 알려주세요. 옷차림·우산 팁을 한 줄 덧붙이세요.";
+    case "casual":
+      return "가벼운 일상 대화로 밝고 짧게 응대하세요.";
     case "news_summary":
-      return "최신 뉴스를 시간순으로 요약하고 핵심만 3~5개 bullet로 정리하세요.";
+      return "뉴스를 시간순으로 요약하고 핵심만 3~5개 bullet로 정리하세요. 정치·시사면 쟁점을 균형 있게 요약하세요.";
     case "market_report":
       return "침구·매트리스·홈리빙 시장과 마케팅 관점에서 동향·시사점을 정리하세요.";
     case "draft_advice":
-      return "기안서 작성 조언으로 6하원칙·공문 구성·표현을 신입사원답게 친절히 제안하세요. 필요하면 HTML 초안 구조를 제시하세요.";
+      return "기안서 작성 조언으로 6하원칙·공문 구성·표현을 신입사원답게 친절히 제안하세요.";
     case "related_cases":
       return "유사 사례/관련 자료를 비교하고 공통점·차이점을 간략히 설명하세요.";
     default:
@@ -155,7 +183,6 @@ function intentHint(intent: ChatIntent): string {
   }
 }
 
-/** 임베딩 가능하면 하이브리드, 실패 시 키워드만 */
 async function retrieveContext(
   question: string,
   k: number,
@@ -187,7 +214,7 @@ async function generateWithLlm(
   }
   const apiKey = cfg.apiKey || "ollama";
   const base = cfg.baseUrl.replace(/\/$/, "");
-  const system = `${CHAT_SYSTEM_PROMPT}\n${buildJobContextPrompt(jobTitles)}\n${intentHint(intent)}`;
+  const system = `${await buildChatSystemPrompt(jobTitles)}\n${intentHint(intent)}`;
 
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
@@ -197,13 +224,13 @@ async function generateWithLlm(
     },
     body: JSON.stringify({
       model: cfg.chatModel,
-      temperature: 0.35,
+      temperature: intent === "casual" || intent === "greeting" ? 0.55 : 0.35,
       messages: [
         { role: "system", content: system },
         ...history.slice(-6),
         {
           role: "user",
-          content: `내부 자료:\n${context}\n\n질문: ${question}`,
+          content: `참고 자료:\n${context}\n\n질문: ${question}`,
         },
       ],
     }),
@@ -240,26 +267,31 @@ export async function answerQuestion(
     }
   }
 
+  const settings = await getLearningSettings();
   const intent = detectIntent(question);
+  const cfg = await getLlmRuntimeConfig();
+  const canGenerate = Boolean(cfg.apiKey) || cfg.provider === "ollama";
 
-  // 인사·자기소개는 RAG 없이 바로 응대 (임베딩 장애와 무관)
-  if (intent === "greeting") {
-    const cfg = await getLlmRuntimeConfig();
-    const canGenerate = Boolean(cfg.apiKey) || cfg.provider === "ollama";
-    if (canGenerate) {
-      try {
-        const answer = await generateWithLlm(
-          question,
-          "(인사/자기소개 — 내부 자료 검색 생략)",
-          history,
-          intent,
-          jobTitles,
-        );
-        return { answer, sources: [], mode: "generative", intent };
-      } catch (e) {
-        console.error("[ai/chat] greeting LLM failed, static greeting:", e);
-      }
+  const tryLlm = async (context: string, sources: ChatSource[] = []) => {
+    if (!canGenerate) return null;
+    try {
+      const answer = await generateWithLlm(
+        question,
+        context,
+        history,
+        intent,
+        jobTitles,
+      );
+      return { answer, sources, mode: "generative" as const, intent };
+    } catch (e) {
+      console.error("[ai/chat] LLM failed:", e);
+      return null;
     }
+  };
+
+  if (intent === "greeting") {
+    const r = await tryLlm("(인사/자기소개)");
+    if (r) return r;
     return {
       answer: GREETING_MESSAGE,
       sources: [],
@@ -268,12 +300,35 @@ export async function answerQuestion(
     };
   }
 
+  if (intent === "weather" && settings.allowCasualChat) {
+    const weather = await fetchSeoulWeatherSummary();
+    const context = weather
+      ? `실시간 날씨 관측:\n${weather}`
+      : "(실시간 날씨 조회 실패 — 일반 안내로 답하세요)";
+    const r = await tryLlm(context);
+    if (r) return r;
+    if (weather) {
+      return {
+        answer: `${AI_AGENT_NAME}예요. 서울 기준 날씨예요.\n\n${weather}`,
+        sources: [],
+        mode: "extractive",
+        intent,
+      };
+    }
+  }
+
+  if (intent === "casual" && settings.allowCasualChat) {
+    const r = await tryLlm("(일상 대화 — 내부 검색 생략)");
+    if (r) return r;
+  }
+
   let results: SearchResult[] = [];
 
   try {
     if (intent === "news_summary") {
-      const news = await fetchLatestNews(6);
-      results = postsToResults(news, "뉴스");
+      const political = /정치|시사|국회|대통령/.test(question);
+      const news = await fetchLatestNews(6, political);
+      results = postsToResults(news, political ? "시사뉴스" : "뉴스");
       if (results.length === 0) {
         results = await retrieveContext(question, RETRIEVE_TOP_K);
       }
@@ -286,7 +341,7 @@ export async function answerQuestion(
         if (!seen.has(r.sourceId)) results.push(r);
       }
       results = results.slice(0, RETRIEVE_TOP_K + 3);
-    } else {
+    } else if (intent !== "weather" && intent !== "casual") {
       const k =
         intent === "related_cases" || intent === "draft_advice"
           ? RETRIEVE_TOP_K + 3
@@ -305,27 +360,27 @@ export async function answerQuestion(
     snippet: r.content.replace(/\s+/g, " ").slice(0, 200),
   }));
 
-  const cfg = await getLlmRuntimeConfig();
-  const canGenerate = Boolean(cfg.apiKey) || cfg.provider === "ollama";
-
-  if (canGenerate) {
-    try {
-      const answer = await generateWithLlm(
-        question,
-        buildContext(results),
-        history,
-        intent,
-        jobTitles,
-      );
-      return { answer, sources, mode: "generative", intent };
-    } catch (e) {
-      console.error("[ai/chat] LLM 생성 실패, 추출형으로 폴백:", e);
-    }
+  // 뉴스/일상인데 자료가 없어도 LLM 허용 시 생성
+  if (
+    results.length === 0 &&
+    settings.allowCasualChat &&
+    (intent === "news_summary" || intent === "general" || intent === "casual")
+  ) {
+    const r = await tryLlm(
+      intent === "news_summary"
+        ? "(사내 수집 뉴스 없음 — 일반 시사 요약으로 답하되 한계를 밝히세요)"
+        : buildContext(results),
+      sources,
+    );
+    if (r) return r;
   }
+
+  const generated = await tryLlm(buildContext(results), sources);
+  if (generated) return generated;
 
   if (results.length === 0) {
     return {
-      answer: `${AI_AGENT_NAME}예요. 지금은 관련 내부 자료를 찾지 못했거나 검색 준비가 덜 되었어요. 「매종이」메뉴에서 잠시 후 다시 물어보거나, 관리자에게 지식 동기화·LLM 설정을 확인해 달라고 해 주세요.`,
+      answer: `${AI_AGENT_NAME}예요. 지금은 관련 내부 자료를 찾지 못했거나 LLM 연결이 필요해요. Ollama/지식 동기화를 확인해 주세요.`,
       sources: [],
       mode: "extractive",
       intent,
