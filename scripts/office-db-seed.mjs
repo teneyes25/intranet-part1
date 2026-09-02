@@ -33,7 +33,7 @@ function main() {
   run("npx", ["prisma", "migrate", "deploy"], env);
   run("npx", ["tsx", "prisma/seed.ts"], env);
   console.log("\n✓ migrate + seed 완료");
-  console.log("  로그인: admin@intranet.local / password1234");
+  console.log("  로그인: admin@intranet.local / admin1234!!");
   console.log("  URL:    http://192.168.0.16:8080  (Docker Nginx — :3000 아님)");
   console.log("\n※ 사이드바에 「일정」이 없으면 앱 이미지를 다시 빌드해야 합니다:");
   console.log("   npm run docker:sync");
