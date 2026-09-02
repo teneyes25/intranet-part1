@@ -5,7 +5,10 @@ import { GripVertical, MessageSquare, Minus, X } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { pingMessengerPresenceAction } from "@/features/messenger/actions";
+import {
+  pingMessengerPresenceAction,
+  refreshMessengerStateAction,
+} from "@/features/messenger/actions";
 import { MessengerApp, type DirectoryUser, type RoomSummary } from "./messenger-app";
 
 const POS_KEY = "intranet:messenger-pos";
@@ -23,6 +26,8 @@ export function MessengerHomeWidget({
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [pos, setPos] = useState({ x: 24, y: 88 });
+  const [people, setPeople] = useState(directory);
+  const [roomList, setRoomList] = useState(rooms);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
 
   useEffect(() => {
@@ -43,6 +48,22 @@ export function MessengerHomeWidget({
     }, 25000);
     void pingMessengerPresenceAction();
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      const r = await refreshMessengerStateAction();
+      if (cancelled || !("ok" in r) || !r.ok) return;
+      setPeople(r.directory);
+      setRoomList(r.rooms);
+    }
+    void pull();
+    const t = setInterval(() => void pull(), 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
   }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
@@ -125,7 +146,7 @@ export function MessengerHomeWidget({
             <span>
               <span className="block text-sm font-semibold">사내 메신저</span>
               <span className="block text-xs text-muted-foreground">
-                로그인 중 {directory.filter((d) => d.online).length}명 · 드래그로 이동
+                로그인 중 {people.filter((d) => d.online).length}명 · 드래그로 이동
               </span>
             </span>
           </button>
@@ -158,7 +179,7 @@ export function MessengerHomeWidget({
             </Button>
           </div>
           <div className="min-h-0 flex-1">
-            <MessengerApp meId={meId} directory={directory} rooms={rooms} compact />
+            <MessengerApp meId={meId} directory={people} rooms={roomList} compact />
           </div>
         </div>
       )}
