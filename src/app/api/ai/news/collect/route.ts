@@ -7,9 +7,10 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * 일일 뉴스 수집을 수동 트리거한다.
+ * 뉴스 수집을 수동/API로 트리거한다.
  * - 관리자 세션이거나
- * - x-cron-secret 헤더가 CRON_SECRET 과 일치하면 허용(외부 크론용).
+ * - x-cron-secret 헤더가 CRON_SECRET 과 일치하면 허용.
+ * 자동 수집은 관리자 로그인 시 1일 1회 수행된다.
  */
 export async function POST(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;

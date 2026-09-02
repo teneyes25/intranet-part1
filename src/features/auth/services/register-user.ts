@@ -5,10 +5,11 @@ import { Role, UserApprovalStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import type { RegisterInput } from "@/features/auth/schemas";
+import { normalizePhone } from "@/lib/phone";
 
 export class RegisterError extends Error {
   constructor(
-    public readonly code: "EMAIL_TAKEN",
+    public readonly code: "EMAIL_TAKEN" | "INVALID_PHONE",
     message: string,
   ) {
     super(message);
@@ -21,8 +22,14 @@ export class RegisterError extends Error {
  * 신청 시점에는 HEADQUARTER 로 대기(비활성) 상태로 생성한다.
  */
 export async function registerUser(input: RegisterInput) {
+  const email = input.email.trim().toLowerCase();
+  const phone = normalizePhone(input.phone);
+  if (!phone) {
+    throw new RegisterError("INVALID_PHONE", "올바른 휴대폰 번호를 입력하세요.");
+  }
+
   const existing = await prisma.user.findUnique({
-    where: { email: input.email },
+    where: { email },
     select: { id: true },
   });
   if (existing) {
@@ -34,14 +41,15 @@ export async function registerUser(input: RegisterInput) {
   const user = await prisma.user.create({
     data: {
       name: input.name,
-      email: input.email,
+      email,
+      phone,
       passwordHash,
       role: Role.HEADQUARTER,
       dealerId: null,
       isActive: false,
       approvalStatus: UserApprovalStatus.PENDING,
     },
-    select: { id: true, email: true, role: true, approvalStatus: true },
+    select: { id: true, email: true, role: true, approvalStatus: true, phone: true },
   });
 
   return user;

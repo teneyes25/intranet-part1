@@ -1,6 +1,7 @@
 import "server-only";
 
-import { pipeline } from "@huggingface/transformers";
+import { mkdirSync, writeFileSync, unlinkSync } from "node:fs";
+import path from "node:path";
 
 import { EMBEDDING_MODEL } from "./config";
 
@@ -9,15 +10,54 @@ type Extractor = (
   options: { pooling: "mean"; normalize: boolean },
 ) => Promise<{ tolist: () => number[][] }>;
 
+function pickWritableCacheRoot(): string {
+  const candidates = [
+    process.env.TRANSFORMERS_CACHE?.trim(),
+    process.env.HF_HOME?.trim(),
+    path.join(process.cwd(), "uploads", "hf-cache"),
+    "/tmp/hf-cache",
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    try {
+      mkdirSync(path.join(candidate, "hub"), { recursive: true });
+      const probe = path.join(candidate, `.write-test-${process.pid}`);
+      writeFileSync(probe, "ok");
+      unlinkSync(probe);
+      return candidate;
+    } catch {
+      // try next
+    }
+  }
+  return "/tmp/hf-cache";
+}
+
 let extractorPromise: Promise<Extractor> | null = null;
 
-function getExtractor(): Promise<Extractor> {
+async function getExtractor(): Promise<Extractor> {
   if (!extractorPromise) {
-    // 최초 호출 시 모델을 내려받아 캐시한다(이후 오프라인 동작).
-    extractorPromise = pipeline(
-      "feature-extraction",
-      EMBEDDING_MODEL,
-    ) as unknown as Promise<Extractor>;
+    const cacheRoot = pickWritableCacheRoot();
+    mkdirSync(cacheRoot, { recursive: true });
+    process.env.TRANSFORMERS_CACHE = cacheRoot;
+    process.env.HF_HOME = cacheRoot;
+    process.env.HF_HUB_CACHE = path.join(cacheRoot, "hub");
+
+    extractorPromise = import("@huggingface/transformers")
+      .then(async (mod) => {
+        // process.env 만으로는 부족 — 패키지 기본값이 node_modules/.cache 라서 반드시 덮어쓴다
+        mod.env.cacheDir = cacheRoot;
+        mod.env.useFSCache = true;
+        mod.env.allowLocalModels = true;
+        console.log(`[ai/embeddings] env.cacheDir → ${mod.env.cacheDir}`);
+        return mod.pipeline(
+          "feature-extraction",
+          EMBEDDING_MODEL,
+        ) as unknown as Promise<Extractor>;
+      })
+      .catch((error) => {
+        extractorPromise = null;
+        throw error;
+      });
   }
   return extractorPromise;
 }

@@ -136,7 +136,7 @@ export function getPostDetail(postId: string) {
   return prisma.post.findUnique({
     where: { id: postId },
     include: {
-      author: { select: { id: true, name: true, role: true } },
+      author: { select: { id: true, name: true, role: true, phone: true } },
       board: true,
       attachments: { orderBy: { createdAt: "asc" } },
       comments: {

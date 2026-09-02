@@ -18,6 +18,7 @@ export interface ActionState {
 interface RawStep {
   approverId: string;
   stepOrder: number;
+  title?: string | null;
 }
 
 /** 결재선 순서를 1..n 으로 연속화(같은 순서=병렬 유지) */
@@ -27,10 +28,15 @@ function normalizeSteps(raw: RawStep[]): RawStep[] {
     (a, b) => a - b,
   );
   const remap = new Map(orders.map((o, i) => [o, i + 1]));
-  return valid.map((s) => ({
-    approverId: s.approverId,
-    stepOrder: remap.get(Number(s.stepOrder) || 1) ?? 1,
-  }));
+  return valid.map((s) => {
+    const title =
+      typeof s.title === "string" && s.title.trim() ? s.title.trim().slice(0, 40) : null;
+    return {
+      approverId: s.approverId,
+      stepOrder: remap.get(Number(s.stepOrder) || 1) ?? 1,
+      title,
+    };
+  });
 }
 
 function plainLen(html: string) {
@@ -58,6 +64,19 @@ export async function saveDocumentAction(
   const templateId = String(formData.get("templateId") ?? "").trim() || null;
   const documentCategoryId =
     String(formData.get("documentCategoryId") ?? "").trim() || null;
+
+  if (!documentCategoryId) {
+    return { error: "문서함을 반드시 선택하세요." };
+  }
+  const catOk = await prisma.documentCategory.findFirst({
+    where: {
+      id: documentCategoryId,
+      OR: [{ ownerId: null }, { ownerId: userId }],
+    },
+    select: { id: true },
+  });
+  if (!catOk) return { error: "선택한 문서함을 사용할 수 없습니다." };
+
   const content = sanitizeRichText(String(formData.get("content") ?? ""));
 
   let parsed: RawStep[] = [];
@@ -111,6 +130,7 @@ export async function saveDocumentAction(
               create: steps.map((s) => ({
                 approverId: s.approverId,
                 stepOrder: s.stepOrder,
+                title: s.title ?? null,
               })),
             },
           },
@@ -131,6 +151,7 @@ export async function saveDocumentAction(
             create: steps.map((s) => ({
               approverId: s.approverId,
               stepOrder: s.stepOrder,
+              title: s.title ?? null,
             })),
           },
         },
@@ -155,6 +176,10 @@ export async function saveDocumentAction(
           link: `/approval/${docId}`,
         }),
       ),
+    );
+    const { ingestApproval } = await import("@/lib/ai/ingest");
+    void ingestApproval(docId).catch((e) =>
+      console.error("[approval] ingest:", e),
     );
   }
 
@@ -235,6 +260,10 @@ export async function approveAction(
         data: { status: "COMPLETED", completedAt: new Date() },
       });
       await archiveApprovalToDocuments(docId);
+      const { settleLeaveOnApprovalComplete } = await import(
+        "@/features/leave/approval-bridge"
+      );
+      await settleLeaveOnApprovalComplete(docId);
       await createNotification({
         userId: doc.drafterId,
         type: "APPROVAL_RESULT",
@@ -243,6 +272,7 @@ export async function approveAction(
         link: `/approval/${docId}`,
       });
       revalidatePath("/documents");
+      revalidatePath("/leave");
       void writeAudit({
         action: "APPROVAL_APPROVE",
         userId,
@@ -299,6 +329,11 @@ export async function rejectAction(
     }),
   ]);
 
+  const { settleLeaveOnApprovalReject } = await import(
+    "@/features/leave/approval-bridge"
+  );
+  await settleLeaveOnApprovalReject(docId, comment);
+
   await createNotification({
     userId: doc.drafterId,
     type: "APPROVAL_RESULT",
@@ -309,6 +344,7 @@ export async function rejectAction(
 
   revalidatePath(`/approval/${docId}`);
   revalidatePath("/approval");
+  revalidatePath("/leave");
   return { ok: true, error: null };
 }
 

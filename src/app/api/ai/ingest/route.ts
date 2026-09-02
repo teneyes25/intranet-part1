@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const bodySchema = z.object({
-  scope: z.enum(["all", "boards"]).default("all"),
+  scope: z.enum(["all", "boards", "curated"]).default("all"),
   boardKeys: z.array(z.string()).optional().default([]),
 });
 

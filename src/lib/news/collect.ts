@@ -5,12 +5,9 @@ import { sanitizeRichText } from "@/lib/sanitize";
 import { ingestPost } from "@/lib/ai/ingest";
 import { getActiveKeywords } from "@/features/news/keyword-service";
 import { selectKeywordsForToday } from "@/lib/news/select-keywords";
-import {
-  AUTO_COLLECT_POST_CATEGORY,
-  parseDefaultKeywordsFromEnv,
-} from "@/lib/news/config";
+import { AUTO_COLLECT_POST_CATEGORY } from "@/lib/news/config";
 import { fetchNews, type NewsItem } from "./sources";
-import { summarizeNews } from "./summarize";
+import { scrubNewsSummaryLine, summarizeNews } from "./summarize";
 
 export const NEWS_BOARD_KEY = "news";
 const NEWS_BOT_EMAIL = "newsbot@intranet.local";
@@ -34,7 +31,7 @@ async function ensureNewsBoard(keywordCategories: string[]) {
     create: {
       key: NEWS_BOARD_KEY,
       name: "뉴스",
-      description: "매일 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
+      description: "관리자 로그인 시 하루 1회 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
       categories: [...new Set(categories)],
       writeRoles: ["ADMIN"],
       allowComments: true,
@@ -61,12 +58,19 @@ function buildContent(
   item: NewsItem,
   keywordLabel: string,
 ): string {
-  const lines = summaryLines.map((l) => escapeHtml(l)).join("<br/>");
-  const src = item.source ? ` (${escapeHtml(item.source)})` : "";
+  const lines = summaryLines
+    .map((l) => scrubNewsSummaryLine(l))
+    .filter(Boolean)
+    .map((l) => escapeHtml(l))
+    .join("<br/>");
+  const sourceName = scrubNewsSummaryLine(item.source ?? "") || "";
+  const linkLabel = sourceName
+    ? `원문 보기 (${escapeHtml(sourceName)})`
+    : "원문 보기";
   const html = `
     <p><strong>[${escapeHtml(keywordLabel)}]</strong></p>
     <p>${lines}</p>
-    <p>🔗 <a href="${escapeHtml(item.link)}">원문 보기${src}</a></p>
+    <p><a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">🔗 ${linkLabel}</a></p>
     <p><em>본 글은 등록 키워드 기반 자동 수집·AI 요약입니다. (카테고리: ${AUTO_COLLECT_POST_CATEGORY})</em></p>
   `;
   return sanitizeRichText(html);
@@ -81,17 +85,13 @@ export interface CollectResult {
 }
 
 export async function collectAndPublish(): Promise<CollectResult[]> {
-  let activeKeywords = await getActiveKeywords();
+  const activeKeywords = await getActiveKeywords();
 
   if (activeKeywords.length === 0) {
-    for (const kw of parseDefaultKeywordsFromEnv()) {
-      await prisma.newsKeyword.upsert({
-        where: { keyword: kw.keyword },
-        update: { category: kw.category, isActive: true },
-        create: kw,
-      });
-    }
-    activeKeywords = await getActiveKeywords();
+    console.warn(
+      "[news-collect] 활성 키워드가 없습니다. 관리자 화면에서 키워드를 활성화하세요.",
+    );
+    return [];
   }
 
   const selected = await selectKeywordsForToday(activeKeywords);

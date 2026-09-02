@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/features/board/components/rich-text-editor";
 import { ROLE_LABELS, type Role } from "@/lib/auth/roles";
 import { saveDocumentAction, type ActionState } from "../actions";
+import { APPROVAL_STEP_TITLES } from "../step-titles";
 
 interface Template {
   id: string;
@@ -38,6 +39,8 @@ interface Candidate {
 interface ApproverRow {
   approverId: string;
   parallelWithPrev: boolean;
+  /** 결재란 직책 (이사, 대표이사 등) */
+  title: string;
 }
 interface Initial {
   id: string;
@@ -69,7 +72,10 @@ export function ApprovalForm({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [templateId, setTemplateId] = useState(initial?.templateId ?? "");
   const [documentCategoryId, setDocumentCategoryId] = useState(
-    initial?.documentCategoryId ?? "",
+    initial?.documentCategoryId ??
+      documentCategories.find((c) => c.name === "전자결재")?.id ??
+      documentCategories[0]?.id ??
+      "",
   );
   const [content, setContent] = useState(initial?.content ?? "");
   const [approvers, setApprovers] = useState<ApproverRow[]>(
@@ -82,6 +88,7 @@ export function ApprovalForm({
   const [liveHints, setLiveHints] = useState<string[]>([]);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [picker, setPicker] = useState("");
+  const [pickerTitle, setPickerTitle] = useState<string>("이사");
 
   const candidateMap = useMemo(
     () => new Map(candidates.map((c) => [c.id, c])),
@@ -94,7 +101,11 @@ export function ApprovalForm({
     return approvers.map((a, i) => {
       if (i === 0) order = 1;
       else if (!a.parallelWithPrev) order += 1;
-      return { approverId: a.approverId, stepOrder: order };
+      return {
+        approverId: a.approverId,
+        stepOrder: order,
+        title: a.title || null,
+      };
     });
   }, [approvers]);
 
@@ -119,9 +130,19 @@ export function ApprovalForm({
     if (!picker) return;
     setApprovers((prev) => [
       ...prev,
-      { approverId: picker, parallelWithPrev: false },
+      {
+        approverId: picker,
+        parallelWithPrev: false,
+        title: pickerTitle || "이사",
+      },
     ]);
     setPicker("");
+  }
+
+  function setStepTitle(idx: number, title: string) {
+    setApprovers((prev) =>
+      prev.map((a, i) => (i === idx ? { ...a, title } : a)),
+    );
   }
 
   function move(idx: number, dir: -1 | 1) {
@@ -263,14 +284,15 @@ export function ApprovalForm({
       </div>
 
       <div>
-        <Label htmlFor="docCat">문서함 카테고리</Label>
+        <Label htmlFor="docCat">문서함 (필수)</Label>
         <select
           id="docCat"
           value={documentCategoryId}
           onChange={(e) => setDocumentCategoryId(e.target.value)}
+          required
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring sm:max-w-md"
         >
-          <option value="">카테고리 선택 (선택)</option>
+          <option value="">문서함 선택 (필수)</option>
           {documentCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -278,7 +300,8 @@ export function ApprovalForm({
           ))}
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          결재 완료 시 선택한 카테고리로 문서함에 자동 보관됩니다.
+          기안 시 문서함을 지정해야 합니다. 결재 완료 시 문서번호가 부여되며 해당 문서함에
+          보관됩니다.
         </p>
       </div>
 
@@ -286,9 +309,9 @@ export function ApprovalForm({
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-primary" />
-          AI 기안 작성 지원
+          메종이 기안 작성 지원
           <span className="text-xs font-normal text-muted-foreground">
-            (행정안전부 공문 작성 지침 기반)
+            (6하원칙 · 행정안전부 공문 양식)
           </span>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -338,9 +361,9 @@ export function ApprovalForm({
         <Label>결재선 지정</Label>
         <p className="mb-2 text-xs text-muted-foreground">
           순차(기본): 위에서 아래로 차례대로 결재 · 병렬: 같은 단계에서 동시
-          결재
+          결재. 결재란 직책에 이사·대표이사를 지정할 수 있습니다.
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <select
             value={picker}
             onChange={(e) => setPicker(e.target.value)}
@@ -351,6 +374,18 @@ export function ApprovalForm({
               <option key={c.id} value={c.id}>
                 {c.name} ({ROLE_LABELS[c.role]}
                 {c.dealerName ? ` · ${c.dealerName}` : ""})
+              </option>
+            ))}
+          </select>
+          <select
+            value={pickerTitle}
+            onChange={(e) => setPickerTitle(e.target.value)}
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-36"
+            aria-label="결재란 직책"
+          >
+            {APPROVAL_STEP_TITLES.map((t) => (
+              <option key={t} value={t}>
+                {t}
               </option>
             ))}
           </select>
@@ -368,15 +403,27 @@ export function ApprovalForm({
               return (
                 <li
                   key={a.approverId}
-                  className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm"
+                  className="flex flex-wrap items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm"
                 >
                   <Badge variant="secondary">{order}단계</Badge>
-                  <span className="flex-1 truncate">
+                  <span className="min-w-0 flex-1 truncate">
                     {c?.name}{" "}
                     <span className="text-xs text-muted-foreground">
                       {c ? ROLE_LABELS[c.role] : ""}
                     </span>
                   </span>
+                  <select
+                    value={a.title || "이사"}
+                    onChange={(e) => setStepTitle(i, e.target.value)}
+                    className="h-8 rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    aria-label="결재란 직책"
+                  >
+                    {APPROVAL_STEP_TITLES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
                   {i > 0 && (
                     <button
                       type="button"

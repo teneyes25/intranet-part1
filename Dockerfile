@@ -34,6 +34,11 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# HuggingFace / transformers 캐시 — nextjs 유저가 쓸 수 있는 uploads 하위
+ENV HF_HOME=/app/uploads/hf-cache
+ENV TRANSFORMERS_CACHE=/app/uploads/hf-cache
+ENV HF_HUB_CACHE=/app/uploads/hf-cache/hub
+ENV XDG_CACHE_HOME=/app/uploads/hf-cache/xdg
 
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
@@ -55,16 +60,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # standalone 에 포함되지 않는 네이티브 패키지
-COPY --from=builder /app/node_modules/@huggingface ./node_modules/@huggingface
-COPY --from=builder /app/node_modules/onnxruntime-node ./node_modules/onnxruntime-node
-COPY --from=builder /app/node_modules/onnxruntime-common ./node_modules/onnxruntime-common
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@huggingface ./node_modules/@huggingface
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/onnxruntime-node ./node_modules/onnxruntime-node
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/onnxruntime-common ./node_modules/onnxruntime-common
 COPY --from=builder /app/node_modules/ioredis ./node_modules/ioredis
 COPY --from=builder /app/node_modules/pino ./node_modules/pino
 COPY --from=builder /app/node_modules/thread-stream ./node_modules/thread-stream
 COPY --from=builder /app/node_modules/sonic-boom ./node_modules/sonic-boom
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 
-RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
+RUN mkdir -p /app/uploads/hf-cache/hub /app/uploads/hf-cache/xdg \
+  && chown -R nextjs:nodejs /app/uploads
 
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh

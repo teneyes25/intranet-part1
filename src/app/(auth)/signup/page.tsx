@@ -40,7 +40,7 @@ export default async function SignupPage() {
           <CardHeader>
             <CardTitle>회원가입</CardTitle>
             <CardDescription>
-              이름·이메일·비밀번호만 입력하면 됩니다. 관리자 승인 후
+              이름·이메일·휴대폰·비밀번호를 입력하세요. 관리자 승인 후
               로그인할 수 있습니다.
             </CardDescription>
           </CardHeader>

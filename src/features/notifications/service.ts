@@ -24,9 +24,16 @@ export async function notifyUsers(
   });
 }
 
-export async function listNotifications(userId: string, limit = 20) {
+export async function listNotifications(
+  userId: string,
+  limit = 20,
+  opts?: { unreadOnly?: boolean },
+) {
   return prisma.notification.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(opts?.unreadOnly ? { read: false } : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });

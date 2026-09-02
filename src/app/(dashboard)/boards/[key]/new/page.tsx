@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth/session";
 import { canWriteBoard } from "@/features/board/permissions";
 import { getBoardByKey } from "@/features/board/queries";
 import { PostForm } from "@/features/board/components/post-form";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "글쓰기" };
 
@@ -23,6 +24,11 @@ export default async function NewPostPage({
     redirect(`/boards/${board.key}`);
   }
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { phone: true },
+  });
+
   return (
     <div>
       <PageHeader
@@ -30,7 +36,7 @@ export default async function NewPostPage({
         description={
           key === "schedule"
             ? "시작·종료 일시를 지정해 일정을 등록합니다."
-            : "새 게시글을 작성합니다."
+            : "작성 중 내용은 자동 임시저장됩니다."
         }
       />
       <Card>
@@ -39,6 +45,7 @@ export default async function NewPostPage({
             mode="create"
             boardKey={board.key}
             categories={board.categories}
+            authorPhone={dbUser?.phone}
           />
         </CardContent>
       </Card>

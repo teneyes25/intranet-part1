@@ -180,8 +180,40 @@ export async function createPostAction(
   }
 
   reindexPost(postId);
+
+  const author = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, phone: true },
+  });
+  const authorName = author?.name ?? session.user.name ?? "작성자";
+
+  const sendContactNotify =
+    boardKey === "notices" && formData.get("sendContactNotify") === "on";
+  const senderPhoneRaw = String(formData.get("smsSenderPhone") ?? "").trim();
+
+  void import("@/features/notifications/post-fanout")
+    .then(({ fanoutNewPostNotifications }) =>
+      fanoutNewPostNotifications({
+        boardKey,
+        boardName: board.name,
+        postId,
+        title,
+        authorId: session.user.id,
+        authorName,
+        sendContactNotify,
+        contentHtml: sanitizeRichText(contentRaw),
+        senderPhone: senderPhoneRaw || author?.phone || null,
+      }),
+    )
+    .catch((e) => console.error("[post-notify]", e));
+
   revalidatePath(`/boards/${boardKey}`);
-  redirect(`/boards/${boardKey}/${postId}`);
+  revalidatePath("/", "layout");
+  redirect(
+    boardKey === "notices"
+      ? `/boards/${boardKey}/${postId}?sms=1`
+      : `/boards/${boardKey}/${postId}`,
+  );
 }
 
 // ──────────────────────────────────────────────
@@ -340,6 +372,8 @@ export async function addCommentAction(
     data: { postId: post.id, authorId: session.user.id, content },
   });
 
+  reindexPost(post.id);
+
   revalidatePath(`/boards/${post.board.key}/${post.id}`);
   return { ok: true, error: null };
 }
@@ -361,5 +395,6 @@ export async function deleteCommentAction(formData: FormData): Promise<void> {
   if (!canManagePost(session.user, comment.authorId)) return;
 
   await prisma.comment.delete({ where: { id: comment.id } });
+  reindexPost(comment.postId);
   revalidatePath(`/boards/${comment.post.board.key}/${comment.postId}`);
 }

@@ -12,7 +12,8 @@ async function main() {
         "Docker 사용 시: npm run office:db-seed",
     );
   }
-  const password = await bcrypt.hash("password1234", 10);
+  const adminPassword = await bcrypt.hash("admin1234!!", 10);
+  const demoPassword = await bcrypt.hash("password1234", 10);
 
   const rolloutGroups = [
     { key: "group-1", name: "Rollout Group 1 (1~20)", sortOrder: 1 },
@@ -73,31 +74,37 @@ async function main() {
 
   let adminId = "";
   for (const u of seedUsers) {
+    const email = u.email.trim().toLowerCase();
     const mustChangeOnCreate = u.role === Role.ADMIN;
+    const passwordHash =
+      u.role === Role.ADMIN ? adminPassword : demoPassword;
     const created = await prisma.user.upsert({
-      where: { email: u.email },
+      where: { email },
       update: {
         name: u.name,
         role: u.role,
         dealerId: u.dealerId,
-        passwordHash: password,
+        passwordHash,
         isActive: true,
         approvalStatus: "APPROVED",
+        // 재시드 시 초기 비밀번호로 복구 — 바로 로그인 가능
         mustChangePassword: false,
+        passwordChangedAt: null,
       },
       create: {
-        email: u.email,
+        email,
         name: u.name,
         role: u.role,
         dealerId: u.dealerId,
-        passwordHash: password,
+        passwordHash,
         isActive: true,
         approvalStatus: "APPROVED",
         mustChangePassword: mustChangeOnCreate,
       },
     });
     if (u.role === Role.ADMIN) adminId = created.id;
-    console.log(`✅ seeded user: ${u.email} (${u.role})`);
+    const pwHint = u.role === Role.ADMIN ? "admin1234!!" : "password1234";
+    console.log(`✅ seeded user: ${email} (${u.role}) password=${pwHint}`);
   }
 
   // 게시판 (베이스 보드 시스템)
@@ -108,34 +115,7 @@ async function main() {
       description: "사내 전체 공지",
       categories: ["전사", "인사", "재무", "IT", "총무"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
-    },
-    {
-      key: "general",
-      name: "일반게시판",
-      description: "자유로운 소통 공간",
-      categories: ["잡담", "질문", "정보공유", "동호회"],
-      writeRoles: [],
-    },
-    {
-      key: "news",
-      name: "뉴스",
-      description: "매일 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
-      categories: ["자동수집", "건설", "유통", "소비재", "프랜차이즈", "AI", "경제"],
-      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
-    },
-    {
-      key: "pr",
-      name: "홍보실",
-      description: "브랜드/홍보 콘텐츠",
-      categories: ["보도자료", "캠페인", "이벤트"],
-      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
-    },
-    {
-      key: "products",
-      name: "상품자료실",
-      description: "상품 카탈로그 및 판매 자료",
-      categories: ["카탈로그", "사양서", "가격표", "교육자료"],
-      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+      sortOrder: 10,
     },
     {
       key: "schedule",
@@ -143,6 +123,47 @@ async function main() {
       description: "사내 일정·회의·마감을 달력으로 확인합니다",
       categories: ["회의", "행사", "마감", "기타"],
       writeRoles: [],
+      sortOrder: 20,
+    },
+    {
+      key: "regulations",
+      name: "사규",
+      description: "사내 규정·지침·가이드라인",
+      categories: ["취업규칙", "복무", "인사", "보안", "기타"],
+      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+      sortOrder: 30,
+    },
+    {
+      key: "general",
+      name: "일반게시판",
+      description: "자유로운 소통 공간",
+      categories: ["잡담", "질문", "정보공유", "동호회"],
+      writeRoles: [],
+      sortOrder: 40,
+    },
+    {
+      key: "news",
+      name: "뉴스",
+      description: "관리자 로그인 시 하루 1회 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
+      categories: ["자동수집", "건설", "유통", "소비재", "프랜차이즈", "AI", "경제"],
+      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+      sortOrder: 50,
+    },
+    {
+      key: "pr",
+      name: "홍보실",
+      description: "브랜드/홍보 콘텐츠",
+      categories: ["보도자료", "캠페인", "이벤트"],
+      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+      sortOrder: 60,
+    },
+    {
+      key: "products",
+      name: "상품자료실",
+      description: "상품 카탈로그 및 판매 자료",
+      categories: ["카탈로그", "사양서", "가격표", "교육자료"],
+      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+      sortOrder: 70,
     },
   ];
 
@@ -154,6 +175,7 @@ async function main() {
         description: b.description,
         categories: b.categories,
         writeRoles: b.writeRoles,
+        sortOrder: b.sortOrder,
       },
       create: b,
     });
@@ -178,10 +200,10 @@ async function main() {
     },
     {
       key: "leave",
-      name: "휴가 신청서",
-      description: "연차/병가 등 휴가 신청 양식",
+      name: "연차 유급휴가 사용신청서",
+      description: "연차·반차 사용 신청 (기안문 자동 생성)",
       content:
-        "<h2>1. 신청인</h2><p></p><h2>2. 휴가 종류</h2><p>연차 / 병가 / 경조사 / 기타</p><h2>3. 휴가 기간</h2><p>____년 __월 __일 ~ ____년 __월 __일 (총 __일)</p><h2>4. 사유</h2><p></p><h2>5. 업무 인수인계</h2><p></p>",
+        "<h1 style=\"text-align:center;letter-spacing:0.25em;\">연차 유급휴가 사용신청서</h1><h2>1. 신청자 정보</h2><p>소속 / 성명 / 직책(업무) / 잔여 연차 수</p><h2>2. 신청 내역</h2><p>연차 종류(연차·반차) / 시작·종료 / 사유 / 비상 연락처</p><h2>3. 결재</h2><p>담당 → 인사 → 이사</p>",
     },
     {
       key: "trip",
@@ -221,15 +243,19 @@ async function main() {
 
   // 문서함 카테고리
   const docCats = [
-    { name: "정책", slug: "policy", description: "사내 정책·지침" },
-    { name: "보안", slug: "security", description: "보안·개인정보" },
-    { name: "운영", slug: "operations", description: "운영·업무 매뉴얼" },
-    { name: "전자결재", slug: "approval", description: "결재 완료 문서" },
+    { name: "정책", slug: "policy", description: "사내 정책·지침", workTypeCode: "정책" },
+    { name: "보안", slug: "security", description: "보안·개인정보", workTypeCode: "보안" },
+    { name: "운영", slug: "operations", description: "운영·업무 매뉴얼", workTypeCode: "운영" },
+    { name: "전자결재", slug: "approval", description: "결재 완료 문서", workTypeCode: "전자결재" },
   ];
   for (const c of docCats) {
     await prisma.documentCategory.upsert({
       where: { slug: c.slug },
-      update: { name: c.name, description: c.description },
+      update: {
+        name: c.name,
+        description: c.description,
+        workTypeCode: c.workTypeCode,
+      },
       create: c,
     });
   }
@@ -248,13 +274,60 @@ async function main() {
   for (const [i, kw] of newsKeywords.entries()) {
     await prisma.newsKeyword.upsert({
       where: { keyword: kw.keyword },
-      update: { category: kw.category, isActive: true, sortOrder: i },
+      // 관리자 활성/비활성·순서를 덮어쓰지 않음
+      update: {},
       create: { ...kw, sortOrder: i },
     });
   }
   console.log("✅ seeded news keywords");
 
+  // 뉴스 분야 카테고리 (seed는 tsx로 실행되므로 server-only 모듈 import 금지)
+  const defaultNewsCats = [
+    "건설",
+    "유통",
+    "소비재",
+    "프랜차이즈",
+    "AI",
+    "경제",
+    "미래",
+  ];
+  for (const [i, name] of defaultNewsCats.entries()) {
+    await prisma.newsCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: (i + 1) * 10 },
+    });
+  }
+  console.log("✅ seeded news categories");
+
+  // 업무 카테고리
+  const defaultJobs = [
+    "영업",
+    "총무",
+    "인사",
+    "디자인",
+    "웹디자인",
+    "재무",
+    "물류",
+    "배송",
+    "기획관리",
+    "판매",
+    "이사",
+    "대표이사",
+  ];
+  for (const [i, name] of defaultJobs.entries()) {
+    await prisma.jobCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: (i + 1) * 10 },
+    });
+  }
+  console.log("✅ seeded job categories");
+
   // 문서함 샘플
+  const cats = await prisma.documentCategory.findMany();
+  const catByName = Object.fromEntries(cats.map((c) => [c.name, c.id]));
+
   const docCount = await prisma.sharedDocument.count();
   if (docCount === 0) {
     await prisma.sharedDocument.createMany({
@@ -263,6 +336,7 @@ async function main() {
           title: "행정안전부 공문 작성 지침",
           description: "전자결재 기안 시 참고하는 공문 작성 기준 자료",
           category: "정책",
+          documentCategoryId: catByName["정책"] ?? null,
           url: "https://www.mois.go.kr",
           tags: ["행정", "공문", "결재"],
         },
@@ -270,19 +344,65 @@ async function main() {
           title: "사내 보안 정책 안내",
           description: "정보 보안 및 개인정보 처리 지침",
           category: "보안",
+          documentCategoryId: catByName["보안"] ?? null,
           tags: ["보안", "정책"],
         },
         {
           title: "대리점 운영 매뉴얼",
           description: "대리점 일일 업무 및 보고 절차",
           category: "운영",
+          documentCategoryId: catByName["운영"] ?? null,
           tags: ["대리점", "매뉴얼"],
         },
       ],
     });
-    console.log("✅ seeded shared documents");
+    console.log("✅ seeded shared documents (category FK linked)");
+  } else {
+    // 기존 레거시 category 문자열 → FK 연결
+    for (const [name, id] of Object.entries(catByName)) {
+      await prisma.sharedDocument.updateMany({
+        where: { documentCategoryId: null, category: name },
+        data: { documentCategoryId: id },
+      });
+    }
+    console.log("✅ backfilled shared document categories");
   }
 
+  // 연차 잔여 (시드 사용자) — 클라이언트 미생성 시 스킵 안내
+  const leaveDelegate = (
+    prisma as unknown as {
+      leaveBalance?: {
+        upsert: (args: unknown) => Promise<unknown>;
+      };
+    }
+  ).leaveBalance;
+
+  if (!leaveDelegate?.upsert) {
+    console.warn(
+      "⚠️ leaveBalance 모델이 Prisma Client에 없습니다. 호스트에서 실행: npx prisma generate",
+    );
+  } else {
+    const leaveYear = new Date().getFullYear();
+    for (const email of [
+      "admin@intranet.local",
+      "hq@intranet.local",
+      "dealer@intranet.local",
+    ]) {
+      const u = await prisma.user.findUnique({ where: { email } });
+      if (!u) continue;
+      await leaveDelegate.upsert({
+        where: { userId_year: { userId: u.id, year: leaveYear } },
+        update: {},
+        create: {
+          userId: u.id,
+          year: leaveYear,
+          accruedDays: 15,
+          usedDays: email === "hq@intranet.local" ? 3 : 0,
+        },
+      });
+    }
+    console.log("✅ seeded leave balances");
+  }
   // 샘플 게시글 (공지사항)
   if (adminId) {
     const notices = await prisma.board.findUniqueOrThrow({

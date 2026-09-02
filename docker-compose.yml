@@ -61,8 +61,9 @@ services:
       NODE_ENV: production
       BUILD_ID: ${BUILD_ID:-dev}
       NEXT_PUBLIC_BUILD_ID: ${BUILD_ID:-dev}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-ollama}
+      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-llama3.2}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
       CRON_SECRET: ${CRON_SECRET:-}
@@ -74,6 +75,8 @@ services:
       # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED → .env.production (env_file)
       BEHIND_NGINX: "true"
       # CLAMAV_HOST: ${CLAMAV_HOST:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - uploads-data:/app/uploads
     expose:

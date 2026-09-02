@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
 export const DEFAULT_PASSWORD = "password1234";
+export const ADMIN_PASSWORD = "admin1234!!";
 export const CHANGED_PASSWORD = "NewSecurePass1!";
 export const ADMIN_EMAIL = "admin@intranet.local";
 
@@ -18,7 +19,7 @@ async function completePasswordChangeIfNeeded(page: Page) {
 
 /** 데모/E2E — seed 후 mustChangePassword=false 권장 */
 export async function loginAsAdmin(page: Page) {
-  await loginAs(page, ADMIN_EMAIL, DEFAULT_PASSWORD);
+  await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
 }
 
 export async function loginAs(

@@ -118,17 +118,33 @@ async function searchPosts(
 }
 
 async function searchDocuments(params: SearchParams): Promise<SearchResultItem[]> {
-  const where: Prisma.SharedDocumentWhereInput = {};
+  const and: Prisma.SharedDocumentWhereInput[] = [];
   if (params.q) {
-    where.OR = [
-      { title: { contains: params.q, mode: "insensitive" } },
-      { description: { contains: params.q, mode: "insensitive" } },
-    ];
+    and.push({
+      OR: [
+        { title: { contains: params.q, mode: "insensitive" } },
+        { description: { contains: params.q, mode: "insensitive" } },
+        {
+          documentCategory: {
+            name: { contains: params.q, mode: "insensitive" },
+          },
+        },
+      ],
+    });
   }
-  if (params.category) where.category = params.category;
+  if (params.category) {
+    and.push({
+      OR: [
+        { category: params.category },
+        { documentCategory: { name: params.category } },
+        { documentCategory: { slug: params.category } },
+      ],
+    });
+  }
 
   const docs = await prisma.sharedDocument.findMany({
-    where,
+    where: and.length ? { AND: and } : undefined,
+    include: { documentCategory: { select: { name: true } } },
     orderBy: { updatedAt: "desc" },
     take: params.limit ?? 20,
   });
@@ -138,9 +154,13 @@ async function searchDocuments(params: SearchParams): Promise<SearchResultItem[]
     type: "document" as const,
     title: d.title,
     snippet: (d.description ?? "").slice(0, 160),
-    href: d.url ?? (d.boardKey && d.postId ? `/boards/${d.boardKey}/${d.postId}` : "/documents"),
+    href:
+      d.url ??
+      (d.boardKey && d.postId
+        ? `/boards/${d.boardKey}/${d.postId}`
+        : "/documents"),
     source: "문서함",
-    category: d.category,
+    category: d.documentCategory?.name ?? d.category,
     date: d.updatedAt,
   }));
 }
@@ -228,6 +248,7 @@ export async function unifiedSearch(
 
   const boardMap: Record<string, string[] | undefined> = {
     notices: ["notices"],
+    regulations: ["regulations"],
     general: ["general"],
     news: ["news"],
     pr: ["pr"],

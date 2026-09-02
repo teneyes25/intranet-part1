@@ -31,6 +31,8 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
+  /// 휴대폰 (숫자만 저장, 예: 01012345678)
+  phone        String?
   passwordHash String
   role         Role     @default(DEALER)
   isActive     Boolean  @default(true)
@@ -57,12 +59,59 @@ model User {
   postFolders     PostFolder[]
   postLabels      PostLabel[]
   postMailItems   PostMailItem[]
+  leaveBalances   LeaveBalance[]
+  leaveRequests   LeaveRequest[] @relation("LeaveRequester")
+  leaveApprovals  LeaveRequest[] @relation("LeaveApprover")
+  jobs            UserJob[]
+  documentCategoriesOwned DocumentCategory[] @relation("DocumentCategoryOwner")
+  aiKnowledgeMaterials AiKnowledgeMaterial[]
+  messengerProfile MessengerProfile?
+  messengerRoomMembers MessengerRoomMember[]
+  messengerMessages    MessengerMessage[]
+  messengerLogs        MessengerLog[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([role])
   @@index([dealerId])
+  @@index([phone])
   @@map("users")
+}
+
+/// 뉴스 키워드 분야(카테고리) — 관리자가 CRUD
+model NewsCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("news_categories")
+}
+
+/// 사용자 업무 카테고리 (영업/총무/인사 등) — 관리자 CRUD
+model JobCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  sortOrder Int       @default(0)
+  users     UserJob[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("job_categories")
+}
+
+/// 사용자 ↔ 업무 (복수 가능)
+model UserJob {
+  userId        String
+  jobCategoryId String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobCategory   JobCategory @relation(fields: [jobCategoryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@id([userId, jobCategoryId])
+  @@index([jobCategoryId])
+  @@map("user_jobs")
 }
 
 /// 게시판 정의. 하나의 베이스 시스템으로 여러 게시판을 운영한다.
@@ -77,12 +126,15 @@ model Board {
   /// 작성 허용 권한. 비어 있으면 모든 인증 사용자가 작성 가능.
   writeRoles    Role[]   @default([])
   allowComments Boolean  @default(true)
+  /// 사이드바·관리 목록 표시 순서 (작을수록 위)
+  sortOrder     Int      @default(0)
   posts         Post[]
   postFolders   PostFolder[]
   postLabels    PostLabel[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([sortOrder])
   @@map("boards")
 }
 
@@ -262,18 +314,24 @@ model ProductCategory {
   @@map("product_categories")
 }
 
-/// 문서함 카테고리 (관리자 관리)
+/// 문서함 (회사 공용 또는 사용자 개인)
 model DocumentCategory {
   id          String             @id @default(cuid())
   name        String
   slug        String             @unique
   description String?
   sortOrder   Int                @default(0)
+  /// 문서번호용 업무종류 코드 (예: 인사, 총무, 전자결재)
+  workTypeCode String?
+  /// null = 공용(관리자), 값 있음 = 사용자 개인 문서함
+  ownerId     String?
+  owner       User?              @relation("DocumentCategoryOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   documents   SharedDocument[]
   approvals   ApprovalDocument[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
+  @@index([ownerId])
   @@map("document_categories")
 }
 
@@ -285,7 +343,15 @@ model SharedDocument {
   /// 레거시 문자열 카테고리 (마이그레이션 호환)
   category           String?
   documentCategoryId String?
-  documentCategory   DocumentCategory? @relation(fields: [documentCategoryId], references: [id])
+  documentCategory   DocumentCategory? @relation(fields: [documentCategoryId], references: [id], onDelete: SetNull)
+  /// 문서번호 (예: 2026-인사-0831001)
+  documentNumber     String?
+  /// 기안일자
+  draftedAt          DateTime?
+  /// 결재일자
+  approvedAt         DateTime?
+  /// 등록(확정)일자
+  registeredAt       DateTime?
   /// 외부 URL 또는 내부 게시글/결재 링크
   url                String?
   boardKey           String?
@@ -298,6 +364,7 @@ model SharedDocument {
 
   @@index([category])
   @@index([documentCategoryId])
+  @@index([documentNumber])
   @@map("shared_documents")
 }
 
@@ -389,14 +456,21 @@ model ApprovalDocument {
   templateId         String?
   template           ApprovalTemplate?  @relation(fields: [templateId], references: [id])
   documentCategoryId String?
-  documentCategory   DocumentCategory?  @relation(fields: [documentCategoryId], references: [id])
+  documentCategory   DocumentCategory?  @relation(fields: [documentCategoryId], references: [id], onDelete: SetNull)
+  /// 문서번호 (완료 시 부여) 년도-업무종류-월일000
+  documentNumber     String?            @unique
+  /// 등록(확정)일자 — 문서함 보관 시점
+  registeredAt       DateTime?
   archivedDocument   SharedDocument?
   linkedOrder        Order?
+  leaveRequest       LeaveRequest?
   /// 현재 진행 중인 결재 단계 순서(같은 순서=병렬)
   currentOrder       Int                @default(1)
   isDemo             Boolean            @default(false)
   steps              ApprovalStep[]
+  /// 기안(상신) 일자
   submittedAt        DateTime?
+  /// 최종 결재 일자
   completedAt        DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -407,6 +481,18 @@ model ApprovalDocument {
   @@map("approval_documents")
 }
 
+/// 문서번호 일련번호 (년도+업무종류+월일 단위)
+model DocumentNumberSeq {
+  id       String @id @default(cuid())
+  year     Int
+  workType String
+  monthDay String
+  lastSeq  Int    @default(0)
+
+  @@unique([year, workType, monthDay])
+  @@map("document_number_seqs")
+}
+
 /// 결재선의 개별 결재자 단계. stepOrder 가 같으면 병렬, 다르면 순차.
 model ApprovalStep {
   id         String             @id @default(cuid())
@@ -415,6 +501,8 @@ model ApprovalStep {
   approverId String
   approver   User               @relation("ApprovalApprover", fields: [approverId], references: [id])
   stepOrder  Int
+  /// 결재란 직책 표기 (예: 이사, 대표이사)
+  title      String?
   status     ApprovalStepStatus @default(PENDING)
   comment    String?
   actedAt    DateTime?
@@ -512,6 +600,98 @@ enum NotificationType {
   AI_MENTION
   SYSTEM
   EMERGENCY
+  LEAVE_REQUEST
+  LEAVE_RESULT
+  MESSENGER
+  MESSENGER_BACKUP
+}
+
+/// 연차 신청 상태
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveType {
+  FULL
+  HALF
+}
+
+/// 연도별 연차 잔여 (발생·사용)
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year        Int
+  /// 발생 연차(일)
+  accruedDays Float     @default(15)
+  /// 승인된 사용 연차(일)
+  usedDays    Float     @default(0)
+  /// 연차 발생 시점
+  accruedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, year])
+  @@index([year])
+  @@map("leave_balances")
+}
+
+/// 연차 사용 신청 (기안문 연동)
+model LeaveRequest {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation("LeaveRequester", fields: [userId], references: [id], onDelete: Cascade)
+  startDate          DateTime
+  endDate            DateTime
+  days               Float
+  leaveType          LeaveType          @default(FULL)
+  reason             String?
+  emergencyContact   String?
+  status             LeaveRequestStatus @default(PENDING)
+  approverId         String?
+  approver           User?              @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  reviewedAt         DateTime?
+  reviewNote         String?
+  approvalDocumentId String?            @unique
+  approvalDocument   ApprovalDocument?  @relation(fields: [approvalDocumentId], references: [id], onDelete: SetNull)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("leave_requests")
+}
+
+/// 월말 잔여연차 메일 발송 로그
+model LeaveMonthEndMailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  year      Int
+  month     Int
+  email     String
+  remaining Float
+  success   Boolean  @default(true)
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, year, month])
+  @@index([year, month])
+  @@map("leave_month_end_mail_logs")
+}
+
+/// 월말 연차 촉진 공지 등록 로그 (연·월당 1회)
+model LeavePromoteNoticeLog {
+  id        String   @id @default(cuid())
+  year      Int
+  month     Int
+  postId    String?
+  createdAt DateTime @default(now())
+
+  @@unique([year, month])
+  @@map("leave_promote_notice_logs")
 }
 
 /// 사용자 알림 (In-app)
@@ -678,7 +858,7 @@ model PageLayoutVersion {
 model AiIngestJob {
   id              String    @id @default(cuid())
   triggeredById   String
-  scope           String    /// all | boards
+  scope           String    /// all | boards | curated
   boardKeys       String[]  @default([])
   status          String    /// pending | running | completed | failed
   postsProcessed  Int       @default(0)
@@ -689,6 +869,42 @@ model AiIngestJob {
 
   @@index([startedAt])
   @@map("ai_ingest_jobs")
+}
+
+/// 매종이 지식 학습 정책 (singleton)
+model AiLearningSettings {
+  id               String   @id @default("default")
+  /// 인트라넷 전체(게시글·문서함·전자결재) 학습 — 기본 ON
+  learnAllIntranet Boolean  @default(true)
+  /// 관리자가 지정·업로드한 추가 학습 자료
+  learnCurated     Boolean  @default(true)
+  /// 일상 대화·날씨·일반 뉴스 허용 (기본 ON)
+  allowCasualChat  Boolean  @default(true)
+  /// 관리자가 편집한 페르소나 본문 (비우면 코드 기본값)
+  personaIdentity  String?  @db.Text
+  /// 관리자가 편집한 추가 답변 규칙
+  personaRules     String?  @db.Text
+  updatedAt        DateTime @updatedAt
+
+  @@map("ai_learning_settings")
+}
+
+/// 관리자가 지정·업로드한 매종이 추가 학습 자료
+model AiKnowledgeMaterial {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  fileName    String?
+  storageKey  String?
+  mimeType    String?
+  isActive    Boolean  @default(true)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, createdAt])
+  @@map("ai_knowledge_materials")
 }
 
 /// 결재선 기본 템플릿 (부서·직급별)
@@ -1001,4 +1217,108 @@ model DealerTrade {
   @@index([fromDealerId, status])
   @@index([toDealerId, status])
   @@map("dealer_trades")
+}
+
+/// 사내 메신저 프로필 (사진·근무지·직책·직급·입사일). 업무는 UserJob 사용.
+model MessengerProfile {
+  userId          String    @id
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photoStorageKey String?
+  workplace       String?
+  title           String?
+  rank            String?
+  hiredAt         DateTime?
+  lastSeenAt      DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@map("messenger_profiles")
+}
+
+/// 1:1 또는 그룹 대화방. pairKey 는 1:1 고유키(정렬된 userId 결합).
+model MessengerRoom {
+  id        String                @id @default(cuid())
+  isGroup   Boolean               @default(false)
+  title     String?
+  pairKey   String?               @unique
+  members   MessengerRoomMember[]
+  messages  MessengerMessage[]
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@index([updatedAt])
+  @@map("messenger_rooms")
+}
+
+model MessengerRoomMember {
+  id         String        @id @default(cuid())
+  roomId     String
+  room       MessengerRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime?
+  joinedAt   DateTime      @default(now())
+
+  @@unique([roomId, userId])
+  @@index([userId])
+  @@map("messenger_room_members")
+}
+
+model MessengerMessage {
+  id          String                 @id @default(cuid())
+  roomId      String
+  room        MessengerRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User                   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body        String                 @default("")
+  createdAt   DateTime               @default(now())
+  attachments MessengerAttachment[]
+
+  @@index([roomId, createdAt])
+  @@index([createdAt])
+  @@map("messenger_messages")
+}
+
+model MessengerAttachment {
+  id         String            @id @default(cuid())
+  messageId  String
+  message    MessengerMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  filename   String
+  storageKey String
+  mimeType   String
+  size       Int
+  createdAt  DateTime          @default(now())
+
+  @@index([messageId])
+  @@map("messenger_attachments")
+}
+
+/// 관리자 전용 메신저 로그
+model MessengerLog {
+  id           String   @id @default(cuid())
+  action       String
+  actorId      String?
+  actor        User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  targetUserId String?
+  roomId       String?
+  messageId    String?
+  detail       String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@map("messenger_logs")
+}
+
+/// 월별 백업/삭제 안내 발송 여부
+model MessengerBackupNoticeLog {
+  id        String   @id @default(cuid())
+  userId    String
+  year      Int
+  month     Int
+  purged    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, year, month])
+  @@index([year, month])
+  @@map("messenger_backup_notice_logs")
 }

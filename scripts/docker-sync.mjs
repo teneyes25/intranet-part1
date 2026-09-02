@@ -103,8 +103,34 @@ async function waitHealthy(maxAttempts = 45) {
   return null;
 }
 
+async function ensureMessengerMigrated() {
+  const check = spawnSync(
+    "docker",
+    [
+      "exec",
+      "intranet-db",
+      "psql",
+      "-U",
+      "intranet",
+      "-d",
+      "intranet",
+      "-tAc",
+      "SELECT to_regclass('public.messenger_profiles')",
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+  const name = (check.stdout || "").trim();
+  if (name.includes("messenger_profiles")) {
+    console.log("✓ messenger_profiles table present");
+    return;
+  }
+  console.warn(
+    "⚠ messenger_profiles 없음 — 컨테이너 재시작 후 migrate 를 다시 확인하세요. docker logs intranet-app --tail 80",
+  );
+}
+
 async function verifyPages() {
-  const urls = ["/login", "/api/health", "/boards/schedule"];
+  const urls = ["/login", "/api/health", "/boards/schedule", "/messenger"];
   for (const u of urls) {
     try {
       const res = await fetch(`http://127.0.0.1:8080${u}`, {
@@ -174,6 +200,18 @@ ON CONFLICT (key) DO UPDATE SET
 
 
 async function main() {
+  const messengerSrc = path.join(root, "src", "features", "messenger", "constants.ts");
+  if (!existsSync(messengerSrc)) {
+    console.error(
+      "✗ 사내 메신저 코드가 없습니다. 먼저 이 명령을 실행하세요:\n" +
+        "  git fetch origin cursor/admin-user-board-mgmt-0c07\n" +
+        "  git checkout -B cursor/admin-user-board-mgmt-0c07 origin/cursor/admin-user-board-mgmt-0c07\n" +
+        "  git reset --hard origin/cursor/admin-user-board-mgmt-0c07\n" +
+        "  그다음 scripts\\office-sync.cmd",
+    );
+    process.exit(1);
+  }
+
   const lanBase = applyLanIpToEnv();
   const { args: composeBase, useHost } = detectComposeArgs();
   console.log("=== Docker sync → http://127.0.0.1:8080 ===");
@@ -209,6 +247,7 @@ async function main() {
   }
 
   await ensureScheduleBoardSeeded();
+  await ensureMessengerMigrated();
   await verifyPages();
 
   if (health.buildId && health.buildId !== buildId) {

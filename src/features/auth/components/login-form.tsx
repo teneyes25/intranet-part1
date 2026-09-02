@@ -25,8 +25,8 @@ export function LoginForm() {
     setLoading(true);
 
     const res = await signIn("credentials", {
-      email,
-      password,
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
       redirect: false,
     });
 
@@ -47,9 +47,10 @@ export function LoginForm() {
         <Label htmlFor="email">이메일</Label>
         <Input
           id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@intranet.local"
+          type="text"
+          inputMode="email"
+          autoComplete="username"
+          placeholder="name@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required

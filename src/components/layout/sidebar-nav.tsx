@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { getVisibleNavGroups, type NavItem } from "@/config/navigation";
+import { getVisibleNavGroups, type NavBoard, type NavItem } from "@/config/navigation";
+import { openMessengerPopup } from "@/features/messenger/open-popup";
 import type { Role } from "@/lib/auth/roles";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +16,7 @@ import {
 
 interface SidebarNavProps {
   role: Role | undefined;
+  boards?: NavBoard[];
   collapsed?: boolean;
   onNavigate?: () => void;
 }
@@ -25,11 +27,12 @@ function isActiveHref(pathname: string, href: string) {
 
 export function SidebarNav({
   role,
+  boards = [],
   collapsed = false,
   onNavigate,
 }: SidebarNavProps) {
   const pathname = usePathname();
-  const groups = getVisibleNavGroups(role);
+  const groups = getVisibleNavGroups(role, boards);
 
   return (
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
@@ -79,7 +82,17 @@ function NavLink({
   );
 
   const link = (
-    <Link href={item.href} onClick={onNavigate} className={linkClasses}>
+    <Link
+      href={item.href}
+      onClick={(e) => {
+        if (item.openPopup) {
+          e.preventDefault();
+          openMessengerPopup();
+        }
+        onNavigate?.();
+      }}
+      className={linkClasses}
+    >
       <Icon className={cn("h-4 w-4 shrink-0 transition-colors", active && "text-sidebar-primary")} />
       {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
       {!collapsed && item.badge ? (

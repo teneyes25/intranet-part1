@@ -33,9 +33,9 @@ export function AiLearningTab({
       selected.forEach((k) => fd.append("boardKeys", k));
       const r = await runAiIngestAction(fd);
       if ("error" in r && r.error) toast.error(r.error);
-      else if ("ok" in r && r.ok)
+      if ("ok" in r && r.ok)
         toast.success(
-          `재학습 완료: 게시글 ${r.postsProcessed}건, 청크 ${r.chunksTotal}개`,
+          `재학습 완료: 게시글 ${r.postsProcessed} · 문서 ${"documentsProcessed" in r ? r.documentsProcessed : 0} · 결재 ${"approvalsProcessed" in r ? r.approvalsProcessed : 0} · 청크 ${r.chunksTotal}`,
         );
     });
   }
@@ -44,9 +44,9 @@ export function AiLearningTab({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Vector DB 재학습</CardTitle>
+          <CardTitle className="text-base">메종이 Vector DB 재학습</CardTitle>
           <CardDescription>
-            게시글을 재임베딩하여 AI Agent 검색 품질을 갱신합니다.
+            게시글·문서함·전자결재를 재임베딩하여 메종이(AI) 검색 품질을 갱신합니다.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -56,7 +56,7 @@ export function AiLearningTab({
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            현재 인트라넷 전체 자료 재학습
+            인트라넷 전체 자료 재학습
           </Button>
 
           <div>

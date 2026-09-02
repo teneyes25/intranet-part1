@@ -6,11 +6,14 @@ import { Building2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { SidebarNotifications } from "@/components/layout/sidebar-notifications";
 import type { BrandingConfig } from "@/components/branding/branding-head";
+import type { NavBoard } from "@/config/navigation";
 import type { Role } from "@/lib/auth/roles";
 
 interface SidebarContentProps {
   role: Role | undefined;
+  boards?: NavBoard[];
   branding?: BrandingConfig;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -19,6 +22,7 @@ interface SidebarContentProps {
 
 export function SidebarContent({
   role,
+  boards = [],
   branding,
   collapsed = false,
   onToggleCollapse,
@@ -68,7 +72,14 @@ export function SidebarContent({
         )}
       </div>
 
-      <SidebarNav role={role} collapsed={collapsed} onNavigate={onNavigate} />
+      <SidebarNotifications collapsed={collapsed} onNavigate={onNavigate} />
+
+      <SidebarNav
+        role={role}
+        boards={boards}
+        collapsed={collapsed}
+        onNavigate={onNavigate}
+      />
 
       <div className="border-t border-sidebar-border p-2">
         {onToggleCollapse && collapsed ? (

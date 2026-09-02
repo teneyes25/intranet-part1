@@ -145,7 +145,9 @@ export async function savePageBuilderConfigAction(json: string) {
 
 export async function runAiIngestAction(formData: FormData) {
   const user = await requireRole(["ADMIN"]);
-  const scope = String(formData.get("scope") ?? "all") as "all" | "boards";
+  const scopeRaw = String(formData.get("scope") ?? "all");
+  const scope =
+    scopeRaw === "boards" || scopeRaw === "curated" ? scopeRaw : "all";
   const boardKeys = formData.getAll("boardKeys").map(String).filter(Boolean);
 
   try {
@@ -159,9 +161,14 @@ export async function runAiIngestAction(formData: FormData) {
       user.id,
       user.email,
       result.jobId,
-      scope === "all" ? "full_reindex" : `boards:${boardKeys.join(",")}`,
+      scope === "all"
+        ? "full_reindex"
+        : scope === "curated"
+          ? "curated"
+          : `boards:${boardKeys.join(",")}`,
     );
     revalidatePath("/admin/customize");
+    revalidatePath("/admin/ai-models");
     return { ok: true, ...result };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "재학습 실패" };

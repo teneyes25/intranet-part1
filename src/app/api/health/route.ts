@@ -8,14 +8,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  // instrumentation 미기동 환경에서 cron 폴백 등록 (멱등)
-  try {
-    const { startNewsCron } = await import("@/lib/news/scheduler");
-    startNewsCron();
-  } catch {
-    /* non-blocking */
-  }
-
   const checks: Record<string, "ok" | "error"> = {
     app: "ok",
     database: "error",

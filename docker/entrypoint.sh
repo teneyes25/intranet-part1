@@ -40,13 +40,21 @@ fi
 
 if [ "${RUN_SEED}" = "true" ]; then
   echo "[entrypoint] seeding..."
-  node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed.ts || echo "[entrypoint] seed skipped"
+  if ! node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed.ts; then
+    echo "[entrypoint] ERROR: seed failed — admin@intranet.local 로그인이 안 될 수 있습니다."
+    echo "[entrypoint] 호스트에서: npm run office:reset-admin 또는 npm run office:db-seed"
+  else
+    echo "[entrypoint] seed OK — admin@intranet.local / password1234"
+  fi
 fi
 
 if [ "${RUN_DEALER_DEMO_SEED}" = "true" ]; then
   echo "[entrypoint] dealer demo seeding..."
   node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed-dealer-demo.ts || echo "[entrypoint] dealer demo seed skipped"
 fi
+
+echo "[entrypoint] ensuring writable AI cache dirs..."
+mkdir -p /app/uploads/hf-cache/hub /app/uploads/hf-cache/xdg /tmp/hf-cache/hub /tmp/hf-cache/xdg 2>/dev/null || true
 
 echo "[entrypoint] starting server on port ${PORT:-3000}..."
 # health 체크로 cron 폴백 등록 (instrumentation 보조)
