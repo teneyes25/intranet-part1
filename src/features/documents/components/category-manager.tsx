@@ -18,6 +18,8 @@ type CategoryRow = {
   name: string;
   slug: string;
   description: string | null;
+  retentionYears?: number | null;
+  isPublic?: boolean;
   _count?: { documents: number; approvals: number };
 };
 
@@ -59,11 +61,16 @@ export function DocumentCategoryManager({
             else toast.success("카테고리를 추가했습니다.");
           });
         }}
-        className="grid gap-2 sm:grid-cols-4"
+        className="grid gap-2 sm:grid-cols-6"
       >
         <Input name="name" placeholder="카테고리 이름" required />
         <Input name="slug" placeholder="slug (영문)" required />
         <Input name="description" placeholder="설명 (선택)" />
+        <Input name="retentionYears" type="number" min={1} placeholder="보존기간(년)" />
+        <label className="flex items-center gap-1 text-xs">
+          <input type="checkbox" name="isPublic" defaultChecked />
+          공개
+        </label>
         <Button type="submit" disabled={pending}>
           추가
         </Button>
@@ -85,7 +92,7 @@ export function DocumentCategoryManager({
               <tr key={c.id}>
                 <td className="px-4 py-3" colSpan={5}>
                   <form
-                    className="grid gap-2 sm:grid-cols-[1fr_1fr_1.2fr_auto_auto] sm:items-center"
+                    className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_6rem_auto_auto_auto] sm:items-center"
                     action={(fd) => {
                       startTransition(async () => {
                         const r = await updateDocumentCategoryAction(fd);
@@ -102,6 +109,21 @@ export function DocumentCategoryManager({
                       defaultValue={c.description ?? ""}
                       placeholder="설명"
                     />
+                    <Input
+                      name="retentionYears"
+                      type="number"
+                      min={1}
+                      defaultValue={c.retentionYears ?? ""}
+                      placeholder="년"
+                    />
+                    <label className="flex items-center gap-1 text-xs">
+                      <input
+                        type="checkbox"
+                        name="isPublic"
+                        defaultChecked={c.isPublic !== false}
+                      />
+                      공개
+                    </label>
                     <span className="text-xs text-muted-foreground">
                       문서 {c._count?.documents ?? 0} · 결재{" "}
                       {c._count?.approvals ?? 0}

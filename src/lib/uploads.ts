@@ -128,6 +128,33 @@ export async function saveUploadedFile(
   };
 }
 
+export async function savePngBuffer(
+  buffer: Buffer,
+  filename: string,
+  auditContext?: { userId?: string },
+): Promise<SavedFile> {
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error("이미지가 너무 큽니다. (최대 10MB)");
+  }
+  await ensureUploadDir();
+  const storageKey = `${randomUUID()}.png`;
+  await writeFile(path.join(UPLOAD_DIR, storageKey), buffer);
+  if (auditContext?.userId) {
+    void writeAudit({
+      action: "FILE_UPLOAD",
+      userId: auditContext.userId,
+      resource: storageKey,
+      detail: filename,
+    });
+  }
+  return {
+    filename,
+    storageKey,
+    mimeType: "image/png",
+    size: buffer.length,
+  };
+}
+
 export async function deleteStoredFile(storageKey: string) {
   try {
     await unlink(path.join(UPLOAD_DIR, storageKey));

@@ -39,5 +39,13 @@ export async function register() {
     } catch (e) {
       console.error("[messenger] cron 등록 실패:", e);
     }
+    try {
+      const { ensureLlmReady } = await import("@/lib/ai/llm-ensure");
+      void ensureLlmReady().then((r) =>
+        console.log("[llm-ensure]", r.ok ? r.detail : `대기: ${r.detail}`),
+      );
+    } catch (e) {
+      console.error("[llm-ensure] 기동 실패:", e);
+    }
   }
 }

@@ -47,6 +47,7 @@ export default async function EditApprovalPage({
       approverId: s.approverId,
       parallelWithPrev: i > 0 && !!prev && s.stepOrder === prev.stepOrder,
       title: s.title?.trim() || "이사",
+      role: s.role,
     };
   });
 
@@ -59,6 +60,7 @@ export default async function EditApprovalPage({
             templates={templates.map((t) => ({
               id: t.id,
               name: t.name,
+              key: t.key,
               content: t.content,
             }))}
             documentCategories={documentCategories.map((c) => ({
@@ -66,12 +68,19 @@ export default async function EditApprovalPage({
               name: c.name,
             }))}
             candidates={candidates}
+            drafter={{ name: user.name ?? "기안자", role: user.role }}
             initial={{
               id: doc.id,
               title: doc.title,
               content: doc.content,
+              kind: doc.kind,
               templateId: doc.templateId,
               documentCategoryId: doc.documentCategoryId,
+              attachments: doc.attachments.map((a) => ({
+                id: a.id,
+                filename: a.filename,
+                size: a.size,
+              })),
               approvers,
             }}
           />

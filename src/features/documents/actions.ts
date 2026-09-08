@@ -25,6 +25,8 @@ export async function addDocumentCategoryAction(formData: FormData) {
   const slug = String(formData.get("slug") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const workTypeCode = String(formData.get("workTypeCode") ?? "").trim();
+  const retentionYears = Number(formData.get("retentionYears") ?? "") || null;
+  const isPublic = formData.get("isPublic") === "on" || formData.get("isPublic") === "true";
 
   if (!name || !slug) return { error: "이름과 슬러그를 입력하세요." };
 
@@ -35,6 +37,8 @@ export async function addDocumentCategoryAction(formData: FormData) {
       description,
       workTypeCode: workTypeCode || name,
       ownerId: null,
+      retentionYears,
+      isPublic,
     });
     revalidateDocs();
     return { ok: true };
@@ -50,10 +54,20 @@ export async function updateDocumentCategoryAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
   const workTypeCode = String(formData.get("workTypeCode") ?? "").trim() || null;
+  const retentionRaw = String(formData.get("retentionYears") ?? "").trim();
+  const retentionYears = retentionRaw ? Number(retentionRaw) || null : null;
+  const isPublic =
+    formData.get("isPublic") === "on" || formData.get("isPublic") === "true";
 
   if (!id || !name) return { error: "이름과 ID가 필요합니다." };
 
-  await updateDocumentCategory(id, { name, description, workTypeCode });
+  await updateDocumentCategory(id, {
+    name,
+    description,
+    workTypeCode,
+    retentionYears,
+    isPublic,
+  });
   revalidateDocs();
   return { ok: true };
 }
@@ -92,6 +106,8 @@ export async function addMyDocumentFolderAction(formData: FormData) {
   const user = await requireUser();
   const name = String(formData.get("name") ?? "").trim();
   const workTypeCode = String(formData.get("workTypeCode") ?? "").trim();
+  const retentionYears = Number(formData.get("retentionYears") ?? "") || null;
+  const isPublic = formData.get("isPublic") === "on";
   if (!name) return { error: "문서함 이름을 입력하세요." };
   try {
     await createDocumentCategory({
@@ -100,6 +116,8 @@ export async function addMyDocumentFolderAction(formData: FormData) {
       workTypeCode: workTypeCode || name,
       ownerId: user.id,
       description: "개인 문서함",
+      retentionYears,
+      isPublic,
     });
     revalidateDocs();
     return { ok: true };
@@ -113,12 +131,20 @@ export async function updateMyDocumentFolderAction(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const workTypeCode = String(formData.get("workTypeCode") ?? "").trim() || null;
+  const retentionRaw = String(formData.get("retentionYears") ?? "").trim();
+  const retentionYears = retentionRaw ? Number(retentionRaw) || null : null;
+  const isPublic = formData.get("isPublic") === "on";
   if (!id || !name) return { error: "입력값을 확인하세요." };
   const cat = await prisma.documentCategory.findUnique({ where: { id } });
   if (!cat || cat.ownerId !== user.id) {
     if (user.role !== "ADMIN") return { error: "본인 문서함만 수정할 수 있습니다." };
   }
-  await updateDocumentCategory(id, { name, workTypeCode });
+  await updateDocumentCategory(id, {
+    name,
+    workTypeCode,
+    retentionYears,
+    isPublic,
+  });
   revalidateDocs();
   return { ok: true };
 }

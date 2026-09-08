@@ -6,6 +6,7 @@ import { hybridSearch, keywordOnlySearch } from "./hybrid-search";
 import { type SearchResult } from "./vector-store";
 import { RETRIEVE_TOP_K } from "./config";
 import { getLlmRuntimeConfig } from "./llm-runtime";
+import { ensureLlmReady } from "./llm-ensure";
 import {
   AI_AGENT_NAME,
   buildChatSystemPrompt,
@@ -156,7 +157,7 @@ function buildExtractiveAnswer(results: SearchResult[]): string {
     return `[${i + 1}] ${r.title ?? "내부 자료"}\n${snippet}…`;
   });
   return [
-    `${AI_AGENT_NAME}예요. 생성형 모델이 일시적으로 사용 불가하여, 관련 내부 자료를 발췌해 드릴게요.`,
+    `${AI_AGENT_NAME}예요. 지금은 생성 모델에 연결하지 못해, 찾아 둔 내부 자료만 먼저 보여 드릴게요. 사무실 PC에서 Ollama가 켜져 있으면 바로 이어서 대화할 수 있어요.`,
     "",
     ...lines,
   ].join("\n");
@@ -215,6 +216,14 @@ async function generateWithLlm(
   const apiKey = cfg.apiKey || "ollama";
   const base = cfg.baseUrl.replace(/\/$/, "");
   const system = `${await buildChatSystemPrompt(jobTitles)}\n${intentHint(intent)}`;
+  const useContext =
+    intent !== "casual" &&
+    intent !== "greeting" &&
+    context &&
+    context !== "(관련 내부 자료 없음)";
+  const userContent = useContext
+    ? `아래는 사내 참고 자료입니다. 필요할 때만 [번호]로 짧게 인용하고, 동료와 말하듯 자연스럽게 답하세요.\n\n${context}\n\n질문: ${question}`
+    : question;
 
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
@@ -224,13 +233,13 @@ async function generateWithLlm(
     },
     body: JSON.stringify({
       model: cfg.chatModel,
-      temperature: intent === "casual" || intent === "greeting" ? 0.55 : 0.35,
+      temperature: intent === "casual" || intent === "greeting" ? 0.7 : 0.5,
       messages: [
         { role: "system", content: system },
-        ...history.slice(-6),
+        ...history.slice(-12),
         {
           role: "user",
-          content: `참고 자료:\n${context}\n\n질문: ${question}`,
+          content: userContent,
         },
       ],
     }),
@@ -273,7 +282,8 @@ export async function answerQuestion(
   const canGenerate = Boolean(cfg.apiKey) || cfg.provider === "ollama";
 
   const tryLlm = async (context: string, sources: ChatSource[] = []) => {
-    if (!canGenerate) return null;
+    const ready = await ensureLlmReady();
+    if (!canGenerate && !ready.ok) return null;
     try {
       const answer = await generateWithLlm(
         question,
@@ -285,7 +295,20 @@ export async function answerQuestion(
       return { answer, sources, mode: "generative" as const, intent };
     } catch (e) {
       console.error("[ai/chat] LLM failed:", e);
-      return null;
+      try {
+        await ensureLlmReady(true);
+        const answer = await generateWithLlm(
+          question,
+          context,
+          history,
+          intent,
+          jobTitles,
+        );
+        return { answer, sources, mode: "generative" as const, intent };
+      } catch (e2) {
+        console.error("[ai/chat] LLM retry failed:", e2);
+        return null;
+      }
     }
   };
 

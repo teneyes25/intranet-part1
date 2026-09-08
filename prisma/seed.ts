@@ -212,6 +212,34 @@ async function main() {
       content:
         "<h2>1. 출장자</h2><p></p><h2>2. 출장 기간</h2><p>____년 __월 __일 ~ ____년 __월 __일</p><h2>3. 출장지</h2><p></p><h2>4. 출장 목적</h2><p></p><h2>5. 예상 경비</h2><ul><li>교통비: </li><li>숙박비: </li><li>기타: </li></ul>",
     },
+    {
+      key: "budget",
+      name: "예산집행품의서",
+      description: "예산 과목·금액·집행 사유 품의",
+      content:
+        "<h2>1. 품의 개요</h2><p></p><h2>2. 예산 과목</h2><p>과목 / 세부항목 / 당초 예산 / 기집행 / 잔액</p><h2>3. 집행 내역</h2><ul><li>금액: </li><li>거래처: </li><li>집행 예정일: </li></ul><h2>4. 필요성 및 기대효과</h2><p></p><h2>5. 첨부</h2><p>견적서, 계약서, 산출내역</p>",
+    },
+    {
+      key: "external-official",
+      name: "외부공문",
+      description: "대외 발송 공문 (시행 시 디지털 사용인감)",
+      content:
+        "<p>수신: </p><p>참조: </p><p>제목: </p><p></p><p>1. 관련</p><p></p><p>2. 본문</p><p></p><p>3. 끝.</p>",
+    },
+    {
+      key: "internal-official",
+      name: "내부공문",
+      description: "사내 공문 (시행 시 발송자 서명)",
+      content:
+        "<p>수신: (내부)</p><p>제목: </p><p></p><p>1. 목적</p><p></p><p>2. 지시·협조 사항</p><p></p><p>3. 끝.</p>",
+    },
+    {
+      key: "intake",
+      name: "문서접수",
+      description: "스캔 문서 접수 · 번호 FM-YYMMDD-000",
+      content:
+        "<h2>1. 접수 개요</h2><p>발신 기관 / 원 문서 제목 / 접수 경위</p><h2>2. 처리 요청</h2><p></p><h2>3. 첨부</h2><p>스캔 원본 파일을 첨부하세요.</p>",
+    },
   ];
 
   for (const t of templates) {

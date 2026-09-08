@@ -17,6 +17,8 @@ type Folder = {
   name: string;
   workTypeCode: string | null;
   ownerId: string | null;
+  retentionYears?: number | null;
+  isPublic?: boolean;
   _count?: { documents: number; approvals: number };
 };
 
@@ -57,6 +59,17 @@ export function DocumentFolderManager({
           placeholder="업무종류(문서번호용, 예: 인사)"
           className="max-w-xs"
         />
+        <Input
+          name="retentionYears"
+          type="number"
+          min={1}
+          placeholder="보존기간(년)"
+          className="w-28"
+        />
+        <label className="flex items-center gap-1 text-xs">
+          <input type="checkbox" name="isPublic" />
+          공개
+        </label>
         <Button type="submit" disabled={pending}>
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           추가
@@ -71,6 +84,8 @@ export function DocumentFolderManager({
               {f.name}
               <span className="ml-2 text-xs text-muted-foreground">
                 업무종류 {f.workTypeCode || f.name} · 문서 {f._count?.documents ?? 0}
+                {f.retentionYears ? ` · ${f.retentionYears}년 보존` : ""}
+                {f.isPublic === false ? " · 비공개" : " · 공개"}
               </span>
             </li>
           ))}
@@ -105,6 +120,18 @@ export function DocumentFolderManager({
                   className="h-8 w-28"
                   placeholder="업무종류"
                 />
+                <Input
+                  name="retentionYears"
+                  type="number"
+                  min={1}
+                  defaultValue={f.retentionYears ?? ""}
+                  className="h-8 w-24"
+                  placeholder="보존(년)"
+                />
+                <label className="flex items-center gap-1 text-xs">
+                  <input type="checkbox" name="isPublic" defaultChecked={f.isPublic !== false} />
+                  공개
+                </label>
                 <Button type="submit" size="sm" variant="outline" disabled={pending}>
                   저장
                 </Button>

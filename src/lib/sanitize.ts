@@ -32,8 +32,25 @@ export function sanitizeRichText(dirty: string): string {
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
-      span: ["class"],
+      span: ["class", "style"],
+      p: ["style"],
+      h1: ["style"],
+      h2: ["style"],
+      h3: ["style"],
       code: ["class"],
+    },
+    allowedStyles: {
+      "*": {
+        color: [/^#(0x)?[0-9a-f]+$/i, /^rgb\(/i, /^[a-z]+$/i],
+        "font-size": [/^\d+(?:\.\d+)?(?:px|pt|em|rem)$/],
+        "font-family": [/^[\w\s,"'-]+$/],
+        "letter-spacing": [/^-?\d+(?:\.\d+)?(?:px|em|pt)$/],
+        "font-stretch": [/^\d+(?:\.\d+)?%$/, /^(ultra-condensed|extra-condensed|condensed|semi-condensed|normal|semi-expanded|expanded|extra-expanded|ultra-expanded)$/],
+        "line-height": [/^\d+(?:\.\d+)?$/, /^\d+(?:\.\d+)?(?:px|em|%)$/],
+        "margin-bottom": [/^\d+(?:\.\d+)?(?:px|pt|em|rem)$/],
+        "text-align": [/^(left|right|center|justify)$/],
+        "font-weight": [/^\d{3}$/, /^(normal|bold)$/],
+      },
     },
     allowedSchemes: ["http", "https", "mailto"],
     transformTags: {

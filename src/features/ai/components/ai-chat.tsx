@@ -93,6 +93,10 @@ export function AiChat({
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    void fetch("/api/ai/status", { method: "POST" }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",

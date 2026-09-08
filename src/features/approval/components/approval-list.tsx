@@ -7,6 +7,7 @@ import {
   APPROVAL_STATUS_VARIANT,
   type ApprovalStatusKey,
 } from "../constants";
+import { APPROVAL_KIND_LABEL, type ApprovalKind } from "../kinds";
 
 interface ApprovalListItem {
   id: string;
@@ -14,6 +15,8 @@ interface ApprovalListItem {
   status: string;
   drafter: { name: string };
   template?: { name: string } | null;
+  kind?: string;
+  documentNumber?: string | null;
   createdAt: Date;
   submittedAt: Date | null;
   completedAt: Date | null;
@@ -49,9 +52,14 @@ export function ApprovalList({
               {APPROVAL_STATUS_LABEL[d.status as ApprovalStatusKey]}
             </Badge>
             {d.isMyTurn && <Badge variant="destructive">결재 차례</Badge>}
-            {d.template?.name && (
+            {d.kind && (
               <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-                {d.template.name}
+                {APPROVAL_KIND_LABEL[d.kind as ApprovalKind] ?? d.kind}
+              </span>
+            )}
+            {d.documentNumber && (
+              <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
+                {d.documentNumber}
               </span>
             )}
             <span className="flex-1 truncate font-medium">{d.title}</span>

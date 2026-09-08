@@ -23,7 +23,12 @@ export async function getApproverCandidates(excludeUserId: string) {
 
 const documentInclude = {
   drafter: { select: { id: true, name: true, email: true, role: true } },
-  template: { select: { name: true } },
+  template: { select: { name: true, key: true } },
+  documentCategory: {
+    select: { id: true, name: true, retentionYears: true, isPublic: true },
+  },
+  attachments: { orderBy: { createdAt: "asc" as const } },
+  executedBy: { select: { id: true, name: true } },
   steps: {
     include: {
       approver: { select: { id: true, name: true, role: true } },

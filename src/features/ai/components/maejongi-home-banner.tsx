@@ -49,9 +49,14 @@ export function MaejongiHomeBanner({
   }, []);
 
   useEffect(() => {
+    void fetch("/api/ai/status", { method: "POST" }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (open && !greeted.current) {
       greeted.current = true;
       setMessages([{ role: "assistant", content: GREETING_MESSAGE }]);
+      void fetch("/api/ai/status", { method: "POST" }).catch(() => {});
     }
   }, [open]);
 
@@ -111,7 +116,7 @@ export function MaejongiHomeBanner({
           body: JSON.stringify({
             question: q,
             conversationId,
-            history: messages.slice(-6),
+            history: messages.slice(-12),
           }),
         });
         const data = await res.json().catch(() => ({}));

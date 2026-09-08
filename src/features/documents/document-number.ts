@@ -53,3 +53,31 @@ export async function allocateDocumentNumber(workTypeRaw: string, now = new Date
   const num = String(seq.lastSeq).padStart(3, "0");
   return `${year}-${workType}-${monthDay}${num}`;
 }
+
+/** 문서접수 번호: FM-YYMMDD-000 */
+export function formatIntakeDocumentNumber(now: Date, seq: number) {
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `FM-${yy}${mm}${dd}-${String(seq).padStart(3, "0")}`;
+}
+
+export async function allocateIntakeDocumentNumber(now = new Date()) {
+  const { year, monthDay } = kstParts(now);
+  const workType = "FM";
+  const seq = await prisma.$transaction(async (tx) => {
+    const existing = await tx.documentNumberSeq.findUnique({
+      where: { year_workType_monthDay: { year, workType, monthDay } },
+    });
+    if (existing) {
+      return tx.documentNumberSeq.update({
+        where: { id: existing.id },
+        data: { lastSeq: existing.lastSeq + 1 },
+      });
+    }
+    return tx.documentNumberSeq.create({
+      data: { year, workType, monthDay, lastSeq: 1 },
+    });
+  });
+  return formatIntakeDocumentNumber(now, seq.lastSeq);
+}

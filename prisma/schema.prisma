@@ -47,6 +47,7 @@ model User {
   comments     Comment[]
   approvalDrafts ApprovalDocument[] @relation("ApprovalDrafter")
   approvalSteps  ApprovalStep[]     @relation("ApprovalApprover")
+  approvalsExecuted ApprovalDocument[] @relation("ApprovalExecutor")
   downloadLogs   DownloadLog[]
   fileVersions   AttachmentVersion[] @relation("VersionUploader")
   notifications  Notification[]
@@ -326,6 +327,10 @@ model DocumentCategory {
   /// null = 공용(관리자), 값 있음 = 사용자 개인 문서함
   ownerId     String?
   owner       User?              @relation("DocumentCategoryOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /// 보존기간(년). null = 미지정
+  retentionYears Int?
+  /// 문서함 공개 여부
+  isPublic       Boolean @default(true)
   documents   SharedDocument[]
   approvals   ApprovalDocument[]
   createdAt   DateTime           @default(now())
@@ -430,6 +435,25 @@ enum ApprovalStepStatus {
   REJECTED // 반려
 }
 
+/// 기안 종류
+enum ApprovalKind {
+  GENERAL
+  BUDGET
+  LEAVE
+  EXTERNAL_OFFICIAL
+  INTERNAL_OFFICIAL
+  INTAKE
+}
+
+/// 결재선 역할
+enum ApprovalStepRole {
+  HANDLER
+  REVIEWER
+  APPROVER
+  COOPERATE
+  PROXY
+}
+
 /// 기안서 템플릿
 model ApprovalTemplate {
   id          String   @id @default(cuid())
@@ -464,6 +488,13 @@ model ApprovalDocument {
   archivedDocument   SharedDocument?
   linkedOrder        Order?
   leaveRequest       LeaveRequest?
+  kind               ApprovalKind       @default(GENERAL)
+  executedAt         DateTime?
+  executedById       String?
+  executedBy         User?              @relation("ApprovalExecutor", fields: [executedById], references: [id], onDelete: SetNull)
+  sealStorageKey     String?
+  signatureStorageKey String?
+  attachments        ApprovalAttachment[]
   /// 현재 진행 중인 결재 단계 순서(같은 순서=병렬)
   currentOrder       Int                @default(1)
   isDemo             Boolean            @default(false)
@@ -478,6 +509,7 @@ model ApprovalDocument {
   @@index([drafterId])
   @@index([status])
   @@index([documentCategoryId])
+  @@index([executedById])
   @@map("approval_documents")
 }
 
@@ -503,6 +535,7 @@ model ApprovalStep {
   stepOrder  Int
   /// 결재란 직책 표기 (예: 이사, 대표이사)
   title      String?
+  role       ApprovalStepRole   @default(APPROVER)
   status     ApprovalStepStatus @default(PENDING)
   comment    String?
   actedAt    DateTime?
@@ -511,6 +544,20 @@ model ApprovalStep {
   @@index([documentId])
   @@index([approverId, status])
   @@map("approval_steps")
+}
+
+model ApprovalAttachment {
+  id         String           @id @default(cuid())
+  documentId String
+  document   ApprovalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  filename   String
+  storageKey String
+  mimeType   String
+  size       Int
+  createdAt  DateTime         @default(now())
+
+  @@index([documentId])
+  @@map("approval_attachments")
 }
 
 /// 대리점 조직. 회원가입 시 대리점 코드로 사용자와 연결된다.

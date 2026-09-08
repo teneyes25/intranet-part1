@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ROLE_LABELS, type Role } from "@/lib/auth/roles";
 import { formatDateTime } from "@/features/board/utils";
 import { STEP_STATUS_LABEL, type StepStatusKey } from "../constants";
+import { APPROVAL_STEP_ROLE_LABEL, type ApprovalStepRole } from "../kinds";
 
 interface Step {
   id: string;
@@ -12,6 +13,7 @@ interface Step {
   comment: string | null;
   actedAt: Date | null;
   title?: string | null;
+  role?: string | null;
   approver: { name: string; role: Role };
 }
 
@@ -82,7 +84,10 @@ export function ApprovalLine({
                       <div className="flex flex-wrap items-center gap-x-2">
                         <span className="font-medium">{s.approver.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {s.title?.trim() || ROLE_LABELS[s.approver.role]}
+                          {s.title?.trim() ||
+                            (s.role
+                              ? APPROVAL_STEP_ROLE_LABEL[s.role as ApprovalStepRole]
+                              : ROLE_LABELS[s.approver.role])}
                         </span>
                         <span
                           className={cn(
