@@ -13,12 +13,16 @@ export const DEFAULT_NEWS_CATEGORIES = [
 ] as const;
 
 export async function ensureNewsCategories() {
-  const count = await prisma.newsCategory.count();
-  if (count > 0) {
-    return prisma.newsCategory.findMany({
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    });
-  }
+  const existing = await prisma.newsCategory.findMany({
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+  if (existing.length > 0) return existing;
+
+  const alreadyInitialized = await prisma.integrationSetting.findUnique({
+    where: { provider: "news_defaults_seeded" },
+  });
+  if (alreadyInitialized) return [];
+
   await prisma.newsCategory.createMany({
     data: DEFAULT_NEWS_CATEGORIES.map((name, i) => ({
       name,

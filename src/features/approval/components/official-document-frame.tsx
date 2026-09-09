@@ -13,6 +13,7 @@ import {
   type ApprovalStatusKey,
   type StepStatusKey,
 } from "../constants";
+import { COMPANY_LETTERHEAD } from "../company";
 
 export interface OfficialStep {
   id: string;
@@ -192,6 +193,7 @@ export function OfficialDocumentFrame({
         </table>
       </div>
 
+      {kindKey === "EXTERNAL_OFFICIAL" || kindKey === "INTERNAL_OFFICIAL" ? null : (
       <table className="mb-3 w-full border-collapse text-sm">
         <tbody>
           <tr>
@@ -202,6 +204,7 @@ export function OfficialDocumentFrame({
           </tr>
         </tbody>
       </table>
+      )}
 
       {children ? (
         <div className="min-h-[220px] border border-neutral-300 p-4">{children}</div>
@@ -233,6 +236,61 @@ export function OfficialDocumentFrame({
           ) : null}
         </div>
       </div>
+
+      {(kindKey === "EXTERNAL_OFFICIAL" || kindKey === "INTERNAL_OFFICIAL") && (
+        <table className="mt-8 w-full border-collapse text-[11px] text-neutral-700">
+          <tbody>
+            <tr>
+              <th className="w-20 border border-neutral-300 bg-neutral-50 px-2 py-1 text-left">
+                문서번호
+              </th>
+              <td className="border border-neutral-300 px-2 py-1 font-mono">
+                {documentNumber || "-"}
+              </td>
+              <th className="w-16 border border-neutral-300 bg-neutral-50 px-2 py-1 text-left">
+                담당자
+              </th>
+              <td className="border border-neutral-300 px-2 py-1">{drafterName}</td>
+            </tr>
+            <tr>
+              <th className="border border-neutral-300 bg-neutral-50 px-2 py-1 text-left">
+                전 화
+              </th>
+              <td className="border border-neutral-300 px-2 py-1">
+                {COMPANY_LETTERHEAD.phone}
+              </td>
+              <th className="border border-neutral-300 bg-neutral-50 px-2 py-1 text-left">
+                팩스
+              </th>
+              <td className="border border-neutral-300 px-2 py-1">
+                {COMPANY_LETTERHEAD.fax}
+              </td>
+            </tr>
+            <tr>
+              <th className="border border-neutral-300 bg-neutral-50 px-2 py-1 text-left">
+                이메일
+              </th>
+              <td className="border border-neutral-300 px-2 py-1">
+                {COMPANY_LETTERHEAD.email}
+              </td>
+              <th className="border border-neutral-300 bg-neutral-50 px-2 py-1 text-left">
+                사업자
+              </th>
+              <td className="border border-neutral-300 px-2 py-1">
+                {COMPANY_LETTERHEAD.bizNo}
+              </td>
+            </tr>
+            <tr>
+              <th className="border border-neutral-300 bg-neutral-50 px-2 py-1 text-left">
+                주 소
+              </th>
+              <td className="border border-neutral-300 px-2 py-1" colSpan={3}>
+                {COMPANY_LETTERHEAD.address}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

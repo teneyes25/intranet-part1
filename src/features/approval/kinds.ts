@@ -68,7 +68,7 @@ export const APPROVAL_KIND_LABEL: Record<ApprovalKind, string> = Object.fromEntr
 
 export const APPROVAL_KIND_TITLE: Record<ApprovalKind, string> = {
   GENERAL: "기 안 문",
-  BUDGET: "예산집행품의서",
+  BUDGET: "예산집행 품의서",
   LEAVE: "연차사용신청서",
   EXTERNAL_OFFICIAL: "공    문",
   INTERNAL_OFFICIAL: "내 부 공 문",

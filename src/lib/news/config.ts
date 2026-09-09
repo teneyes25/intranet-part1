@@ -3,7 +3,7 @@ import "server-only";
 /** 게시판에 올릴 글 카테고리 (자동 수집 전용) */
 export const AUTO_COLLECT_POST_CATEGORY = "자동수집";
 
-/** 일일 수집 기준 타임존 (관리자 로그인 1회/일) */
+/** 일일 수집 기준 타임존 (월~금 09:00) */
 export const NEWS_TIMEZONE = process.env.NEWS_TIMEZONE ?? "Asia/Seoul";
 
 /** DB에 키워드가 없을 때 시드하는 기본 업종 키워드 */

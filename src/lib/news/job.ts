@@ -49,7 +49,7 @@ async function notifyNewsAdmins(
 }
 
 export async function runNewsCollectionJob(
-  source: "admin-login" | "manual" | "api" = "admin-login",
+  source: "admin-login" | "manual" | "api" | "cron" = "admin-login",
 ): Promise<CollectResult[]> {
   try {
     const results = await collectAndPublish();

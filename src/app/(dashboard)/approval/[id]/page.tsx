@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, Trash2, Printer, ArrowLeft, FileText, Paperclip } from "lucide-react";
+import { Trash2, Printer, ArrowLeft, FileText, Paperclip } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
