@@ -14,7 +14,7 @@ export type ApprovalStepRole =
   | "PROXY";
 
 export const APPROVAL_MAX_FILES = 10;
-export const APPROVAL_MAX_FILE_SIZE = 10 * 1024 * 1024;
+export const APPROVAL_MAX_FILE_SIZE = 100 * 1024 * 1024;
 /** 순차 결재(담당·검토·승인·전결) 최대 단계 */
 export const APPROVAL_MAX_SEQUENTIAL_STEPS = 4;
 

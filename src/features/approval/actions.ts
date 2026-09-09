@@ -76,7 +76,9 @@ async function collectUploadedFiles(formData: FormData) {
   }
   for (const f of files) {
     if (f.size > APPROVAL_MAX_FILE_SIZE) {
-      throw new Error(`"${f.name}" 파일이 10MB를 초과합니다.`);
+      throw new Error(
+        `"${f.name}" 파일이 ${APPROVAL_MAX_FILE_SIZE / 1024 / 1024}MB를 초과합니다.`,
+      );
     }
   }
   return files;

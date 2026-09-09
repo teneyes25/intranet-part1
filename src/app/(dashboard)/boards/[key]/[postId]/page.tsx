@@ -34,7 +34,11 @@ import { getPostDetailPageLayoutForView } from "@/features/page-layout/service";
 import { CommentForm } from "@/features/board/components/comment-form";
 import { ConfirmDeleteForm } from "@/features/board/components/confirm-delete-form";
 import { NoticeSmsPanel } from "@/features/board/components/notice-sms-panel";
-import { formatDateTime, formatFileSize } from "@/features/board/utils";
+import { formatDate, formatDateTime, formatFileSize } from "@/features/board/utils";
+import {
+  attachmentExpiresAt,
+  isAttachmentExpired,
+} from "@/features/board/constants";
 import {
   AttachmentMeta,
   AttachmentVersionList,
@@ -131,29 +135,49 @@ export default async function PostDetailPage({
                 첨부파일 ({post.attachments.length})
               </p>
               <ul className="space-y-1">
-                {post.attachments.map((a) => (
-                  <li key={a.id}>
-                    <a
-                      href={`/api/files/${a.id}`}
-                      className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted/50"
-                    >
-                      <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 flex-1 truncate">{a.filename}</span>
-                      {key === "products" && (
-                        <AttachmentMeta
-                          attachmentId={a.id}
-                          currentVersion={a.currentVersion}
-                        />
+                {post.attachments.map((a) => {
+                  const expired = isAttachmentExpired(a.createdAt);
+                  const until = formatDate(attachmentExpiresAt(a.createdAt));
+                  return (
+                    <li key={a.id}>
+                      {expired ? (
+                        <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                          <Download className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">
+                            {a.filename}
+                          </span>
+                          <span className="shrink-0 text-xs">
+                            다운로드 기간 만료 (1년)
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <a
+                            href={`/api/files/${a.id}`}
+                            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                          >
+                            <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 flex-1 truncate">
+                              {a.filename}
+                            </span>
+                            {key === "products" && (
+                              <AttachmentMeta
+                                attachmentId={a.id}
+                                currentVersion={a.currentVersion}
+                              />
+                            )}
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                              {formatFileSize(a.size)} · ~{until}
+                            </span>
+                          </a>
+                          {key === "products" && (
+                            <AttachmentVersionList attachmentId={a.id} />
+                          )}
+                        </>
                       )}
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {formatFileSize(a.size)}
-                      </span>
-                    </a>
-                    {key === "products" && (
-                      <AttachmentVersionList attachmentId={a.id} />
-                    )}
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

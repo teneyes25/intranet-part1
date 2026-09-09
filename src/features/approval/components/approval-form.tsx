@@ -25,6 +25,7 @@ import { OfficialDocumentFrame } from "./official-document-frame";
 import {
   APPROVAL_KIND_OPTIONS,
   APPROVAL_MAX_FILES,
+  APPROVAL_MAX_FILE_SIZE,
   APPROVAL_MAX_SEQUENTIAL_STEPS,
   APPROVAL_STEP_ROLE_OPTIONS,
   defaultTitleForRole,
@@ -454,7 +455,7 @@ export function ApprovalForm({
       <div>
         <Label className="flex items-center gap-1">
           <Paperclip className="h-3.5 w-3.5" />
-          첨부파일 (최대 {APPROVAL_MAX_FILES}개 · 파일당 10MB)
+          첨부파일 (최대 {APPROVAL_MAX_FILES}개 · 파일당 100MB · PDF/사진 · 1년 보관)
           {kind === "INTAKE" ? " · 스캔 파일 필수" : ""}
         </Label>
         {keptAttachments.length > 0 && (
@@ -479,11 +480,25 @@ export function ApprovalForm({
           type="file"
           name="files"
           multiple
+          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.heic,.heif,.tif,.tiff,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.txt,.csv,.zip"
           className="mt-2 block w-full text-sm"
           onChange={(e) => {
-            const list = Array.from(e.target.files ?? []);
+            const input = e.currentTarget;
+            const list = Array.from(input.files ?? []);
+            const tooBig = list.filter((f) => f.size > APPROVAL_MAX_FILE_SIZE);
+            if (tooBig.length) {
+              window.alert(
+                `파일당 최대 ${APPROVAL_MAX_FILE_SIZE / 1024 / 1024}MB입니다.`,
+              );
+            }
             const room = APPROVAL_MAX_FILES - keptAttachments.length;
-            setNewFiles(list.slice(0, Math.max(0, room)));
+            const ok = list
+              .filter((f) => f.size <= APPROVAL_MAX_FILE_SIZE)
+              .slice(0, Math.max(0, room));
+            const dt = new DataTransfer();
+            ok.forEach((f) => dt.items.add(f));
+            input.files = dt.files;
+            setNewFiles(ok);
           }}
         />
         {newFiles.length > 0 && (

@@ -8,7 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { formatDateTime } from "@/features/board/utils";
+import { formatDate, formatDateTime } from "@/features/board/utils";
+import {
+  attachmentExpiresAt,
+  isAttachmentExpired,
+} from "@/features/board/constants";
 import { RichTextContent } from "@/features/board/components/rich-text-content";
 import { ConfirmDeleteForm } from "@/features/board/components/confirm-delete-form";
 import { ApprovalLine } from "@/features/approval/components/approval-line";
@@ -166,19 +170,31 @@ export default async function ApprovalDetailPage({
               </CardHeader>
               <CardContent>
                 <ul className="space-y-1 text-sm">
-                  {doc.attachments.map((a) => (
-                    <li key={a.id}>
-                      <a
-                        className="text-primary underline"
-                        href={`/api/approval-files/${a.id}`}
-                      >
-                        {a.filename}
-                      </a>
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {(a.size / 1024).toFixed(0)} KB
-                      </span>
-                    </li>
-                  ))}
+                  {doc.attachments.map((a) => {
+                    const expired = isAttachmentExpired(a.createdAt);
+                    const until = formatDate(attachmentExpiresAt(a.createdAt));
+                    return (
+                      <li key={a.id}>
+                        {expired ? (
+                          <span className="text-muted-foreground">
+                            {a.filename} — 다운로드 기간 만료 (1년)
+                          </span>
+                        ) : (
+                          <>
+                            <a
+                              className="text-primary underline"
+                              href={`/api/approval-files/${a.id}`}
+                            >
+                              {a.filename}
+                            </a>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {(a.size / 1024).toFixed(0)} KB · ~{until}
+                            </span>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </CardContent>
             </Card>

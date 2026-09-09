@@ -21,7 +21,7 @@ import {
   updatePostAction,
   type ActionState,
 } from "@/features/board/actions";
-import { MAX_FILES } from "@/features/board/constants";
+import { MAX_FILES, MAX_FILE_SIZE } from "@/features/board/constants";
 
 interface ExistingAttachment {
   id: string;
@@ -312,10 +312,34 @@ export function PostForm({
         <Label htmlFor="files">
           첨부파일 추가{" "}
           <span className="text-xs font-normal text-muted-foreground">
-            (최대 {MAX_FILES}개, 개당 10MB)
+            (최대 {MAX_FILES}개, 개당 100MB · PDF/사진 · 1년 보관)
           </span>
         </Label>
-        <Input id="files" name="files" type="file" multiple />
+        <Input
+          id="files"
+          name="files"
+          type="file"
+          multiple
+          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.heic,.heif,.tif,.tiff,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.txt,.csv,.zip"
+          onChange={(e) => {
+            const input = e.currentTarget;
+            const incoming = Array.from(input.files ?? []);
+            const tooBig = incoming.filter((f) => f.size > MAX_FILE_SIZE);
+            const ok = incoming
+              .filter((f) => f.size <= MAX_FILE_SIZE)
+              .slice(0, MAX_FILES);
+            if (tooBig.length) {
+              toast.error(
+                `파일당 100MB를 넘는 항목은 제외했습니다 (${tooBig.length}개).`,
+              );
+            } else if (incoming.length > MAX_FILES) {
+              toast.error(`첨부는 최대 ${MAX_FILES}개까지입니다.`);
+            }
+            const dt = new DataTransfer();
+            ok.forEach((f) => dt.items.add(f));
+            input.files = dt.files;
+          }}
+        />
       </div>
 
       {mode === "create" && boardKey === "notices" && (
