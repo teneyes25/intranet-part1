@@ -39,6 +39,7 @@ export default async function NewApprovalPage() {
             templates={templates.map((t) => ({
               id: t.id,
               name: t.name,
+              key: t.key,
               content: t.content,
             }))}
             documentCategories={documentCategories.map((c) => ({
@@ -46,6 +47,7 @@ export default async function NewApprovalPage() {
               name: c.name,
             }))}
             candidates={candidates}
+            drafter={{ name: user.name ?? "기안자", role: user.role }}
           />
         </CardContent>
       </Card>

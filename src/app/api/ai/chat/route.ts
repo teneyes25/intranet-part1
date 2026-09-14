@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { answerQuestion, type ChatMessage } from "@/lib/ai/chat";
+import { ensureLlmReady } from "@/lib/ai/llm-ensure";
 import {
   appendAiMessages,
   getOrCreateConversation,
@@ -23,7 +24,7 @@ const chatSchema = z.object({
         content: z.string().max(4000),
       }),
     )
-    .max(6)
+    .max(12)
     .optional()
     .default([]),
 });
@@ -35,6 +36,7 @@ export const POST = withApiGuard({ tier: "ai" }, async (req, { session, ip }) =>
   const { question, history, conversationId } = parsed.data;
 
   try {
+    await ensureLlmReady();
     const conv = await getOrCreateConversation(session!.user.id, conversationId);
     const dbHistory = await loadConversationHistory(conv.id, session!.user.id);
     const mergedHistory =
@@ -44,7 +46,13 @@ export const POST = withApiGuard({ tier: "ai" }, async (req, { session, ip }) =>
       userId: session!.user.id,
     });
     try {
-      await appendAiMessages(conv.id, question, result.answer, result.sources);
+      await appendAiMessages(
+        conv.id,
+        question,
+        result.answer,
+        result.sources,
+        result.mindmap,
+      );
     } catch (persistError) {
       console.error("[api/ai/chat] persist failed:", persistError);
     }

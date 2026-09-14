@@ -23,6 +23,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { NewsMindmapView } from "@/features/ai/components/news-mindmap-view";
+import { parseAssistantMeta } from "@/features/ai/message-meta";
+import type { NewsMindmapPayload } from "@/lib/news/mindmap-types";
 
 interface Source {
   title: string | null;
@@ -38,6 +41,7 @@ interface Message {
   sources?: Source[];
   mode?: "generative" | "extractive";
   intent?: string;
+  mindmap?: NewsMindmapPayload;
 }
 
 interface ConversationItem {
@@ -53,6 +57,8 @@ const SUGGESTIONS = [
   "오늘 정치·시사 주요 뉴스 요약해줘",
   "내 업무에 맞춰 오늘 할 일 조언해줘",
   "최신 뉴스 요약해줘",
+  "지난주 뉴스 마인드맵 그려줘",
+  "이번 달 침구 뉴스 마인드맵",
   "침구·매트리스 시장 동향 알려줘",
   "전자결재 기안문 초안 도와줘",
 ];
@@ -91,6 +97,10 @@ export function AiChat({
   const [loadingConv, setLoadingConv] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void fetch("/api/ai/status", { method: "POST" }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -141,13 +151,17 @@ export function AiChat({
             id: string;
             role: "user" | "assistant";
             content: string;
-            sources?: Source[];
-          }) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            sources: Array.isArray(m.sources) ? m.sources : undefined,
-          }),
+            sources?: unknown;
+          }) => {
+            const meta = parseAssistantMeta(m.sources);
+            return {
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              sources: meta.sources,
+              mindmap: meta.mindmap,
+            };
+          },
         ),
       );
     } catch (e) {
@@ -207,6 +221,7 @@ export function AiChat({
           sources: data.sources,
           mode: data.mode,
           intent: data.intent,
+          mindmap: data.mindmap,
         },
       ]);
       void refreshConversations();
@@ -374,7 +389,7 @@ export function AiChat({
                 </span>
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                시장조사 · 뉴스 · 기안 조언 · 사내 자료
+                시장조사 · 뉴스 마인드맵 · 기안 조언 · 사내 자료
               </p>
             </div>
           </div>
@@ -499,11 +514,20 @@ export function AiChat({
                   )}
                 >
                   {m.role === "assistant" ? (
-                    <MarkdownContent content={m.content} />
+                    <MarkdownContent
+                      content={
+                        m.mindmap
+                          ? (m.content.split("\n# ")[0]?.trim() ?? m.content)
+                          : m.content
+                      }
+                    />
                   ) : (
                     m.content
                   )}
                 </div>
+                {m.role === "assistant" && m.mindmap && (
+                  <NewsMindmapView mindmap={m.mindmap} />
+                )}
 
                 {m.role === "assistant" && m.mode && (
                   <div className="flex flex-wrap gap-1">
@@ -512,7 +536,9 @@ export function AiChat({
                     </Badge>
                     {m.intent && (
                       <Badge variant="outline" className="text-[10px]">
-                        {m.intent}
+                        {m.intent === "news_mindmap"
+                          ? "뉴스 마인드맵"
+                          : m.intent}
                       </Badge>
                     )}
                   </div>

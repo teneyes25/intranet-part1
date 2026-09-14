@@ -1,5 +1,7 @@
 import "server-only";
 
+import cron from "node-cron";
+
 import { prisma } from "@/lib/prisma";
 import { NEWS_TIMEZONE } from "./config";
 import { runNewsCollectionJob } from "./job";
@@ -8,6 +10,7 @@ const PROVIDER_KEY = "news_auto_collect";
 
 const globalForNews = globalThis as unknown as {
   newsDailyCollectInFlight?: Promise<void> | null;
+  newsWeekdayCronStarted?: boolean;
 };
 
 /** Asia/Seoul 기준 YYYY-MM-DD */
@@ -18,6 +21,24 @@ export function kstDateString(now = new Date()): string {
     month: "2-digit",
     day: "2-digit",
   }).format(now);
+}
+
+/** 월~금 (KST) */
+export function isNewsCollectWeekday(now = new Date()): boolean {
+  const dow = new Intl.DateTimeFormat("en-US", {
+    timeZone: NEWS_TIMEZONE,
+    weekday: "short",
+  }).format(now);
+  return dow !== "Sat" && dow !== "Sun";
+}
+
+export function kstHour(now = new Date()): number {
+  const hour = new Intl.DateTimeFormat("en-GB", {
+    timeZone: NEWS_TIMEZONE,
+    hour: "2-digit",
+    hour12: false,
+  }).format(now);
+  return Number(hour);
 }
 
 /**
@@ -43,13 +64,13 @@ async function claimDailyCollectSlot(today: string): Promise<boolean> {
     where: { provider: PROVIDER_KEY },
     create: {
       provider: PROVIDER_KEY,
-      displayName: "뉴스 자동 수집(관리자 로그인)",
+      displayName: "뉴스 자동 수집(평일 09:00)",
       isEnabled: true,
       metadata: { lastDate: today },
     },
     update: {
       isEnabled: true,
-      displayName: "뉴스 자동 수집(관리자 로그인)",
+      displayName: "뉴스 자동 수집(평일 09:00)",
       metadata: { lastDate: today },
     },
   });
@@ -79,12 +100,12 @@ async function releaseDailyCollectSlot(today: string): Promise<void> {
   });
 }
 
-/**
- * 시스템 관리자 로그인 시 1일 1회 뉴스 자동 수집을 트리거한다.
- * 로그인 응답을 막지 않도록 fire-and-forget 로 호출한다.
- */
-export function triggerNewsCollectOnAdminLogin(adminUserId: string): void {
+async function runScheduledCollect(source: "cron" | "admin-login", actorId?: string) {
   if (globalForNews.newsDailyCollectInFlight) return;
+  if (!isNewsCollectWeekday()) {
+    console.log(`[news-auto] 주말 — 수집 안 함 (${kstDateString()})`);
+    return;
+  }
 
   globalForNews.newsDailyCollectInFlight = (async () => {
     const today = kstDateString();
@@ -93,15 +114,15 @@ export function triggerNewsCollectOnAdminLogin(adminUserId: string): void {
       claimed = await claimDailyCollectSlot(today);
       if (!claimed) {
         console.log(
-          `[news-auto] 오늘(${today} ${NEWS_TIMEZONE}) 이미 수집됨 — 스킵 (admin=${adminUserId})`,
+          `[news-auto] 오늘(${today} ${NEWS_TIMEZONE}) 이미 수집됨 — 스킵`,
         );
         return;
       }
 
       console.log(
-        `[news-auto] 관리자 로그인 수집 시작: ${new Date().toISOString()} admin=${adminUserId}`,
+        `[news-auto] 수집 시작 source=${source} ${new Date().toISOString()} ${actorId ?? ""}`,
       );
-      const results = await runNewsCollectionJob("admin-login");
+      const results = await runNewsCollectionJob(source);
       const published = results.filter((x) => x.status === "published").length;
       console.log(
         `[news-auto] 완료: published=${published} total=${results.length}`,
@@ -119,9 +140,30 @@ export function triggerNewsCollectOnAdminLogin(adminUserId: string): void {
       globalForNews.newsDailyCollectInFlight = null;
     }
   })();
+
+  await globalForNews.newsDailyCollectInFlight;
 }
 
-/** @deprecated cron 제거됨 — 하위 호환 no-op */
+/**
+ * 평일 09:00 이후 관리자 로그인은 당일 미수집일 때만 보조 실행.
+ */
+export function triggerNewsCollectOnAdminLogin(adminUserId: string): void {
+  if (!isNewsCollectWeekday()) return;
+  if (kstHour() < 9) return;
+  void runScheduledCollect("admin-login", adminUserId);
+}
+
+/** 월~금 09:00 Asia/Seoul */
 export function startNewsCron(): void {
-  /* no-op: 관리자 로그인 시 1일 1회 수집으로 대체 */
+  if (globalForNews.newsWeekdayCronStarted) return;
+  globalForNews.newsWeekdayCronStarted = true;
+
+  cron.schedule(
+    "0 9 * * 1-5",
+    () => {
+      void runScheduledCollect("cron");
+    },
+    { timezone: NEWS_TIMEZONE },
+  );
+  console.log("[news-auto] weekday cron registered (09:00 Asia/Seoul, Mon–Fri)");
 }

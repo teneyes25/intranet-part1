@@ -11,7 +11,6 @@ import { MAX_FILE_SIZE, MAX_FILES } from "@/features/board/constants";
 import {
   validateUploadFile,
   scanFileIfEnabled,
-  isImageMime,
 } from "@/lib/security/upload-policy";
 import { writeAudit } from "@/lib/audit/service";
 
@@ -31,6 +30,15 @@ export interface SavedFile {
 
 async function ensureUploadDir() {
   await mkdir(UPLOAD_DIR, { recursive: true });
+}
+
+function shouldCompressImage(mime: string) {
+  return (
+    mime === "image/jpeg" ||
+    mime === "image/png" ||
+    mime === "image/webp" ||
+    mime === "image/gif"
+  );
 }
 
 function safeExt(filename: string) {
@@ -81,7 +89,7 @@ export async function saveUploadedFile(
   let finalMime = mime;
   let finalSize = file.size;
 
-  if (isImageMime(mime)) {
+  if (shouldCompressImage(mime)) {
     const raw = Buffer.from(await file.arrayBuffer());
     const scan = await scanFileIfEnabled(raw);
     if (!scan.ok) throw new Error(scan.error ?? "바이러스 검사 실패");
@@ -125,6 +133,35 @@ export async function saveUploadedFile(
     storageKey,
     mimeType: finalMime,
     size: finalSize,
+  };
+}
+
+export async function savePngBuffer(
+  buffer: Buffer,
+  filename: string,
+  auditContext?: { userId?: string },
+): Promise<SavedFile> {
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error(
+      `이미지가 너무 큽니다. (최대 ${MAX_FILE_SIZE / 1024 / 1024}MB)`,
+    );
+  }
+  await ensureUploadDir();
+  const storageKey = `${randomUUID()}.png`;
+  await writeFile(path.join(UPLOAD_DIR, storageKey), buffer);
+  if (auditContext?.userId) {
+    void writeAudit({
+      action: "FILE_UPLOAD",
+      userId: auditContext.userId,
+      resource: storageKey,
+      detail: filename,
+    });
+  }
+  return {
+    filename,
+    storageKey,
+    mimeType: "image/png",
+    size: buffer.length,
   };
 }
 

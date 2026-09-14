@@ -29,6 +29,8 @@ export async function createDocumentCategory(data: {
   description?: string;
   workTypeCode?: string;
   ownerId?: string | null;
+  retentionYears?: number | null;
+  isPublic?: boolean;
 }) {
   const count = await prisma.documentCategory.count({
     where: data.ownerId ? { ownerId: data.ownerId } : { ownerId: null },
@@ -45,6 +47,8 @@ export async function createDocumentCategory(data: {
       description: data.description?.trim() || null,
       workTypeCode: data.workTypeCode?.trim() || data.name.trim().slice(0, 20),
       ownerId: data.ownerId ?? null,
+      retentionYears: data.retentionYears ?? null,
+      isPublic: data.isPublic ?? !data.ownerId,
       sortOrder: count,
     },
   });
@@ -59,6 +63,8 @@ export async function updateDocumentCategory(
     description: string | null;
     sortOrder: number;
     workTypeCode: string | null;
+    retentionYears: number | null;
+    isPublic: boolean;
   }>,
 ) {
   const updated = await prisma.documentCategory.update({

@@ -31,7 +31,7 @@ async function ensureNewsBoard(keywordCategories: string[]) {
     create: {
       key: NEWS_BOARD_KEY,
       name: "뉴스",
-      description: "관리자 로그인 시 하루 1회 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
+      description: "월~금 오전 9시 자동 수집되는 업계 뉴스 (AI 요약·출처 포함)",
       categories: [...new Set(categories)],
       writeRoles: ["ADMIN"],
       allowComments: true,

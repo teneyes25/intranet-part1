@@ -12,6 +12,7 @@ export type AuditActionType =
   | "LOGIN_FAILURE"
   | "APPROVAL_SUBMIT"
   | "APPROVAL_APPROVE"
+  | "APPROVAL_EXECUTE"
   | "APPROVAL_REJECT"
   | "AI_CHAT"
   | "AI_DRAFT"

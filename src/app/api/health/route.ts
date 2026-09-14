@@ -44,6 +44,12 @@ export async function GET() {
       version: process.env.npm_package_version ?? "0.1.0",
       buildId: process.env.BUILD_ID ?? process.env.NEXT_PUBLIC_BUILD_ID ?? "dev",
       checks,
+      llm: await import("@/lib/ai/llm-ensure")
+        .then(({ peekLlmStatus }) => peekLlmStatus())
+        .catch((e) => ({
+          ok: false,
+          detail: e instanceof Error ? e.message : "llm_health_failed",
+        })),
     },
     { status },
   );

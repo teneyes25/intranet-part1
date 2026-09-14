@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 import { resolveStoredFilePath } from "@/lib/uploads";
+import { isAttachmentExpired } from "@/features/board/constants";
 
 export async function GET(
   _request: Request,
@@ -17,6 +18,11 @@ export async function GET(
   const attachment = await prisma.attachment.findUnique({ where: { id } });
   if (!attachment) {
     return new Response("Not Found", { status: 404 });
+  }
+  if (isAttachmentExpired(attachment.createdAt)) {
+    return new Response("첨부파일 보관 기간(1년)이 만료되었습니다.", {
+      status: 410,
+    });
   }
 
   // 다운로드 로그 기록 (비동기, 실패해도 다운로드는 진행)

@@ -19,7 +19,7 @@ export default async function AdminNewsKeywordsPage() {
     <div className="space-y-6">
       <PageHeader
         title="뉴스 키워드 관리"
-        description="분야·키워드를 추가·수정·삭제한 뒤 「변경 내용 저장」으로 유지합니다. 시드 재실행 시에도 활성 상태가 임의로 바뀌지 않습니다."
+        description="분야·키워드를 추가·수정·삭제한 뒤 「변경 내용 저장」으로 유지합니다. 이후 배포·시드에서 삭제한 항목이 되살아나지 않습니다."
       />
       <NewsKeywordManager keywords={keywords} categories={categories} />
     </div>

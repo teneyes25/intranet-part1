@@ -45,6 +45,7 @@ echo [office-sync] 완료. 반드시 아래 주소로 시크릿 창에서 여세
 echo   http://%INTRANET_LAN_IP%:%HTTP_PORT%/
 echo   사내 메신저: http://%INTRANET_LAN_IP%:%HTTP_PORT%/messenger
 echo   로그인: admin@intranet.local / admin1234!!
+echo   메종이 LLM: scripts\office-ollama.cmd  (Ollama 설치 후 1회)
 echo   기대 커밋: %HEADSHA%  (GitHub PR #5 최신과 같아야 함)
 exit /b 0
 

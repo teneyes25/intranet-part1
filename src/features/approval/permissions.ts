@@ -19,6 +19,18 @@ export function canDeleteDocument(
   );
 }
 
+/** 최종 결재 후 기안자가 시행(인감·서명)할 수 있는가 */
+export function canExecuteDocument(
+  doc: ApprovalDocumentDetail,
+  userId: string,
+): boolean {
+  return (
+    doc.drafterId === userId &&
+    doc.status === "COMPLETED" &&
+    !doc.executedAt
+  );
+}
+
 /** 현재 사용자가 지금 결재(승인/반려)할 수 있는 단계 */
 export function getActionableStep(
   doc: ApprovalDocumentDetail,

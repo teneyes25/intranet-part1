@@ -2,6 +2,8 @@ import "./load-env";
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
+import { TEMPLATE_HTML } from "./approval-template-html";
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -188,8 +190,7 @@ async function main() {
       key: "general",
       name: "일반 기안서",
       description: "범용 기안 문서 양식",
-      content:
-        "<h2>1. 제목</h2><p></p><h2>2. 기안 목적</h2><p></p><h2>3. 주요 내용</h2><ul><li></li></ul><h2>4. 기대 효과</h2><p></p><h2>5. 협조 사항</h2><p></p>",
+      content: TEMPLATE_HTML.general,
     },
     {
       key: "expense",
@@ -211,6 +212,31 @@ async function main() {
       description: "국내/해외 출장 신청 양식",
       content:
         "<h2>1. 출장자</h2><p></p><h2>2. 출장 기간</h2><p>____년 __월 __일 ~ ____년 __월 __일</p><h2>3. 출장지</h2><p></p><h2>4. 출장 목적</h2><p></p><h2>5. 예상 경비</h2><ul><li>교통비: </li><li>숙박비: </li><li>기타: </li></ul>",
+    },
+    {
+      key: "budget",
+      name: "예산집행품의서",
+      description: "예산 과목·금액·집행 사유 품의",
+      content: TEMPLATE_HTML.budget,
+    },
+    {
+      key: "external-official",
+      name: "외부공문",
+      description: "대외 발송 공문 (시행 시 디지털 사용인감)",
+      content: TEMPLATE_HTML.official,
+    },
+    {
+      key: "internal-official",
+      name: "내부공문",
+      description: "사내 공문 (시행 시 발송자 서명)",
+      content: TEMPLATE_HTML.officialInternal,
+    },
+    {
+      key: "intake",
+      name: "문서접수",
+      description: "스캔 문서 접수 · 번호 FM-YYMMDD-000",
+      content:
+        "<h2>1. 접수 개요</h2><p>발신 기관 / 원 문서 제목 / 접수 경위</p><h2>2. 처리 요청</h2><p></p><h2>3. 첨부</h2><p>스캔 원본 파일을 첨부하세요.</p>",
     },
   ];
 
@@ -261,44 +287,65 @@ async function main() {
   }
   console.log("✅ seeded document categories");
 
-  // 뉴스 키워드 (업종·분야)
-  const newsKeywords = [
-    { keyword: "건설", category: "건설" },
-    { keyword: "유통", category: "유통" },
-    { keyword: "소비재", category: "소비재" },
-    { keyword: "프랜차이즈", category: "프랜차이즈" },
-    { keyword: "AI 인공지능", category: "AI" },
-    { keyword: "경제", category: "경제" },
-    { keyword: "미래 기술", category: "미래" },
-  ];
-  for (const [i, kw] of newsKeywords.entries()) {
-    await prisma.newsKeyword.upsert({
-      where: { keyword: kw.keyword },
-      // 관리자 활성/비활성·순서를 덮어쓰지 않음
+  // 뉴스 키워드·카테고리: 최초 1회만. 이후 배포/시드에서 삭제분을 되살리지 않음.
+  const newsSeeded = await prisma.integrationSetting.findUnique({
+    where: { provider: "news_defaults_seeded" },
+  });
+  if (newsSeeded) {
+    console.log("✅ news keywords/categories kept (관리자 저장분 유지)");
+  } else {
+    const [kwCount, catCount] = await Promise.all([
+      prisma.newsKeyword.count(),
+      prisma.newsCategory.count(),
+    ]);
+    if (kwCount === 0) {
+      const newsKeywords = [
+        { keyword: "건설", category: "건설" },
+        { keyword: "유통", category: "유통" },
+        { keyword: "소비재", category: "소비재" },
+        { keyword: "프랜차이즈", category: "프랜차이즈" },
+        { keyword: "AI 인공지능", category: "AI" },
+        { keyword: "경제", category: "경제" },
+        { keyword: "미래 기술", category: "미래" },
+      ];
+      await prisma.newsKeyword.createMany({
+        data: newsKeywords.map((kw, i) => ({ ...kw, sortOrder: i })),
+      });
+      console.log("✅ seeded news keywords (first run)");
+    } else {
+      console.log("✅ news keywords already present — skip recreate");
+    }
+    if (catCount === 0) {
+      const defaultNewsCats = [
+        "건설",
+        "유통",
+        "소비재",
+        "프랜차이즈",
+        "AI",
+        "경제",
+        "미래",
+      ];
+      await prisma.newsCategory.createMany({
+        data: defaultNewsCats.map((name, i) => ({
+          name,
+          sortOrder: (i + 1) * 10,
+        })),
+      });
+      console.log("✅ seeded news categories (first run)");
+    } else {
+      console.log("✅ news categories already present — skip recreate");
+    }
+    await prisma.integrationSetting.upsert({
+      where: { provider: "news_defaults_seeded" },
+      create: {
+        provider: "news_defaults_seeded",
+        displayName: "뉴스 기본 키워드 시드 완료",
+        isEnabled: true,
+        metadata: { seededAt: new Date().toISOString() },
+      },
       update: {},
-      create: { ...kw, sortOrder: i },
     });
   }
-  console.log("✅ seeded news keywords");
-
-  // 뉴스 분야 카테고리 (seed는 tsx로 실행되므로 server-only 모듈 import 금지)
-  const defaultNewsCats = [
-    "건설",
-    "유통",
-    "소비재",
-    "프랜차이즈",
-    "AI",
-    "경제",
-    "미래",
-  ];
-  for (const [i, name] of defaultNewsCats.entries()) {
-    await prisma.newsCategory.upsert({
-      where: { name },
-      update: {},
-      create: { name, sortOrder: (i + 1) * 10 },
-    });
-  }
-  console.log("✅ seeded news categories");
 
   // 업무 카테고리
   const defaultJobs = [

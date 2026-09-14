@@ -29,6 +29,7 @@ type DocItem = Awaited<
             submittedAt: true;
             completedAt: true;
             registeredAt: true;
+            executedAt: true;
           };
         };
       };
@@ -52,6 +53,7 @@ export default async function DocumentsPage() {
             submittedAt: true,
             completedAt: true,
             registeredAt: true,
+            executedAt: true,
           },
         },
       },
@@ -60,15 +62,19 @@ export default async function DocumentsPage() {
     listDocumentCategories({ userId: user.id, includeOwned: true }),
   ]);
 
-  const visibleCats = categories.filter(
-    (c) => !c.ownerId || c.ownerId === user.id || user.role === "ADMIN",
-  );
+  const visibleCats = categories.filter((c) => {
+    if (user.role === "ADMIN") return true;
+    if (c.ownerId === user.id) return true;
+    return c.isPublic;
+  });
 
   const grouped = new Map<string, DocItem[]>();
   for (const cat of visibleCats) grouped.set(cat.id, []);
   grouped.set("_uncategorized", []);
 
+  const visibleIds = new Set(visibleCats.map((c) => c.id));
   for (const d of docs) {
+    if (d.documentCategoryId && !visibleIds.has(d.documentCategoryId)) continue;
     const key = d.documentCategoryId ?? "_uncategorized";
     const arr = grouped.get(key) ?? grouped.get("_uncategorized")!;
     arr.push(d);
@@ -87,6 +93,8 @@ export default async function DocumentsPage() {
           name: c.name,
           workTypeCode: c.workTypeCode,
           ownerId: c.ownerId,
+          retentionYears: c.retentionYears,
+          isPublic: c.isPublic,
           _count: c._count,
         }))}
         allFolders={visibleCats.map((c) => ({
@@ -94,6 +102,8 @@ export default async function DocumentsPage() {
           name: c.name,
           workTypeCode: c.workTypeCode,
           ownerId: c.ownerId,
+          retentionYears: c.retentionYears,
+          isPublic: c.isPublic,
         }))}
       />
 
@@ -114,6 +124,8 @@ export default async function DocumentsPage() {
                   <span className="text-xs text-muted-foreground">
                     {items.length}건
                     {cat.workTypeCode ? ` · 업무종류 ${cat.workTypeCode}` : ""}
+                    {cat.retentionYears ? ` · 보존 ${cat.retentionYears}년` : ""}
+                    {cat.isPublic ? "" : " · 비공개"}
                     {cat.ownerId ? " · 내 문서함" : " · 공용"}
                   </span>
                 </div>
@@ -190,6 +202,9 @@ function DocGrid({ docs }: { docs: DocItem[] }) {
                 <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
                   {d.draftedAt && <p>기안 {formatDate(d.draftedAt)}</p>}
                   {d.approvedAt && <p>결재 {formatDate(d.approvedAt)}</p>}
+                  {d.approvalDocument?.executedAt && (
+                    <p>시행 {formatDate(d.approvalDocument.executedAt)}</p>
+                  )}
                   {d.registeredAt && <p>등록 {formatDate(d.registeredAt)}</p>}
                   {!d.draftedAt && !d.approvedAt && !d.registeredAt && (
                     <p>{formatDate(d.updatedAt)}</p>
