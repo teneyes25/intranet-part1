@@ -2,6 +2,8 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import type { ChatMessage, ChatSource } from "@/lib/ai/chat";
+import type { NewsMindmapPayload } from "@/lib/news/mindmap-types";
+import { serializeAssistantMeta } from "@/features/ai/message-meta";
 import { purgeExpiredAiConversations } from "@/features/ai/conversation-cleanup";
 
 const HISTORY_LIMIT = 40;
@@ -30,6 +32,7 @@ export async function appendAiMessages(
   userContent: string,
   assistantContent: string,
   sources?: ChatSource[],
+  mindmap?: NewsMindmapPayload,
 ) {
   const conv = await prisma.aiConversation.findUnique({
     where: { id: conversationId },
@@ -43,7 +46,9 @@ export async function appendAiMessages(
         conversationId,
         role: "assistant",
         content: assistantContent,
-        sources: sources ? (sources as object) : undefined,
+        sources: serializeAssistantMeta(sources, mindmap) as
+          | object
+          | undefined,
       },
     ],
   });

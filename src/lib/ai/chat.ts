@@ -14,6 +14,17 @@ import {
 } from "./persona";
 import { getLearningSettings } from "@/features/ai/knowledge-service";
 import { fetchSeoulWeatherSummary } from "./weather";
+import {
+  defaultNewsPeriod,
+  extractNewsKeyword,
+  looksLikeNewsMindmap,
+  parseNewsPeriod,
+} from "@/lib/news/period";
+import { buildNewsMindmap, fetchNewsInPeriod } from "@/lib/news/mindmap";
+import type { NewsMindmapPayload } from "@/lib/news/mindmap-types";
+import type { ChatSource } from "@/lib/ai/chat-types";
+
+export type { ChatSource };
 
 export { GREETING_MESSAGE };
 
@@ -22,18 +33,12 @@ export interface ChatMessage {
   content: string;
 }
 
-export interface ChatSource {
-  title: string | null;
-  url: string | null;
-  score: number;
-  snippet: string;
-}
-
 export interface ChatResult {
   answer: string;
   sources: ChatSource[];
   mode: "generative" | "extractive";
   intent?: string;
+  mindmap?: NewsMindmapPayload;
 }
 
 type ChatIntent =
@@ -41,6 +46,7 @@ type ChatIntent =
   | "weather"
   | "casual"
   | "news_summary"
+  | "news_mindmap"
   | "market_report"
   | "draft_advice"
   | "related_cases"
@@ -48,6 +54,9 @@ type ChatIntent =
 
 function detectIntent(question: string): ChatIntent {
   const q = question.toLowerCase().trim();
+  if (looksLikeNewsMindmap(q)) {
+    return "news_mindmap";
+  }
   if (
     /^(안녕|안녕하세요|하이|헬로|hello|hi[!?.\s]*$|반가워|좋은\s*(아침|오후|저녁)|자기소개|너는\s*누구|이름이\s*뭐|소개\s*해)/i.test(
       q,
@@ -171,6 +180,8 @@ function intentHint(intent: ChatIntent): string {
       return "제공된 날씨 관측값을 바탕으로 오늘 날씨를 친절히 알려주세요. 옷차림·우산 팁을 한 줄 덧붙이세요.";
     case "casual":
       return "가벼운 일상 대화로 밝고 짧게 응대하세요.";
+    case "news_mindmap":
+      return "기간 내 사내 수집 뉴스만 주제 트리로 묶고, 없는 기사는 만들지 마세요.";
     case "news_summary":
       return "뉴스를 시간순으로 요약하고 핵심만 3~5개 bullet로 정리하세요. 정치·시사면 쟁점을 균형 있게 요약하세요.";
     case "market_report":
@@ -348,10 +359,70 @@ export async function answerQuestion(
   let results: SearchResult[] = [];
 
   try {
-    if (intent === "news_summary") {
+    if (intent === "news_mindmap") {
+      const period = parseNewsPeriod(question) ?? defaultNewsPeriod();
+      const keyword = extractNewsKeyword(question);
+      const includeMarket = /시장조사|마켓/.test(question);
+      const posts = await fetchNewsInPeriod({
+        from: period.from,
+        to: period.to,
+        keyword,
+        includeMarket,
+      });
+      const sources: ChatSource[] = posts.map((p, i) => ({
+        title: p.title,
+        url: `/boards/news/${p.id}`,
+        score: 1 - i * 0.01,
+        snippet: p.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200),
+      }));
+      if (posts.length === 0) {
+        return {
+          answer: `${AI_AGENT_NAME}예요. ${period.label}에 수집된 뉴스가 없어요. 뉴스 게시판 기간을 넓히거나, 키워드 수집이 돌아갔는지 확인해 주세요.`,
+          sources: [],
+          mode: "extractive",
+          intent,
+        };
+      }
+      try {
+        const { payload, intro } = await buildNewsMindmap({
+          question,
+          period,
+          posts,
+          keyword,
+        });
+        return {
+          answer: intro,
+          sources,
+          mode: "generative",
+          intent,
+          mindmap: payload,
+        };
+      } catch (e) {
+        console.error("[ai/chat] news mindmap failed:", e);
+        return {
+          answer: `${AI_AGENT_NAME}예요. ${period.label} 뉴스 ${posts.length}건은 찾았지만 트리 정리에 실패했어요. 목록만 먼저 보여 드릴게요.\n\n${posts
+            .map((p, i) => `${i + 1}. ${p.title}`)
+            .join("\n")}`,
+          sources,
+          mode: "extractive",
+          intent,
+        };
+      }
+    } else if (intent === "news_summary") {
       const political = /정치|시사|국회|대통령/.test(question);
-      const news = await fetchLatestNews(6, political);
-      results = postsToResults(news, political ? "시사뉴스" : "뉴스");
+      const period = parseNewsPeriod(question);
+      const keyword = extractNewsKeyword(question);
+      if (period) {
+        const posts = await fetchNewsInPeriod({
+          from: period.from,
+          to: period.to,
+          keyword: keyword || (political ? "정치" : undefined),
+        });
+        results = postsToResults(posts, period.label);
+      } else {
+        const news = await fetchLatestNews(6, political);
+        results = postsToResults(news, political ? "시사뉴스" : "뉴스");
+      }
       if (results.length === 0) {
         results = await retrieveContext(question, RETRIEVE_TOP_K);
       }

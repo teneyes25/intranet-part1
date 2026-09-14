@@ -46,7 +46,13 @@ export const POST = withApiGuard({ tier: "ai" }, async (req, { session, ip }) =>
       userId: session!.user.id,
     });
     try {
-      await appendAiMessages(conv.id, question, result.answer, result.sources);
+      await appendAiMessages(
+        conv.id,
+        question,
+        result.answer,
+        result.sources,
+        result.mindmap,
+      );
     } catch (persistError) {
       console.error("[api/ai/chat] persist failed:", persistError);
     }
