@@ -106,8 +106,8 @@ export function LadderCanvas({
           x2={colX(geom, col)}
           y2={geom.endY}
           stroke="currentColor"
-          className="text-slate-custom-400 dark:text-slate-custom-500"
-          strokeWidth={3}
+          className="text-slate-custom-500 dark:text-slate-custom-400"
+          strokeWidth={3.5}
           strokeLinecap="round"
         />
       ))}
@@ -120,8 +120,8 @@ export function LadderCanvas({
           x2={seg.x2}
           y2={seg.y}
           stroke="currentColor"
-          className="text-slate-custom-400 dark:text-slate-custom-500"
-          strokeWidth={3}
+          className="text-slate-custom-500 dark:text-slate-custom-400"
+          strokeWidth={3.5}
           strokeLinecap="round"
         />
       ))}

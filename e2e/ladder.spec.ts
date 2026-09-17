@@ -11,8 +11,8 @@ test.describe("12명 사다리 게임", () => {
     await expect(page.getByRole("img", { name: "12명 사다리" })).toBeVisible();
 
     for (let i = 1; i <= 12; i++) {
-      await expect(page.getByLabel(`참가자 ${i} 이름`)).toBeVisible();
-      await expect(page.getByLabel(`결과 ${i}`)).toBeVisible();
+      await expect(page.getByLabel(`참가자 ${i} 이름`, { exact: true })).toBeVisible();
+      await expect(page.getByLabel(`결과 칸 ${i}`, { exact: true })).toBeVisible();
     }
   });
 

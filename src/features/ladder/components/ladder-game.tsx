@@ -156,7 +156,7 @@ export function LadderGame() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.12),_transparent_42%),hsl(var(--background))]">
-      <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
+      <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-brand-light">
@@ -275,7 +275,7 @@ export function LadderGame() {
                     return (
                       <div
                         key={`name-${index}`}
-                        className="absolute flex w-[72px] -translate-x-1/2 flex-col items-center gap-1"
+                        className="absolute flex w-[86px] -translate-x-1/2 flex-col items-center gap-1"
                         style={{ left: geom.padX + index * geom.colGap }}
                       >
                         <Label htmlFor={`ladder-name-${index}`} className="sr-only">
@@ -285,14 +285,15 @@ export function LadderGame() {
                           id={`ladder-name-${index}`}
                           value={name}
                           onChange={(e) => updateName(index, e.target.value)}
-                          className="h-8 px-1.5 text-center text-xs"
+                          title={name}
+                          className="h-8 px-1 text-center text-[11px]"
                           style={{ borderColor: `${color}55` }}
                         />
                         <Button
                           size="sm"
                           disabled={animating}
                           onClick={() => ride(index)}
-                          className="h-7 px-2 text-[11px]"
+                          className="h-7 w-full px-1 text-[11px]"
                           style={{ backgroundColor: color }}
                           aria-label={`${name || `참가자 ${index + 1}`} 타기`}
                         >
@@ -315,7 +316,7 @@ export function LadderGame() {
                   />
                 </div>
 
-                <div className="relative mt-3 h-[58px]">
+                <div className="relative mt-3 h-[64px]">
                   {results.map((result, index) => {
                     const landed = Object.entries(revealed).find(
                       ([, end]) => end === index,
@@ -327,18 +328,19 @@ export function LadderGame() {
                     return (
                       <div
                         key={`result-${index}`}
-                        className="absolute w-[72px] -translate-x-1/2"
+                        className="absolute w-[86px] -translate-x-1/2"
                         style={{ left: geom.padX + index * geom.colGap }}
                       >
                         <Label htmlFor={`ladder-result-${index}`} className="sr-only">
-                          결과 {index + 1}
+                          결과 칸 {index + 1}
                         </Label>
                         <Input
                           id={`ladder-result-${index}`}
                           value={hidden ? "???" : result}
                           readOnly={hidden}
+                          title={hidden ? "숨겨진 결과" : result}
                           onChange={(e) => updateResult(index, e.target.value)}
-                          className="h-9 px-1.5 text-center text-xs font-medium"
+                          className="h-10 px-1 text-center text-[11px] font-medium leading-tight"
                           style={
                             color
                               ? {
@@ -347,7 +349,7 @@ export function LadderGame() {
                                 }
                               : undefined
                           }
-                          aria-label={`결과 ${index + 1}`}
+                          aria-label={`결과 칸 ${index + 1}`}
                         />
                       </div>
                     );

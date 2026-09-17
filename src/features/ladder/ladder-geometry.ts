@@ -13,8 +13,8 @@ export interface LadderGeometry {
 }
 
 export function createGeometry(players: number, rows: number): LadderGeometry {
-  const padX = 40;
-  const colGap = 76;
+  const padX = 48;
+  const colGap = 90;
   const startY = 12;
   const rowGap = 28;
   const endY = startY + (rows + 1) * rowGap;
