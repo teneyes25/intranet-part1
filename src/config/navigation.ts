@@ -12,6 +12,7 @@ import {
   Search,
   LayoutPanelLeft,
   Users,
+  GitFork,
   ShieldCheck,
   Activity,
   LineChart,
@@ -77,6 +78,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "도구",
     items: [
       { title: "AI 에이전트", href: "/ai-agent", icon: Bot },
+      { title: "사다리 게임", href: "/ladder", icon: GitFork },
       { title: "통합 검색", href: "/search", icon: Search },
       { title: "도움말", href: "/help", icon: HelpCircle },
       { title: "대리점 가이드", href: "/help/dealer", icon: Store, roles: ["DEALER"] },
