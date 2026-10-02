@@ -20,7 +20,12 @@ const PUBLIC_TABLES = [
   "knowledge_sync_events",
   "knowledge_sync_jobs",
   "knowledge_staff_groups",
+  "knowledge_phase1_absent_probe",
 ] as const;
+
+type PublicTableSnapshot =
+  | { exists: false }
+  | { exists: true; count: number; digest: string | null };
 
 function localTestUrl() {
   const url = process.env.KNOWLEDGE_TEST_DATABASE_URL;
@@ -40,28 +45,37 @@ function localTestUrl() {
   return url;
 }
 
-async function ensurePublicMarkers(client: Client) {
-  for (const table of PUBLIC_TABLES) {
-    const found = await client.query<{ name: string | null }>(
-      "SELECT to_regclass($1) AS name",
-      [`public.${table}`],
-    );
-    if (found.rows[0]?.name) continue;
-    await client.query(
-      `CREATE TABLE public."${table}" (id text PRIMARY KEY, marker text NOT NULL)`,
-    );
-    await client.query(`INSERT INTO public."${table}" (id, marker) VALUES ($1, $2)`, [
-      table,
-      "public-keep",
-    ]);
-  }
-}
-
+/** Read-only view of public. Missing tables stay missing; this function does not create them. */
 async function snapshotPublic(client: Client) {
-  const snapshot: Record<string, unknown[]> = {};
-  for (const table of PUBLIC_TABLES) {
-    const rows = await client.query(`SELECT * FROM public."${table}" ORDER BY id`);
-    snapshot[table] = rows.rows;
+  const snapshot: Record<string, PublicTableSnapshot> = {};
+  await client.query("BEGIN READ ONLY");
+  try {
+    for (const table of PUBLIC_TABLES) {
+      const found = await client.query<{ name: string | null }>(
+        "SELECT to_regclass($1) AS name",
+        [`public.${table}`],
+      );
+      if (!found.rows[0]?.name) {
+        snapshot[table] = { exists: false };
+        continue;
+      }
+      const counted = await client.query<{ n: number }>(
+        `SELECT COUNT(*)::int AS n FROM public."${table}"`,
+      );
+      const digested = await client.query<{ digest: string | null }>(
+        `SELECT md5(COALESCE(string_agg(row_to_json(t)::text, ',' ORDER BY row_to_json(t)::text), '')) AS digest
+         FROM public."${table}" t`,
+      );
+      snapshot[table] = {
+        exists: true,
+        count: counted.rows[0]?.n ?? 0,
+        digest: digested.rows[0]?.digest ?? null,
+      };
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
   }
   return snapshot;
 }
@@ -82,8 +96,8 @@ async function withLocalPostgres(
   const schema = `kt_${randomBytes(8).toString("hex")}`;
   const admin = new Client({ connectionString: url });
   await admin.connect();
-  await ensurePublicMarkers(admin);
   const before = await snapshotPublic(admin);
+  assert.equal(before.knowledge_phase1_absent_probe?.exists, false);
   await admin.query(`CREATE SCHEMA ${schema}`);
   await admin.end();
 
@@ -101,15 +115,28 @@ async function withLocalPostgres(
     await pool.query(migration);
     const pathRow = await pool.query<{ search_path: string }>("SHOW search_path");
     assert.equal(pathRow.rows[0]?.search_path.replaceAll('"', ""), schema);
+    await pool.query(
+      `CREATE TABLE run_marker (id text PRIMARY KEY, note text NOT NULL)`,
+    );
+    await pool.query(`INSERT INTO run_marker (id, note) VALUES ('this-run', $1)`, [schema]);
     const repo = new SqlKnowledgeRepository(pgPoolExecutor(pool));
     const storage = new LocalFsStorageAdapter(dir);
     await fn({ pool, repo, storage });
+    const marker = await pool.query<{ note: string }>(
+      `SELECT note FROM run_marker WHERE id='this-run'`,
+    );
+    assert.equal(marker.rows[0]?.note, schema);
   } finally {
     await pool.end();
     await rm(dir, { recursive: true, force: true });
     const cleanup = new Client({ connectionString: url });
     await cleanup.connect();
     await cleanup.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+    const gone = await cleanup.query<{ name: string | null }>(
+      "SELECT to_regclass($1) AS name",
+      [`${schema}.run_marker`],
+    );
+    assert.equal(gone.rows[0]?.name, null);
     const after = await snapshotPublic(cleanup);
     assert.deepEqual(after, before);
     await cleanup.end();
