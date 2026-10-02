@@ -3,9 +3,13 @@
  * See scripts/knowledge-storage-scenario.ts.
  */
 import { runLocalRehearsal } from "./knowledge-storage-scenario";
+import { safeErrorName } from "../src/lib/knowledge/storage-error";
 
-runLocalRehearsal().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`${message}\n`);
-  process.exitCode = 1;
-});
+runLocalRehearsal()
+  .then((code) => {
+    process.exitCode = code;
+  })
+  .catch((error: unknown) => {
+    process.stderr.write(`${safeErrorName(error)}\n`);
+    process.exitCode = 1;
+  });

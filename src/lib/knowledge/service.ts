@@ -7,7 +7,10 @@ import { originalObjectKey, previewObjectKey } from "./storage";
 import type { StorageAdapter } from "./storage";
 import {
   describeStorageFailure,
+  isAmbiguousStorageError,
+  unresolvedStorageRecord,
   type StorageFailureRecord,
+  type UnresolvedStorageRecord,
 } from "./storage-error";
 import type { KnowledgeRepository } from "./repository";
 import type {
@@ -74,6 +77,7 @@ export class KnowledgeService {
       extractor?: (bytes: Buffer) => string | KnowledgeChunk[] | never;
       beforeIndexPublish?: () => Promise<void>;
       onCleanupFailure?: (failures: StorageFailureRecord[]) => void;
+      onUnresolvedStorage?: (record: UnresolvedStorageRecord) => void;
     } = {},
   ) {}
 
@@ -114,6 +118,22 @@ export class KnowledgeService {
     if (failures.length > 0) this.opts.onCleanupFailure?.(failures);
   }
 
+  private recordUnresolved(key: string, error: unknown) {
+    const record = unresolvedStorageRecord(key, error);
+    knowledgeStorageLogger.error(
+      {
+        key: record.key,
+        outcome: record.outcome,
+        reconciliationRequired: record.reconciliationRequired,
+        cleanupRequired: record.cleanupRequired,
+        errorName: record.errorName,
+        httpStatus: record.httpStatus,
+      },
+      "knowledge storage outcome uncertain; reconciliation and cleanup required",
+    );
+    this.opts.onUnresolvedStorage?.(record);
+  }
+
   async upload(
     ctx: KnowledgeContext,
     input: {
@@ -144,8 +164,11 @@ export class KnowledgeService {
     const versionId = randomUUID();
     const storageKey = originalObjectKey(ctx.tenantId, versionId);
     const written: string[] = [];
+    let pendingKey: string | null = null;
     try {
+      pendingKey = storageKey;
       await this.storage.put(storageKey, Buffer.from(input.bytes));
+      pendingKey = null;
       written.push(storageKey);
       const stored = await this.storage.get(storageKey);
       requireValue(sha256(stored) === input.expectedHash, "stored hash mismatch");
@@ -153,7 +176,9 @@ export class KnowledgeService {
       let previewKey: string | null = null;
       if (input.previewBytes) {
         previewKey = previewObjectKey(ctx.tenantId, versionId);
+        pendingKey = previewKey;
         await this.storage.put(previewKey, Buffer.from(input.previewBytes));
+        pendingKey = null;
         written.push(previewKey);
       }
 
@@ -194,6 +219,7 @@ export class KnowledgeService {
         }
       });
     } catch (error) {
+      if (pendingKey && isAmbiguousStorageError(error)) this.recordUnresolved(pendingKey, error);
       await this.discard(written);
       throw error;
     }

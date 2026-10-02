@@ -11,8 +11,9 @@ import { awsS3ClientConfig, createAwsObjectClient, privatePutObjectInput } from 
 import { S3StorageAdapter, type ObjectBytesClient } from "./s3-storage";
 import { KnowledgeService } from "./service";
 import { LocalFsStorageAdapter, type StorageAdapter } from "./storage";
-import { createKnowledgeStorage, resolveStorageSettings } from "./storage-create";
-import { TrackingStorageAdapter } from "./tracked-storage";
+import { createKnowledgeStorage, isLoopbackHost, resolveStorageSettings } from "./storage-create";
+import { finishRehearsalReport, rehearsalExitCode } from "./rehearsal-report";
+import { rehearsalOwnership, TrackingStorageAdapter } from "./tracked-storage";
 
 function missing(name: "NotFound" | "NoSuchKey", status = 404) {
   return Object.assign(new Error(name), {
@@ -196,7 +197,7 @@ test("a run prefix and tracked cleanup leave unrelated objects unchanged", async
   const runB = new S3StorageAdapter(memory, { keyPrefix: "knowledge-rehearsal/run-b" });
   await runA.put("originals/fm/v1", Buffer.from("a"));
   await runB.put("originals/fm/v1", Buffer.from("b"));
-  const tracked = new TrackingStorageAdapter(runA);
+  const tracked = new TrackingStorageAdapter(runA, rehearsalOwnership("knowledge-rehearsal/run-a"));
   await tracked.put("originals/fm/v2", Buffer.from("new"));
   assert.deepEqual(await tracked.deleteTracked(), []);
   assert.equal(memory.objects.has("knowledge-rehearsal/run-a/originals/fm/v1"), true);
@@ -208,14 +209,17 @@ test("a run prefix and tracked cleanup leave unrelated objects unchanged", async
 test("tracked cleanup records a delete failure", async () => {
   const inner = new S3StorageAdapter(new MemoryObjectClient());
   await inner.put("originals/fm/v1", Buffer.from("a"));
-  const storage = new TrackingStorageAdapter({
-    put: (key, bytes) => inner.put(key, bytes),
-    get: (key) => inner.get(key),
-    exists: (key) => inner.exists(key),
-    async delete() {
-      throw failed("AccessDenied", 403);
+  const storage = new TrackingStorageAdapter(
+    {
+      put: (key, bytes) => inner.put(key, bytes),
+      get: (key) => inner.get(key),
+      exists: (key) => inner.exists(key),
+      async delete() {
+        throw failed("AccessDenied", 403);
+      },
     },
-  });
+    rehearsalOwnership(""),
+  );
   await storage.put("originals/fm/v1", Buffer.from("a"));
   assert.deepEqual(await storage.deleteTracked(), [
     { key: "originals/fm/v1", errorName: "AccessDenied", httpStatus: 403 },
@@ -313,6 +317,32 @@ test("storage settings default to local and reject non-local HTTP endpoints", ()
   assert.equal(loopback.forcePathStyle, true);
   assert.equal(loopback.endpoint, "http://127.0.0.1:9000");
 
+  assert.equal(new URL("http://[::1]:9000").hostname, "[::1]");
+  assert.equal(isLoopbackHost("[::1]"), true);
+  assert.equal(isLoopbackHost("::1"), true);
+  const ipv6 = resolveStorageSettings({
+    KNOWLEDGE_STORAGE_DRIVER: "s3",
+    KNOWLEDGE_STORAGE_BUCKET: "private-bucket",
+    KNOWLEDGE_STORAGE_REGION: "us-east-1",
+    KNOWLEDGE_STORAGE_ENDPOINT: "http://[::1]:9000",
+    KNOWLEDGE_STORAGE_ALLOW_INSECURE_LOCAL_ENDPOINT: "true",
+    KNOWLEDGE_STORAGE_FORCE_PATH_STYLE: "true",
+  });
+  assert.equal(ipv6.driver, "s3");
+  if (ipv6.driver !== "s3") return;
+  assert.equal(ipv6.endpoint, "http://[::1]:9000");
+  assert.equal(ipv6.forcePathStyle, true);
+  assert.throws(
+    () =>
+      resolveStorageSettings({
+        KNOWLEDGE_STORAGE_DRIVER: "s3",
+        KNOWLEDGE_STORAGE_BUCKET: "private-bucket",
+        KNOWLEDGE_STORAGE_REGION: "us-east-1",
+        KNOWLEDGE_STORAGE_ENDPOINT: "http://[::1]:9000",
+      }),
+    /storage endpoint must use https/,
+  );
+
   const remote = resolveStorageSettings({
     KNOWLEDGE_STORAGE_DRIVER: "s3",
     KNOWLEDGE_STORAGE_BUCKET: "private-bucket",
@@ -368,6 +398,127 @@ test("factory uses the injected client and does not require static access keys",
   await storage.put("originals/fm/v1", Buffer.from("a"));
   assert.ok(memory.objects.has("tenant-prefix/originals/fm/v1"));
   assert.equal(memory.objects.has("originals/fm/v1"), false);
+});
+
+test("ambiguous put stays a cleanup candidate and removes only this run's new key", async () => {
+  const objects = new Map<string, Buffer>();
+  const prefix = "knowledge-rehearsal/run-a";
+  const client: ObjectBytesClient = {
+    async putObject(key, bytes) {
+      objects.set(key, Buffer.from(bytes));
+      throw failed("TimeoutError", 503);
+    },
+    async getObject() {
+      throw failed("NetworkingError", undefined, "ECONNRESET");
+    },
+    async deleteObject(key) {
+      objects.delete(key);
+    },
+    async headObject(key) {
+      if (!objects.has(key)) throw missing("NotFound");
+    },
+  };
+  objects.set("existing", Buffer.from("keep"));
+  objects.set("knowledge-rehearsal/run-b/originals/fm/v1", Buffer.from("other"));
+  objects.set(`${prefix}/originals/fm/old`, Buffer.from("old"));
+  const tracked = new TrackingStorageAdapter(
+    new S3StorageAdapter(client, { keyPrefix: prefix }),
+    rehearsalOwnership(prefix),
+  );
+  await assert.rejects(() => tracked.put("originals/fm/v1", Buffer.from("new-object")), /TimeoutError/);
+  assert.ok(objects.has(`${prefix}/originals/fm/v1`));
+  await assert.rejects(() => tracked.delete("existing"), /outside this run/);
+  assert.deepEqual(await tracked.deleteTracked(), []);
+  assert.equal(objects.has(`${prefix}/originals/fm/v1`), false);
+  assert.ok(objects.get("existing")?.equals(Buffer.from("keep")));
+  assert.ok(objects.get("knowledge-rehearsal/run-b/originals/fm/v1")?.equals(Buffer.from("other")));
+  assert.ok(objects.get(`${prefix}/originals/fm/old`)?.equals(Buffer.from("old")));
+});
+
+test("failed cleanup reports the unresolved key and a failed rehearsal exit", async () => {
+  const objects = new Map<string, Buffer>();
+  const prefix = "knowledge-rehearsal/run-a";
+  const client: ObjectBytesClient = {
+    async putObject(key, bytes) {
+      objects.set(key, Buffer.from(bytes));
+      throw failed("TimeoutError", 503);
+    },
+    async getObject() {
+      throw failed("TimeoutError");
+    },
+    async deleteObject() {
+      throw failed("AccessDenied", 403);
+    },
+    async headObject() {},
+  };
+  objects.set("existing", Buffer.from("keep"));
+  objects.set("knowledge-rehearsal/run-b/originals/fm/v1", Buffer.from("other"));
+  const tracked = new TrackingStorageAdapter(
+    new S3StorageAdapter(client, { keyPrefix: prefix }),
+    rehearsalOwnership(prefix),
+  );
+  await assert.rejects(() => tracked.put("originals/fm/v1", Buffer.from("new-object")));
+  const cleanupFailures = await tracked.deleteTracked();
+  const report = finishRehearsalReport({
+    remoteVerification: "not-run",
+    remoteConnected: false,
+    scenarioPassed: true,
+    cleanupFailures,
+    adapter: "S3StorageAdapter",
+  });
+  assert.equal(report.scenarioPassed, true);
+  assert.equal(report.cleanupPassed, false);
+  assert.deepEqual(report.unresolvedObjects, [
+    { key: "originals/fm/v1", errorName: "AccessDenied", httpStatus: 403 },
+  ]);
+  assert.equal(rehearsalExitCode(report), 1);
+  assert.equal(JSON.stringify(report).includes("stack"), false);
+  assert.ok(objects.get(`${prefix}/originals/fm/v1`)?.equals(Buffer.from("new-object")));
+  assert.ok(objects.get("existing")?.equals(Buffer.from("keep")));
+  assert.ok(objects.get("knowledge-rehearsal/run-b/originals/fm/v1")?.equals(Buffer.from("other")));
+});
+
+test("service upload records an uncertain object when confirmation also fails", async () => {
+  const objects = new Map<string, Buffer>();
+  const client: ObjectBytesClient = {
+    async putObject(key, bytes) {
+      objects.set(key, Buffer.from(bytes));
+      throw failed("TimeoutError", 503);
+    },
+    async getObject() {
+      throw failed("NetworkingError", undefined, "ECONNRESET");
+    },
+    async deleteObject() {},
+    async headObject() {},
+  };
+  const records: { key: string; outcome: string; reconciliationRequired: boolean; cleanupRequired: boolean; errorName: string }[] = [];
+  const service = new KnowledgeService(
+    { async transaction() { return undefined; } } as unknown as KnowledgeRepository,
+    new S3StorageAdapter(client),
+    { onUnresolvedStorage: (record) => records.push(record) },
+  );
+  const bytes = Buffer.from("양모");
+  await assert.rejects(() =>
+    service.upload(
+      { kind: "sync-service", tenantId: "fm" },
+      {
+        documentId: "doc",
+        title: "상품",
+        bytes,
+        expectedHash: sha256(bytes),
+        mimeType: "text/plain",
+      },
+    ),
+    /TimeoutError/,
+  );
+  assert.equal(records.length, 1);
+  assert.equal(records[0]?.outcome, "uncertain");
+  assert.equal(records[0]?.reconciliationRequired, true);
+  assert.equal(records[0]?.cleanupRequired, true);
+  assert.equal(records[0]?.errorName, "TimeoutError");
+  assert.match(records[0]?.key ?? "", /^originals\/fm\//);
+  const storedKey = records[0]?.key ?? "";
+  assert.ok(objects.get(storedKey)?.equals(bytes));
 });
 
 test("remote S3 rehearsal is not run without the explicit option", () => {

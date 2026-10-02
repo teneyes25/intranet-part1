@@ -22,12 +22,14 @@
 `S3StorageAdapter`가 `put`, `get`, `delete`, `exists`를 구현한다. 앱은 `createServerKnowledgeStorage()`를 사용한다.
 
 - 클라이언트 설정에 `credentials`를 넣지 않는다. AWS SDK 기본 공급 경로(역할, SSO, 컨테이너, 인스턴스 프로파일, 프로세스가 이미 가진 임시 자격)를 사용한다. 장기 access key는 필수 조건이 아니고, 코드·로그·브라우저에 넣지 않는다.
-- 원격 endpoint는 HTTPS다. `http://`는 `KNOWLEDGE_STORAGE_ALLOW_INSECURE_LOCAL_ENDPOINT=true`이고 호스트가 `localhost`, `127.0.0.1`, `::1`일 때만 허용한다. path-style도 그 로컬 호스트에서만 켠다.
+- 원격 endpoint는 HTTPS다. `http://`는 `KNOWLEDGE_STORAGE_ALLOW_INSECURE_LOCAL_ENDPOINT=true`이고 호스트가 `localhost`, `127.0.0.1`, `::1`일 때만 허용한다. `http://[::1]:9000`의 `URL.hostname`은 `[::1]`이므로 대괄호를 벗긴 뒤 `::1`과 비교한다. path-style도 그 로컬 호스트에서만 켠다.
 - `PutObject` 입력은 Bucket, Key, Body뿐이다. 공개 ACL과 공개 다운로드 URL을 만들지 않는다.
 - 다운로드는 `KnowledgeService`가 직원·ACL·승인 버전을 확인한 뒤 `get`으로 원본을 읽는다.
 - 철회는 검색·다운로드만 막는다. 원본 객체는 지우지 않는다.
 - `exists`는 `NotFound` 또는 `NoSuchKey`(상태 없음 또는 404)만 false다. 권한 거부, 네트워크 장애, 5xx, 다른 404는 그대로 던진다.
-- `put`이 5xx·시간 초과·연결 오류이면 같은 키를 다시 읽어 SHA-256이 같을 때만 성공으로 본다.
+- `put`이 5xx·시간 초과·연결 오류이면 같은 키를 다시 읽어 SHA-256이 같을 때만 성공으로 본다. 확인 읽기까지 실패하면 일반 업로드는 그 키를 `uncertain`으로 기록하고, 후속 대조와 정리가 필요하다고 남긴다.
+- 리허설은 고유 접두사 아래 새 키를 쓰기 시도 전에 정리 후보로 등록한다. 정리는 그 후보만 지우며, 이번 실행의 접두사 밖과 다른 실행의 객체는 지우지 않는다.
+- 시나리오와 정리가 끝난 뒤 최종 보고를 한 번 출력한다. `scenarioPassed`, `cleanupPassed`, `unresolvedObjects`를 구분한다. 정리 실패의 종료 코드는 1이다. 보고에는 오류 이름과 HTTP 상태만 넣고 stack은 넣지 않는다.
 - 업로드 중 DB 기록이 실패해 객체를 지우는 일이 실패하면 키, 오류 이름, HTTP 상태만 기록한다.
 
 ## 첫 원격 검증에 필요한 항목
@@ -55,7 +57,7 @@
 npx tsx scripts/knowledge-storage-scenario.ts --adapter s3
 ```
 
-위 확인 값과 버킷·리전이 없으면 클라이언트는 만들지 않고, 결과는 `remoteVerification: "not-run"`, `remoteConnected: false`이다. 인메모리 클라이언트 테스트는 실제 S3 연결이 아니다.
+위 확인 값과 버킷·리전이 없으면 클라이언트는 만들지 않고, 결과는 `remoteVerification: "not-run"`, `remoteConnected: false`, `skippedRemote: true`이다. 종료 코드는 2다. 인메모리 클라이언트 테스트는 실제 S3 연결이 아니다.
 
 로컬 리허설:
 

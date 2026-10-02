@@ -4,6 +4,16 @@ export type StorageFailureRecord = {
   httpStatus: number | null;
 };
 
+/** A write may have landed, but this attempt could not confirm the bytes. */
+export type UnresolvedStorageRecord = {
+  key: string;
+  outcome: "uncertain";
+  reconciliationRequired: true;
+  cleanupRequired: true;
+  errorName: string;
+  httpStatus: number | null;
+};
+
 const MISSING_OBJECT_NAMES = new Set(["NotFound", "NoSuchKey"]);
 
 const AMBIGUOUS_NAMES = new Set([
@@ -34,13 +44,28 @@ function httpStatus(error: object): number | null {
   return typeof status === "number" ? status : null;
 }
 
-export function describeStorageFailure(key: string, error: unknown): StorageFailureRecord {
-  let errorName = "Error";
+export function safeErrorName(error: unknown) {
   if (typeof error === "object" && error && "name" in error && typeof error.name === "string") {
-    if (error.name) errorName = error.name;
+    if (error.name) return error.name;
   }
+  return "Error";
+}
+
+export function describeStorageFailure(key: string, error: unknown): StorageFailureRecord {
   const status = typeof error === "object" && error ? httpStatus(error) : null;
-  return { key, errorName, httpStatus: status };
+  return { key, errorName: safeErrorName(error), httpStatus: status };
+}
+
+export function unresolvedStorageRecord(key: string, error: unknown): UnresolvedStorageRecord {
+  const failure = describeStorageFailure(key, error);
+  return {
+    key: failure.key,
+    outcome: "uncertain",
+    reconciliationRequired: true,
+    cleanupRequired: true,
+    errorName: failure.errorName,
+    httpStatus: failure.httpStatus,
+  };
 }
 
 /** True only for S3 responses that mean this object key is absent. */

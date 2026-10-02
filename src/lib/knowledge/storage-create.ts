@@ -26,8 +26,11 @@ function required(value: string | undefined, name: string) {
   return trimmed;
 }
 
-function isLoopback(hostname: string) {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+/** WHATWG URL.hostname keeps brackets around IPv6, so `[::1]` and `::1` are the same host. */
+export function isLoopbackHost(hostname: string) {
+  const normalized =
+    hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
 }
 
 /**
@@ -48,7 +51,7 @@ export function assertStorageEndpoint(endpoint: string, allowInsecureLocal: bool
   if (
     url.protocol === "http:" &&
     allowInsecureLocal &&
-    isLoopback(url.hostname)
+    isLoopbackHost(url.hostname)
   ) {
     return;
   }
@@ -78,7 +81,7 @@ export function resolveStorageSettings(
   if (forceRequested) {
     if (!endpoint) throw new Error("path-style addressing is limited to a local endpoint");
     const host = new URL(endpoint).hostname;
-    if (!isLoopback(host)) {
+    if (!isLoopbackHost(host)) {
       throw new Error("path-style addressing is limited to a local endpoint");
     }
     forcePathStyle = true;

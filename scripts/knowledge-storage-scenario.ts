@@ -22,8 +22,9 @@ import { KnowledgeService } from "../src/lib/knowledge/service";
 import { LocalFsStorageAdapter, originalObjectKey, qualifyStorageKey } from "../src/lib/knowledge/storage";
 import type { StorageAdapter } from "../src/lib/knowledge/storage";
 import { resolveStorageSettings, type S3StorageSettings } from "../src/lib/knowledge/storage-create";
-import type { StorageFailureRecord } from "../src/lib/knowledge/storage-error";
-import { TrackingStorageAdapter } from "../src/lib/knowledge/tracked-storage";
+import { safeErrorName } from "../src/lib/knowledge/storage-error";
+import { finishRehearsalReport, rehearsalExitCode } from "../src/lib/knowledge/rehearsal-report";
+import { rehearsalOwnership, TrackingStorageAdapter } from "../src/lib/knowledge/tracked-storage";
 
 const TENANT = "fm";
 const DOCUMENT_ID = "phase2-doc";
@@ -62,13 +63,15 @@ async function expectBlocked(
 }
 
 async function runStorageScenario(input: {
-  adapter: string;
   storage: StorageAdapter;
-  remoteVerification: "not-run" | "executed";
-  remoteConnected: boolean;
-  extra: Record<string, string>;
   assertPlaced: (key: string) => Promise<void>;
-}) {
+}): Promise<{
+  passed: boolean;
+  steps: Step[];
+  versionId?: string;
+  sha256?: string;
+  scenarioErrorName?: string;
+}> {
   const migration = path.join(
     process.cwd(),
     "prisma/migrations/20261002120000_knowledge_v1/migration.sql",
@@ -77,6 +80,9 @@ async function runStorageScenario(input: {
 
   const db = new PGlite();
   const steps: Step[] = [];
+  let versionId: string | undefined;
+  let hash: string | undefined;
+  let scenarioErrorName: string | undefined;
   const record = (id: string, ok: boolean, detail: string) => {
     steps.push({ id, ok, detail });
     assert.equal(ok, true, `${id}: ${detail}`);
@@ -89,15 +95,17 @@ async function runStorageScenario(input: {
 
     const text = "양모 원단 가격 안내\n\n허용된 직원만 이 문서를 검색한다.";
     const bytes = Buffer.from(text);
-    const hash = sha256(bytes);
+    const digest = sha256(bytes);
+    hash = digest;
     const uploaded = await service.upload(serviceCtx, {
       documentId: DOCUMENT_ID,
       title: "양모 원단",
       bytes,
-      expectedHash: hash,
+      expectedHash: digest,
       mimeType: "text/plain",
       filename: "wool.txt",
     });
+    versionId = uploaded.versionId;
     const key = originalObjectKey(TENANT, uploaded.versionId);
     const stored = await input.storage.get(key);
     await input.assertPlaced(key);
@@ -173,58 +181,59 @@ async function runStorageScenario(input: {
         stillHash === hash,
       `searchHits=${after.hits} download=${after.download} objectRemains=${stillThere} sha256=${stillHash}`,
     );
-
-    const report = {
-      stage: "storage-adapter-rehearsal",
-      cloudIntegrationComplete: false,
-      remoteVerification: input.remoteVerification,
-      remoteConnected: input.remoteConnected,
-      adapter: input.adapter,
-      catalog: "PGlite in-memory",
-      tenantId: TENANT,
-      documentId: DOCUMENT_ID,
-      versionId: uploaded.versionId,
-      sha256: hash,
-      ...input.extra,
-      steps,
-    };
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } catch (error) {
+    scenarioErrorName = safeErrorName(error);
   } finally {
     await db.close();
   }
+  return {
+    passed: scenarioErrorName === undefined,
+    steps,
+    versionId,
+    sha256: hash,
+    scenarioErrorName,
+  };
 }
 
-function reportCleanup(failures: StorageFailureRecord[]) {
-  if (failures.length === 0) return;
-  process.stderr.write(`${JSON.stringify({ cleanupFailures: failures })}\n`);
+function writeReport(report: ReturnType<typeof finishRehearsalReport>) {
+  process.stdout.write(`${JSON.stringify(report)}\n`);
+  return rehearsalExitCode(report);
 }
 
 export async function runLocalRehearsal() {
   const dir = await mkdtemp(path.join(os.tmpdir(), "knowledge-phase2-local-"));
   const objectRoot = path.join(dir, "objects");
-  const storage = new TrackingStorageAdapter(new LocalFsStorageAdapter(objectRoot));
-  let scenarioError: unknown;
-  try {
-    await runStorageScenario({
-      adapter: "LocalFsStorageAdapter",
-      storage,
+  const storage = new TrackingStorageAdapter(
+    new LocalFsStorageAdapter(objectRoot),
+    rehearsalOwnership(""),
+  );
+  const scenario = await runStorageScenario({
+    storage,
+    assertPlaced: async (key) => {
+      const objectPath = path.join(objectRoot, key);
+      assert.equal(objectPath.startsWith(`${objectRoot}${path.sep}`), true);
+      assert.equal(await storage.exists(key), true);
+    },
+  });
+  const cleanupFailures = await storage.deleteTracked();
+  await rm(dir, { recursive: true, force: true });
+  return writeReport(
+    finishRehearsalReport({
       remoteVerification: "not-run",
       remoteConnected: false,
-      extra: { objectRoot },
-      assertPlaced: async (key) => {
-        const objectPath = path.join(objectRoot, key);
-        assert.equal(objectPath.startsWith(`${objectRoot}${path.sep}`), true);
-        assert.equal(await storage.exists(key), true);
-      },
-    });
-  } catch (error) {
-    scenarioError = error;
-  }
-  const failures = await storage.deleteTracked();
-  await rm(dir, { recursive: true, force: true });
-  reportCleanup(failures);
-  if (scenarioError) throw scenarioError;
-  if (failures.length > 0) throw new Error("storage cleanup failed");
+      scenarioPassed: scenario.passed,
+      cleanupFailures,
+      scenarioErrorName: scenario.scenarioErrorName,
+      adapter: "LocalFsStorageAdapter",
+      catalog: "PGlite in-memory",
+      tenantId: TENANT,
+      documentId: DOCUMENT_ID,
+      versionId: scenario.versionId,
+      sha256: scenario.sha256,
+      steps: scenario.steps,
+      objectRoot,
+    }),
+  );
 }
 
 async function runRemoteRehearsal(settings: S3StorageSettings) {
@@ -234,63 +243,67 @@ async function runRemoteRehearsal(settings: S3StorageSettings) {
   const aws = createAwsObjectClient(settings);
   const storage = new TrackingStorageAdapter(
     new S3StorageAdapter(aws.objects, { keyPrefix: runPrefix }),
+    rehearsalOwnership(runPrefix),
   );
-  let scenarioError: unknown;
-  try {
-    await runStorageScenario({
-      adapter: "S3StorageAdapter",
-      storage,
+  const scenario = await runStorageScenario({
+    storage,
+    assertPlaced: async (key) => {
+      const stored = qualifyStorageKey(runPrefix, key);
+      assert.equal(stored.startsWith(`${runPrefix}/`), true);
+    },
+  });
+  const cleanupFailures = await storage.deleteTracked();
+  aws.close();
+  return writeReport(
+    finishRehearsalReport({
       remoteVerification: "executed",
       remoteConnected: true,
-      extra: { keyPrefix: runPrefix, bucket: settings.bucket, region: settings.region },
-      assertPlaced: async (key) => {
-        const stored = qualifyStorageKey(runPrefix, key);
-        assert.equal(stored.startsWith(`${runPrefix}/`), true);
-      },
-    });
-  } catch (error) {
-    scenarioError = error;
-  }
-  const failures = await storage.deleteTracked();
-  aws.close();
-  reportCleanup(failures);
-  if (scenarioError) throw scenarioError;
-  if (failures.length > 0) throw new Error("storage cleanup failed");
+      scenarioPassed: scenario.passed,
+      cleanupFailures,
+      scenarioErrorName: scenario.scenarioErrorName,
+      adapter: "S3StorageAdapter",
+      catalog: "PGlite in-memory",
+      tenantId: TENANT,
+      documentId: DOCUMENT_ID,
+      versionId: scenario.versionId,
+      sha256: scenario.sha256,
+      steps: scenario.steps,
+      keyPrefix: runPrefix,
+      bucket: settings.bucket,
+      region: settings.region,
+    }),
+  );
 }
 
 function notRun(reason: string) {
-  process.stdout.write(
-    `${JSON.stringify(
-      {
-        stage: "storage-adapter-rehearsal",
-        cloudIntegrationComplete: false,
-        remoteVerification: "not-run",
-        remoteConnected: false,
-        reason,
-      },
-      null,
-      2,
-    )}\n`,
+  return writeReport(
+    finishRehearsalReport({
+      remoteVerification: "not-run",
+      remoteConnected: false,
+      scenarioPassed: false,
+      cleanupFailures: [],
+      skippedRemote: true,
+      reason,
+    }),
   );
-  process.exitCode = 2;
 }
 
 async function main() {
   const adapterFlag = process.argv.indexOf("--adapter");
   const adapter = adapterFlag === -1 ? "local" : process.argv[adapterFlag + 1];
   if (adapter === "local" || adapter === undefined) {
-    await runLocalRehearsal();
+    process.exitCode = await runLocalRehearsal();
     return;
   }
   if (adapter !== "s3") throw new Error("unsupported storage adapter");
   if (process.env.KNOWLEDGE_STORAGE_REMOTE_VERIFY !== "true") {
-    notRun(
+    process.exitCode = notRun(
       "S3 rehearsal requires KNOWLEDGE_STORAGE_REMOTE_VERIFY=true plus bucket and region settings",
     );
     return;
   }
   if (!process.env.KNOWLEDGE_STORAGE_BUCKET?.trim() || !process.env.KNOWLEDGE_STORAGE_REGION?.trim()) {
-    notRun("S3 rehearsal requires KNOWLEDGE_STORAGE_BUCKET and KNOWLEDGE_STORAGE_REGION");
+    process.exitCode = notRun("S3 rehearsal requires KNOWLEDGE_STORAGE_BUCKET and KNOWLEDGE_STORAGE_REGION");
     return;
   }
   const settings = resolveStorageSettings({
@@ -304,13 +317,12 @@ async function main() {
     KNOWLEDGE_STORAGE_FORCE_PATH_STYLE: process.env.KNOWLEDGE_STORAGE_FORCE_PATH_STYLE,
   });
   if (settings.driver !== "s3") throw new Error("expected s3 storage");
-  await runRemoteRehearsal(settings);
+  process.exitCode = await runRemoteRehearsal(settings);
 }
 
 if (process.argv[1]?.endsWith("knowledge-storage-scenario.ts")) {
   main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.stack ?? error.message : String(error);
-    process.stderr.write(`${message}\n`);
+    process.stderr.write(`${safeErrorName(error)}\n`);
     process.exitCode = 1;
   });
 }
