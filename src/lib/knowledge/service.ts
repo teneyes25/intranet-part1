@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto";
 
+import { createChildLogger } from "../logger";
 import { sha256 } from "./hash";
 import { DEFAULT_KNOWLEDGE_LIMITS, type KnowledgeLimits } from "./limits";
 import { originalObjectKey, previewObjectKey } from "./storage";
 import type { StorageAdapter } from "./storage";
+import {
+  describeStorageFailure,
+  type StorageFailureRecord,
+} from "./storage-error";
 import type { KnowledgeRepository } from "./repository";
 import type {
   JobLease,
@@ -17,6 +22,7 @@ import type {
 } from "./types";
 
 const TEXT_TYPES = new Set(["text/plain", "text/markdown"]);
+const knowledgeStorageLogger = createChildLogger("knowledge.storage");
 
 function requireValue(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -67,6 +73,7 @@ export class KnowledgeService {
       retryDelayMs?: (attempts: number) => number;
       extractor?: (bytes: Buffer) => string | KnowledgeChunk[] | never;
       beforeIndexPublish?: () => Promise<void>;
+      onCleanupFailure?: (failures: StorageFailureRecord[]) => void;
     } = {},
   ) {}
 
@@ -87,7 +94,24 @@ export class KnowledgeService {
   }
 
   private async discard(keys: string[]) {
-    await Promise.all(keys.map((key) => this.storage.delete(key).catch(() => undefined)));
+    const failures: StorageFailureRecord[] = [];
+    for (const key of keys) {
+      try {
+        await this.storage.delete(key);
+      } catch (error) {
+        const failure = describeStorageFailure(key, error);
+        failures.push(failure);
+        knowledgeStorageLogger.error(
+          {
+            key: failure.key,
+            errorName: failure.errorName,
+            httpStatus: failure.httpStatus,
+          },
+          "knowledge storage cleanup failed",
+        );
+      }
+    }
+    if (failures.length > 0) this.opts.onCleanupFailure?.(failures);
   }
 
   async upload(

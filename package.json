@@ -26,8 +26,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:real-usage": "playwright test e2e/real-usage.spec.ts",
     "test:ui-upgrade": "playwright test e2e/ui-upgrade.spec.ts",
-    "test:knowledge": "node --test prototypes/knowledge-v1/core.test.mjs && npx tsx --test src/lib/knowledge/auth-context.test.ts src/lib/knowledge/durable.test.ts src/lib/knowledge/regression.test.ts src/lib/knowledge/pg-concurrency.test.ts",
+    "test:knowledge": "node --test prototypes/knowledge-v1/core.test.mjs && npx tsx --test src/lib/knowledge/auth-context.test.ts src/lib/knowledge/durable.test.ts src/lib/knowledge/regression.test.ts src/lib/knowledge/pg-concurrency.test.ts src/lib/knowledge/storage.test.ts",
     "knowledge:phase2-local": "tsx scripts/knowledge-phase2-local-scenario.ts",
+    "knowledge:storage-scenario": "tsx scripts/knowledge-storage-scenario.ts",
     "docker:sync": "node scripts/docker-sync.mjs",
     "postinstall": "prisma generate"
   },
@@ -35,6 +36,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1145.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -78,6 +80,7 @@
     "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
     "sanitize-html": "^2.17.5",
+    "server-only": "^0.0.1",
     "sharp": "^0.35.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
