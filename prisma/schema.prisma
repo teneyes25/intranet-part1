@@ -1015,6 +1015,7 @@ model KnowledgeDocument {
   aclRevision        Int      @default(0)
   aclAt              DateTime?
   processingStatus   String   @default("PENDING_UPLOAD")
+  stateRevision      Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   versions           KnowledgeDocumentVersion[]
@@ -1087,13 +1088,29 @@ model KnowledgeSyncJob {
   documentId  String
   document    KnowledgeDocument @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Cascade)
   type        String
+  versionId   String?
   status      String            @default("PENDING")
   attempts    Int               @default(0)
+  maxAttempts Int               @default(5)
   nextRetryAt DateTime?
   lastError   String?
+  leaseOwner  String?
+  leaseUntil  DateTime?
   completedAt DateTime?
   createdAt   DateTime          @default(now())
 
-  @@index([status, nextRetryAt])
+  @@index([tenantId, status, nextRetryAt])
   @@map("knowledge_sync_jobs")
+}
+
+/// Server-managed knowledge groups. Role does not grant these.
+model KnowledgeStaffGroup {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  groupId   String
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, userId, groupId])
+  @@map("knowledge_staff_groups")
 }

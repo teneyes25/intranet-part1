@@ -31,7 +31,7 @@ async function createHarness(clock?: { now: number }) {
     now: () => clock?.now ?? Date.now(),
     aclTtlMs: 300_000,
   });
-  return { k, db, repo, dir, clock };
+  return { k, db, repo, storage, dir, clock };
 }
 
 async function closeHarness(h: { dir: string; db: PGlite }) {
@@ -326,7 +326,7 @@ test("durable: ACL TTL fail-closed then refresh restores group", async () => {
   }
 });
 
-test("durable: restart recovers PROCESSING jobs and does not duplicate versions", async () => {
+test("same-process: expired lease is reclaimed for one tenant only", async () => {
   const h = await createHarness();
   try {
     const { bytes, hash } = bytesOf("양모 복구 문서");
@@ -345,20 +345,87 @@ test("durable: restart recovers PROCESSING jobs and does not duplicate versions"
       versionId: v.versionId,
       allowedGroups: ["sales"],
     });
-    const jobs = await h.repo.listJobs({ tenantId: "fm", status: "PENDING" });
-    assert.equal(jobs.length, 1);
-    jobs[0]!.status = "PROCESSING";
-    await h.repo.saveJob(jobs[0]!);
+    const other = { kind: "sync-service" as const, tenantId: "other" };
+    const otherVersion = await h.k.upload(other, {
+      documentId: "doc",
+      title: "다른회사",
+      bytes,
+      expectedHash: hash,
+      mimeType: "text/plain",
+    });
+    await h.k.applyEvent(other, {
+      eventId: "e1",
+      documentId: "doc",
+      sequence: 1,
+      type: "APPROVE",
+      versionId: otherVersion.versionId,
+      allowedGroups: ["sales"],
+    });
+    const now = Date.now();
+    const fmJobs = await h.repo.listJobs({ tenantId: "fm", status: "PENDING" });
+    const otherJobs = await h.repo.listJobs({ tenantId: "other", status: "PENDING" });
+    fmJobs[0]!.status = "PROCESSING";
+    fmJobs[0]!.leaseUntil = new Date(now - 1_000);
+    await h.repo.saveJob(fmJobs[0]!);
+    otherJobs[0]!.status = "PROCESSING";
+    otherJobs[0]!.leaseUntil = new Date(now + 60_000);
+    await h.repo.saveJob(otherJobs[0]!);
 
-    const recovered = await h.k.recoverPendingJobs();
+    const recovered = await h.k.recoverExpiredJobs(serviceCtx);
     assert.equal(recovered, 1);
+    assert.equal(
+      (await h.repo.listJobs({ tenantId: "other" }))[0]?.status,
+      "PROCESSING",
+    );
     const processed = await h.k.processJobs(serviceCtx);
     assert.equal(processed[0]?.status, "DONE");
     assert.equal((await h.k.search(sales, "복구"))[0]?.versionId, v.versionId);
-    const versions = await h.db.query(
-      `SELECT COUNT(*)::int AS n FROM "knowledge_document_versions"`,
+    const versions = await h.db.query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM "knowledge_document_versions" WHERE "tenantId"='fm'`,
     );
-    assert.equal((versions.rows[0] as { n: number }).n, 1);
+    assert.equal(versions.rows[0]?.n, 1);
+  } finally {
+    await closeHarness(h);
+  }
+});
+
+test("regression: other tenant versionId cannot approve the same documentId", async () => {
+  const h = await createHarness();
+  try {
+    const { bytes, hash } = bytesOf("양모 가격 100원");
+    const other = { kind: "sync-service" as const, tenantId: "other" };
+    await h.k.upload(serviceCtx, {
+      documentId: "doc",
+      title: "본사",
+      bytes,
+      expectedHash: hash,
+      mimeType: "text/plain",
+    });
+    const foreign = await h.k.upload(other, {
+      documentId: "doc",
+      title: "다른회사",
+      bytes,
+      expectedHash: hash,
+      mimeType: "text/plain",
+    });
+    await assert.rejects(() =>
+      h.k.applyEvent(serviceCtx, {
+        eventId: "e1",
+        documentId: "doc",
+        sequence: 1,
+        type: "APPROVE",
+        versionId: foreign.versionId,
+        allowedGroups: ["sales"],
+      }),
+    );
+    const doc = await h.repo.getDoc("fm", "doc");
+    assert.equal(doc?.approvedVersionId, null);
+    assert.equal(doc?.sequence, 0);
+    assert.equal(await h.repo.getVersion("fm", "doc", foreign.versionId), null);
+    assert.equal(
+      (await h.repo.getVersion("other", "doc", foreign.versionId))?.tenantId,
+      "other",
+    );
   } finally {
     await closeHarness(h);
   }

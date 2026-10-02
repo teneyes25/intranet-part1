@@ -13,6 +13,18 @@ export type DocRow = {
   aclRevision: number;
   aclAt: Date | null;
   processingStatus: string;
+  stateRevision: number;
+};
+
+export type DocPatch = {
+  title?: string;
+  sequence?: number;
+  approvedVersionId?: string | null;
+  activeVersionId?: string | null;
+  revoked?: boolean;
+  aclRevision?: number;
+  aclAt?: Date | null;
+  processingStatus?: string;
 };
 
 export type VersionRow = {
@@ -38,6 +50,7 @@ export type EventRow = {
   documentId: string;
   sequence: number;
   type: string;
+  versionId: string | null;
 };
 
 export interface SqlExecutor {
@@ -45,18 +58,36 @@ export interface SqlExecutor {
     sql: string,
     params?: unknown[],
   ): Promise<T[]>;
-  execute(sql: string, params?: unknown[]): Promise<void>;
+  execute(sql: string, params?: unknown[]): Promise<number>;
   transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T>;
 }
 
 export interface KnowledgeRepository {
   transaction<T>(fn: (repo: KnowledgeRepository) => Promise<T>): Promise<T>;
-  getDoc(tenantId: string, documentId: string): Promise<DocRow | null>;
+  getDoc(
+    tenantId: string,
+    documentId: string,
+    forUpdate?: boolean,
+  ): Promise<DocRow | null>;
   insertDoc(doc: Pick<DocRow, "id" | "tenantId" | "title">): Promise<DocRow>;
-  saveDoc(doc: DocRow): Promise<void>;
+  patchDoc(
+    tenantId: string,
+    documentId: string,
+    expectedRevision: number,
+    patch: DocPatch,
+  ): Promise<DocRow | null>;
   insertVersion(row: VersionRow): Promise<void>;
-  getVersion(versionId: string): Promise<VersionRow | null>;
+  getVersion(
+    tenantId: string,
+    documentId: string,
+    versionId: string,
+  ): Promise<VersionRow | null>;
   saveVersion(row: VersionRow): Promise<void>;
+  markVersionFailed(
+    tenantId: string,
+    documentId: string,
+    versionId: string,
+  ): Promise<void>;
   replaceAcls(
     tenantId: string,
     documentId: string,
@@ -86,12 +117,48 @@ export interface KnowledgeRepository {
     tenantId: string;
     documentId: string;
     type: string;
+    versionId?: string | null;
+    maxAttempts?: number;
   }): Promise<string>;
   listJobs(filter?: { status?: string; tenantId?: string }): Promise<KnowledgeJobRow[]>;
   saveJob(row: KnowledgeJobRow): Promise<void>;
-  resetProcessingToPending(): Promise<number>;
+  claimNextJob(
+    tenantId: string,
+    workerId: string,
+    now: Date,
+    leaseUntil: Date,
+  ): Promise<KnowledgeJobRow | null>;
+  finishJob(
+    jobId: string,
+    leaseOwner: string,
+    patch: {
+      status: string;
+      attempts: number;
+      nextRetryAt: Date | null;
+      lastError: string | null;
+      completedAt: Date | null;
+    },
+  ): Promise<boolean>;
+  reclaimExpiredJobs(tenantId: string, now: Date): Promise<number>;
   listDocumentIds(tenantId: string): Promise<string[]>;
+  listStaffGroups(tenantId: string, userId: string): Promise<string[]>;
+  replaceStaffGroups(
+    tenantId: string,
+    userId: string,
+    groups: string[],
+  ): Promise<void>;
 }
+
+const DOC_COLUMNS: Record<keyof DocPatch, string> = {
+  title: "title",
+  sequence: "sequence",
+  approvedVersionId: "approvedVersionId",
+  activeVersionId: "activeVersionId",
+  revoked: "revoked",
+  aclRevision: "aclRevision",
+  aclAt: "aclAt",
+  processingStatus: "processingStatus",
+};
 
 function asDate(value: unknown): Date | null {
   if (!value) return null;
@@ -123,6 +190,7 @@ function mapDoc(r: Record<string, unknown>): DocRow {
     aclRevision: Number(r.aclRevision),
     aclAt: asDate(r.aclAt),
     processingStatus: String(r.processingStatus),
+    stateRevision: Number(r.stateRevision ?? 0),
   };
 }
 
@@ -145,6 +213,25 @@ function mapVersion(r: Record<string, unknown>): VersionRow {
   };
 }
 
+function mapJob(r: Record<string, unknown>): KnowledgeJobRow {
+  return {
+    id: String(r.id),
+    eventId: String(r.eventId),
+    tenantId: String(r.tenantId),
+    documentId: String(r.documentId),
+    type: String(r.type),
+    versionId: r.versionId ? String(r.versionId) : null,
+    status: String(r.status),
+    attempts: Number(r.attempts),
+    maxAttempts: Number(r.maxAttempts ?? 5),
+    lastError: r.lastError ? String(r.lastError) : null,
+    nextRetryAt: asDate(r.nextRetryAt),
+    leaseOwner: r.leaseOwner ? String(r.leaseOwner) : null,
+    leaseUntil: asDate(r.leaseUntil),
+    completedAt: asDate(r.completedAt),
+  };
+}
+
 export class SqlKnowledgeRepository implements KnowledgeRepository {
   constructor(private readonly db: SqlExecutor) {}
 
@@ -152,9 +239,11 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     return this.db.transaction((tx) => fn(new SqlKnowledgeRepository(tx)));
   }
 
-  async getDoc(tenantId: string, documentId: string) {
+  async getDoc(tenantId: string, documentId: string, forUpdate = false) {
     const rows = await this.db.query(
-      `SELECT * FROM "knowledge_documents" WHERE "tenantId"=$1 AND "id"=$2`,
+      `SELECT * FROM "knowledge_documents" WHERE "tenantId"=$1 AND "id"=$2${
+        forUpdate ? " FOR UPDATE" : ""
+      }`,
       [tenantId, documentId],
     );
     return rows[0] ? mapDoc(rows[0] as Record<string, unknown>) : null;
@@ -162,8 +251,8 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
 
   async insertDoc(doc: Pick<DocRow, "id" | "tenantId" | "title">) {
     await this.db.execute(
-      `INSERT INTO "knowledge_documents" ("id","tenantId","title","processingStatus")
-       VALUES ($1,$2,$3,'STORED')`,
+      `INSERT INTO "knowledge_documents" ("id","tenantId","title","processingStatus","stateRevision")
+       VALUES ($1,$2,$3,'STORED',0)`,
       [doc.id, doc.tenantId, doc.title],
     );
     const created = await this.getDoc(doc.tenantId, doc.id);
@@ -171,26 +260,33 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     return created;
   }
 
-  async saveDoc(doc: DocRow) {
-    await this.db.execute(
-      `UPDATE "knowledge_documents" SET
-         "title"=$3, "sequence"=$4, "approvedVersionId"=$5, "activeVersionId"=$6,
-         "revoked"=$7, "aclRevision"=$8, "aclAt"=$9, "processingStatus"=$10,
-         "updatedAt"=CURRENT_TIMESTAMP
-       WHERE "tenantId"=$1 AND "id"=$2`,
-      [
-        doc.tenantId,
-        doc.id,
-        doc.title,
-        doc.sequence,
-        doc.approvedVersionId,
-        doc.activeVersionId,
-        doc.revoked,
-        doc.aclRevision,
-        doc.aclAt,
-        doc.processingStatus,
-      ],
+  async patchDoc(
+    tenantId: string,
+    documentId: string,
+    expectedRevision: number,
+    patch: DocPatch,
+  ) {
+    const sets = [
+      `"stateRevision" = "stateRevision" + 1`,
+      `"updatedAt" = CURRENT_TIMESTAMP`,
+    ];
+    const params: unknown[] = [];
+    for (const key of Object.keys(DOC_COLUMNS) as (keyof DocPatch)[]) {
+      if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+      params.push(patch[key] ?? null);
+      sets.push(`"${DOC_COLUMNS[key]}" = $${params.length}`);
+    }
+    params.push(tenantId, documentId, expectedRevision);
+    const tenantParam = params.length - 2;
+    const idParam = params.length - 1;
+    const revisionParam = params.length;
+    const rows = await this.db.query(
+      `UPDATE "knowledge_documents" SET ${sets.join(", ")}
+       WHERE "tenantId"=$${tenantParam} AND "id"=$${idParam} AND "stateRevision"=$${revisionParam}
+       RETURNING *`,
+      params,
     );
+    return rows[0] ? mapDoc(rows[0] as Record<string, unknown>) : null;
   }
 
   async insertVersion(row: VersionRow) {
@@ -218,26 +314,39 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     );
   }
 
-  async getVersion(versionId: string) {
+  async getVersion(tenantId: string, documentId: string, versionId: string) {
     const rows = await this.db.query(
-      `SELECT * FROM "knowledge_document_versions" WHERE "id"=$1`,
-      [versionId],
+      `SELECT * FROM "knowledge_document_versions"
+        WHERE "tenantId"=$1 AND "documentId"=$2 AND "id"=$3`,
+      [tenantId, documentId, versionId],
     );
     return rows[0] ? mapVersion(rows[0] as Record<string, unknown>) : null;
   }
 
   async saveVersion(row: VersionRow) {
-    await this.db.execute(
+    const rows = await this.db.query(
       `UPDATE "knowledge_document_versions" SET
-         "status"=$2, "chunks"=$3::jsonb, "indexGeneration"=$4, "indexedAt"=$5
-       WHERE "id"=$1`,
+         "status"=$4, "chunks"=$5::jsonb, "indexGeneration"=$6, "indexedAt"=$7
+       WHERE "tenantId"=$1 AND "documentId"=$2 AND "id"=$3
+       RETURNING "id"`,
       [
+        row.tenantId,
+        row.documentId,
         row.id,
         row.status,
         row.chunks ? JSON.stringify(row.chunks) : null,
         row.indexGeneration,
         row.indexedAt,
       ],
+    );
+    if (!rows[0]) throw new Error("version not stored");
+  }
+
+  async markVersionFailed(tenantId: string, documentId: string, versionId: string) {
+    await this.db.execute(
+      `UPDATE "knowledge_document_versions" SET "status"='FAILED'
+       WHERE "tenantId"=$1 AND "documentId"=$2 AND "id"=$3 AND "status" <> 'READY'`,
+      [tenantId, documentId, versionId],
     );
   }
 
@@ -284,6 +393,7 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
       documentId: String(r.documentId),
       sequence: Number(r.sequence),
       type: String(r.type),
+      versionId: r.versionId ? String(r.versionId) : null,
     };
   }
 
@@ -322,13 +432,23 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     tenantId: string;
     documentId: string;
     type: string;
+    versionId?: string | null;
+    maxAttempts?: number;
   }) {
     const id = row.id ?? randomUUID();
     await this.db.execute(
       `INSERT INTO "knowledge_sync_jobs"
-        ("id","eventId","tenantId","documentId","type","status")
-       VALUES ($1,$2,$3,$4,$5,'PENDING')`,
-      [id, row.eventId, row.tenantId, row.documentId, row.type],
+        ("id","eventId","tenantId","documentId","type","versionId","status","maxAttempts")
+       VALUES ($1,$2,$3,$4,$5,$6,'PENDING',$7)`,
+      [
+        id,
+        row.eventId,
+        row.tenantId,
+        row.documentId,
+        row.type,
+        row.versionId ?? null,
+        row.maxAttempts ?? 5,
+      ],
     );
     return id;
   }
@@ -348,27 +468,15 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     if (where.length) sql += ` WHERE ${where.join(" AND ")}`;
     sql += ` ORDER BY "createdAt" ASC`;
     const rows = await this.db.query(sql, params);
-    return rows.map((raw) => {
-      const r = raw as Record<string, unknown>;
-      return {
-        id: String(r.id),
-        eventId: String(r.eventId),
-        tenantId: String(r.tenantId),
-        documentId: String(r.documentId),
-        type: String(r.type),
-        status: String(r.status),
-        attempts: Number(r.attempts),
-        lastError: r.lastError ? String(r.lastError) : null,
-        nextRetryAt: asDate(r.nextRetryAt),
-        completedAt: asDate(r.completedAt),
-      };
-    });
+    return rows.map((raw) => mapJob(raw as Record<string, unknown>));
   }
 
   async saveJob(row: KnowledgeJobRow) {
     await this.db.execute(
       `UPDATE "knowledge_sync_jobs" SET
-         "status"=$2, "attempts"=$3, "nextRetryAt"=$4, "lastError"=$5, "completedAt"=$6
+         "status"=$2, "attempts"=$3, "nextRetryAt"=$4, "lastError"=$5,
+         "completedAt"=$6, "leaseOwner"=$7, "leaseUntil"=$8, "versionId"=$9,
+         "maxAttempts"=$10
        WHERE "id"=$1`,
       [
         row.id,
@@ -377,8 +485,83 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
         row.nextRetryAt,
         row.lastError,
         row.completedAt,
+        row.leaseOwner,
+        row.leaseUntil,
+        row.versionId,
+        row.maxAttempts,
       ],
     );
+  }
+
+  async claimNextJob(tenantId: string, workerId: string, now: Date, leaseUntil: Date) {
+    const rows = await this.db.query(
+      `WITH next AS (
+         SELECT "id" FROM "knowledge_sync_jobs"
+         WHERE "tenantId"=$1
+           AND "type"='INDEX'
+           AND "attempts" < "maxAttempts"
+           AND (
+             ("status"='PENDING' AND ("nextRetryAt" IS NULL OR "nextRetryAt" <= $2))
+             OR ("status"='FAILED' AND "nextRetryAt" IS NOT NULL AND "nextRetryAt" <= $2)
+           )
+         ORDER BY "createdAt" ASC, "id" ASC
+         FOR UPDATE SKIP LOCKED
+         LIMIT 1
+       )
+       UPDATE "knowledge_sync_jobs" AS job
+       SET "status"='PROCESSING',
+           "attempts"=job."attempts" + 1,
+           "leaseOwner"=$3,
+           "leaseUntil"=$4
+       FROM next
+       WHERE job."id" = next."id"
+       RETURNING job.*`,
+      [tenantId, now, workerId, leaseUntil],
+    );
+    return rows[0] ? mapJob(rows[0] as Record<string, unknown>) : null;
+  }
+
+  async finishJob(
+    jobId: string,
+    leaseOwner: string,
+    patch: {
+      status: string;
+      attempts: number;
+      nextRetryAt: Date | null;
+      lastError: string | null;
+      completedAt: Date | null;
+    },
+  ) {
+    const rows = await this.db.query(
+      `UPDATE "knowledge_sync_jobs" SET
+         "status"=$3, "attempts"=$4, "nextRetryAt"=$5, "lastError"=$6,
+         "completedAt"=$7, "leaseOwner"=NULL, "leaseUntil"=NULL
+       WHERE "id"=$1 AND "leaseOwner"=$2 AND "status"='PROCESSING'
+       RETURNING "id"`,
+      [
+        jobId,
+        leaseOwner,
+        patch.status,
+        patch.attempts,
+        patch.nextRetryAt,
+        patch.lastError,
+        patch.completedAt,
+      ],
+    );
+    return Boolean(rows[0]);
+  }
+
+  async reclaimExpiredJobs(tenantId: string, now: Date) {
+    const rows = await this.db.query(
+      `UPDATE "knowledge_sync_jobs"
+       SET "status"='PENDING', "leaseOwner"=NULL, "leaseUntil"=NULL
+       WHERE "tenantId"=$1
+         AND "status"='PROCESSING'
+         AND ("leaseUntil" IS NULL OR "leaseUntil" <= $2)
+       RETURNING "id"`,
+      [tenantId, now],
+    );
+    return rows.length;
   }
 
   async listDocumentIds(tenantId: string) {
@@ -389,13 +572,27 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     return rows.map((r) => r.id);
   }
 
-  async resetProcessingToPending() {
-    const before = await this.db.query<{ id: string }>(
-      `SELECT "id" FROM "knowledge_sync_jobs" WHERE "status"='PROCESSING'`,
+  async listStaffGroups(tenantId: string, userId: string) {
+    const rows = await this.db.query<{ groupId: string }>(
+      `SELECT "groupId" FROM "knowledge_staff_groups"
+        WHERE "tenantId"=$1 AND "userId"=$2
+        ORDER BY "groupId" ASC`,
+      [tenantId, userId],
     );
+    return rows.map((r) => r.groupId);
+  }
+
+  async replaceStaffGroups(tenantId: string, userId: string, groups: string[]) {
     await this.db.execute(
-      `UPDATE "knowledge_sync_jobs" SET "status"='PENDING' WHERE "status"='PROCESSING'`,
+      `DELETE FROM "knowledge_staff_groups" WHERE "tenantId"=$1 AND "userId"=$2`,
+      [tenantId, userId],
     );
-    return before.length;
+    for (const group of groups) {
+      await this.db.execute(
+        `INSERT INTO "knowledge_staff_groups" ("id","tenantId","userId","groupId")
+         VALUES ($1,$2,$3,$4)`,
+        [randomUUID(), tenantId, userId, group],
+      );
+    }
   }
 }

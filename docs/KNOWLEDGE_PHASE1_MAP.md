@@ -20,11 +20,12 @@
 | 경로 | 역할 |
 |---|---|
 | `src/lib/knowledge/*` | 계약 서비스, SQL 저장소, 로컬 원본 어댑터, 플래그 |
-| `prisma/migrations/20261002120000_knowledge_v1` | additive 테이블 |
+| `prisma/migrations/20261002120000_knowledge_v1` | additive 테이블. 버전은 tenant+document로 조회하고, 문서 갱신은 stateRevision 조건이다 |
 | `src/app/api/dev/knowledge/*` | ADMIN 상태 / 플래그 ON 검색 (세션 문맥만) |
 | `src/app/(dashboard)/admin/knowledge-dev/page.tsx` | 개발 안내 화면 |
 
 ## 롤백
 
 1. 기능 플래그를 켜지 않으면 기존 업무 경로와 동일하다.
-2. 테이블만 제거하려면 개발 DB에서 `knowledge_*` 5개 테이블 DROP. 운영 DB에는 이번 작업으로 migrate/push 하지 않았다.
+2. 테이블만 제거하려면 개발 DB에서 `knowledge_*` 테이블 DROP. 운영 DB에는 이번 작업으로 migrate/push 하지 않았다.
+3. 직원 그룹은 `knowledge_staff_groups`에만 있고, 역할에서 자동 부여하지 않는다.

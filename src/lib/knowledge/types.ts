@@ -48,9 +48,13 @@ export type KnowledgeJobRow = {
   tenantId: string;
   documentId: string;
   type: string;
+  versionId: string | null;
   status: string;
   attempts: number;
+  maxAttempts: number;
   lastError: string | null;
   nextRetryAt: Date | null;
+  leaseOwner: string | null;
+  leaseUntil: Date | null;
   completedAt: Date | null;
 };

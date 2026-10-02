@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS "knowledge_documents" (
     "aclRevision" INTEGER NOT NULL DEFAULT 0,
     "aclAt" TIMESTAMPTZ,
     "processingStatus" TEXT NOT NULL DEFAULT 'PENDING_UPLOAD',
+    "stateRevision" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "knowledge_documents_pkey" PRIMARY KEY ("tenantId", "id")
@@ -79,16 +80,32 @@ CREATE TABLE IF NOT EXISTS "knowledge_sync_jobs" (
     "documentId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "versionId" TEXT,
     "attempts" INTEGER NOT NULL DEFAULT 0,
+    "maxAttempts" INTEGER NOT NULL DEFAULT 5,
     "nextRetryAt" TIMESTAMPTZ,
     "lastError" TEXT,
+    "leaseOwner" TEXT,
+    "leaseUntil" TIMESTAMPTZ,
     "completedAt" TIMESTAMPTZ,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "knowledge_sync_jobs_pkey" PRIMARY KEY ("id")
 );
 
 CREATE INDEX IF NOT EXISTS "knowledge_sync_jobs_status_idx"
-  ON "knowledge_sync_jobs" ("status", "nextRetryAt");
+  ON "knowledge_sync_jobs" ("tenantId", "status", "nextRetryAt");
+
+CREATE TABLE IF NOT EXISTS "knowledge_staff_groups" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "knowledge_staff_groups_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "knowledge_staff_groups_user_group_idx"
+  ON "knowledge_staff_groups" ("tenantId", "userId", "groupId");
 
 ALTER TABLE "knowledge_document_versions"
   ADD CONSTRAINT "knowledge_document_versions_doc_fkey"

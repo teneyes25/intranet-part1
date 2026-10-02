@@ -14,7 +14,7 @@ function prismaExecutor(): SqlExecutor {
       return rows;
     },
     async execute(sql: string, params: unknown[] = []) {
-      await prisma.$executeRawUnsafe(sql, ...params);
+      return prisma.$executeRawUnsafe(sql, ...params);
     },
     async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>) {
       return prisma.$transaction(async (tx) => {
@@ -23,7 +23,7 @@ function prismaExecutor(): SqlExecutor {
             return tx.$queryRawUnsafe<R[]>(sql, ...params);
           },
           async execute(sql: string, params: unknown[] = []) {
-            await tx.$executeRawUnsafe(sql, ...params);
+            return tx.$executeRawUnsafe(sql, ...params);
           },
           transaction(child) {
             return child(inner);

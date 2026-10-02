@@ -12,7 +12,8 @@ export function pgliteExecutor(db: PGlite): SqlExecutor {
       return (result.rows ?? []) as T[];
     },
     async execute(sql: string, params: unknown[] = []) {
-      await client.query(sql, params);
+      const result = await client.query(sql, params);
+      return result.affectedRows ?? 0;
     },
     async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>) {
       await client.query("BEGIN");

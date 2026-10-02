@@ -1,9 +1,10 @@
-import { mkdir, readFile, writeFile, stat } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 export interface StorageAdapter {
   put(key: string, bytes: Buffer): Promise<void>;
   get(key: string): Promise<Buffer>;
+  delete(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
 }
 
@@ -30,6 +31,10 @@ export class LocalFsStorageAdapter implements StorageAdapter {
 
   async get(key: string) {
     return readFile(this.resolve(key));
+  }
+
+  async delete(key: string) {
+    await rm(this.resolve(key), { force: true });
   }
 
   async exists(key: string) {
