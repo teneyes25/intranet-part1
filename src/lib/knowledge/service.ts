@@ -6,6 +6,7 @@ import { originalObjectKey, previewObjectKey } from "./storage";
 import type { StorageAdapter } from "./storage";
 import type { KnowledgeRepository } from "./repository";
 import type {
+  JobLease,
   KnowledgeChunk,
   KnowledgeContext,
   KnowledgeEvent,
@@ -194,14 +195,13 @@ export class KnowledgeService {
     const fingerprint = eventFingerprint(event);
 
     return this.repo.transaction(async (tx) => {
+      const doc = await tx.getDoc(ctx.tenantId, event.documentId, true);
+      requireValue(doc, "not found");
       const existing = await tx.getEvent(ctx.tenantId, event.eventId);
       if (existing) {
         requireValue(existing.fingerprint === fingerprint, "event ID conflict");
         return { duplicate: true as const };
       }
-
-      const doc = await tx.getDoc(ctx.tenantId, event.documentId, true);
-      requireValue(doc, "not found");
       requireValue(
         Number.isSafeInteger(event.sequence) && event.sequence === doc.sequence + 1,
         "sequence gap or stale event",
@@ -300,11 +300,37 @@ export class KnowledgeService {
     });
   }
 
+  private leaseFrom(job: KnowledgeJobRow): JobLease {
+    requireValue(job.leaseOwner && job.leaseFence && job.leaseUntil, "lease lost");
+    return {
+      jobId: job.id,
+      tenantId: job.tenantId,
+      leaseOwner: job.leaseOwner,
+      leaseFence: job.leaseFence,
+      leaseUntil: job.leaseUntil,
+    };
+  }
+
+  /** Document row first, then the job row. */
+  private async assertHeldLease(tx: KnowledgeRepository, lease: JobLease) {
+    const job = await tx.getJobForUpdate(lease.tenantId, lease.jobId);
+    const until = job?.leaseUntil?.getTime() ?? 0;
+    requireValue(
+      job &&
+        job.status === "PROCESSING" &&
+        job.leaseOwner === lease.leaseOwner &&
+        job.leaseFence === lease.leaseFence &&
+        until > this.now(),
+      "lease lost",
+    );
+  }
+
   async indexApprovedText(
     ctx: KnowledgeContext,
     input: {
       documentId: string;
       versionId: string;
+      lease?: JobLease;
       extractor?: (bytes: Buffer) => string | KnowledgeChunk[] | never;
     },
   ) {
@@ -352,6 +378,7 @@ export class KnowledgeService {
       await this.repo.transaction(async (tx) => {
         const latest = await tx.getDoc(ctx.tenantId, input.documentId, true);
         requireValue(latest, "not found");
+        if (input.lease) await this.assertHeldLease(tx, input.lease);
         requireValue(
           !latest.revoked && latest.approvedVersionId === input.versionId,
           "approval changed",
@@ -379,9 +406,11 @@ export class KnowledgeService {
         requireValue(patched, "approval changed");
       });
     } catch (error) {
-      await this.markIndexFailed(ctx, input.documentId, input.versionId).catch(
-        () => undefined,
-      );
+      if (!(error instanceof Error && error.message === "lease lost")) {
+        await this.markIndexFailed(ctx, input.documentId, input.versionId, input.lease).catch(
+          () => undefined,
+        );
+      }
       throw error;
     }
   }
@@ -390,9 +419,17 @@ export class KnowledgeService {
     ctx: SyncServiceContext,
     documentId: string,
     versionId: string,
+    lease?: JobLease,
   ) {
     await this.repo.transaction(async (tx) => {
       const doc = await tx.getDoc(ctx.tenantId, documentId, true);
+      if (lease) {
+        try {
+          await this.assertHeldLease(tx, lease);
+        } catch {
+          return;
+        }
+      }
       if (!doc || doc.revoked || doc.approvedVersionId !== versionId) return;
       if (doc.activeVersionId === versionId) return;
       await tx.markVersionFailed(ctx.tenantId, documentId, versionId);
@@ -496,20 +533,17 @@ export class KnowledgeService {
       const job = await this.repo.claimNextJob(
         ctx.tenantId,
         workerId,
+        randomUUID(),
         new Date(this.now()),
         new Date(this.now() + this.limits().leaseMs),
       );
       if (!job) break;
-      results.push(await this.runClaimedJob(ctx, job, workerId));
+      results.push(await this.runClaimedJob(ctx, job));
     }
     return results;
   }
 
-  private async runClaimedJob(
-    ctx: SyncServiceContext,
-    job: KnowledgeJobRow,
-    workerId: string,
-  ) {
+  private async runClaimedJob(ctx: SyncServiceContext, job: KnowledgeJobRow) {
     const finish = async (
       status: string,
       error: string | null,
@@ -517,7 +551,7 @@ export class KnowledgeService {
     ) => {
       const delay = this.opts.retryDelayMs?.(job.attempts) ??
         Math.min(60_000 * job.attempts, 15 * 60_000);
-      const ok = await this.repo.finishJob(job.id, workerId, {
+      const ok = await this.repo.finishJob(this.leaseFrom(job), new Date(this.now()), {
         status,
         attempts: job.attempts,
         nextRetryAt: status === "FAILED" ? new Date(this.now() + delay) : null,
@@ -539,10 +573,14 @@ export class KnowledgeService {
       await this.indexApprovedText(ctx, {
         documentId: doc.id,
         versionId: job.versionId,
+        lease: this.leaseFrom(job),
       });
       return finish("DONE", null, true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "index_failed";
+      if (message === "lease lost") {
+        return { id: job.id, status: "LOST_LEASE", error: "lease lost" };
+      }
       if (
         message === "not approved version" ||
         message === "approval changed" ||

@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS "knowledge_sync_jobs" (
     "nextRetryAt" TIMESTAMPTZ,
     "lastError" TEXT,
     "leaseOwner" TEXT,
+    "leaseFence" TEXT,
     "leaseUntil" TIMESTAMPTZ,
     "completedAt" TIMESTAMPTZ,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

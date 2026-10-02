@@ -405,20 +405,134 @@ test("regression: a second worker cannot claim a leased job", async () => {
     await approveText(h);
     const now = new Date();
     const until = new Date(now.getTime() + 60_000);
-    const first = await h.repo.claimNextJob("fm", "worker-a", now, until);
-    const second = await h.repo.claimNextJob("fm", "worker-b", now, until);
+    const first = await h.repo.claimNextJob("fm", "worker-a", "fence-a", now, until);
+    const second = await h.repo.claimNextJob("fm", "worker-b", "fence-b", now, until);
     assert.ok(first);
     assert.equal(second, null);
     assert.equal(first?.leaseOwner, "worker-a");
-    const lost = await h.repo.finishJob(first!.id, "worker-b", {
-      status: "DONE",
-      attempts: first!.attempts,
-      nextRetryAt: null,
-      lastError: null,
-      completedAt: now,
-    });
+    const lost = await h.repo.finishJob(
+      {
+        jobId: first!.id,
+        tenantId: first!.tenantId,
+        leaseOwner: "worker-b",
+        leaseFence: first!.leaseFence ?? "",
+        leaseUntil: until,
+      },
+      now,
+      {
+        status: "DONE",
+        attempts: first!.attempts,
+        nextRetryAt: null,
+        lastError: null,
+        completedAt: now,
+      },
+    );
     assert.equal(lost, false);
     assert.equal((await h.repo.listJobs({ tenantId: "fm" }))[0]?.status, "PROCESSING");
+    const expired = await h.repo.finishJob(
+      {
+        jobId: first!.id,
+        tenantId: first!.tenantId,
+        leaseOwner: "worker-a",
+        leaseFence: first!.leaseFence ?? "",
+        leaseUntil: until,
+      },
+      new Date(until.getTime() + 1_000),
+      {
+        status: "DONE",
+        attempts: first!.attempts,
+        nextRetryAt: null,
+        lastError: null,
+        completedAt: now,
+      },
+    );
+    assert.equal(expired, false);
+    assert.equal((await h.repo.listJobs({ tenantId: "fm" }))[0]?.status, "PROCESSING");
+  } finally {
+    await closeHarness(h);
+  }
+});
+
+test("regression: worker resumed after lease loss cannot publish or finish", async () => {
+  const h = await createHarness();
+  const workerB = new KnowledgeService(h.repo, h.storage);
+  const published = {
+    chunks: "",
+    generation: 0,
+    docStatus: "",
+    activeVersionId: null as string | null,
+    jobStatus: "",
+    jobError: null as string | null,
+    seen: false,
+  };
+  const workerA = new KnowledgeService(h.repo, h.storage, {
+    beforeIndexPublish: async () => {
+      const owned = (await h.repo.listJobs({ tenantId: "fm" })).find(
+        (job) => job.status === "PROCESSING",
+      );
+      assert.ok(owned);
+      owned.leaseUntil = new Date(Date.now() - 1_000);
+      await h.repo.saveJob(owned);
+      await workerB.recoverExpiredJobs(serviceCtx);
+      await workerB.processJobs(serviceCtx);
+      const versionId = owned.versionId ?? "";
+      const version = await h.repo.getVersion("fm", "doc", versionId);
+      const doc = await h.repo.getDoc("fm", "doc");
+      const job = (await h.repo.listJobs({ tenantId: "fm" }))[0];
+      published.chunks = JSON.stringify(version?.chunks ?? null);
+      published.generation = version?.indexGeneration ?? -1;
+      published.docStatus = doc?.processingStatus ?? "";
+      published.activeVersionId = doc?.activeVersionId ?? null;
+      published.jobStatus = job?.status ?? "";
+      published.jobError = job?.lastError ?? null;
+      published.seen = true;
+    },
+  });
+  try {
+    const version = await approveText({ ...h, service: workerA });
+    const results = await workerA.processJobs(serviceCtx);
+    assert.equal(results[0]?.status, "LOST_LEASE");
+    assert.equal(published.seen, true);
+    assert.equal(published.generation, 1);
+    assert.equal(published.jobStatus, "DONE");
+    assert.equal(published.activeVersionId, version.versionId);
+    const afterVersion = await h.repo.getVersion("fm", "doc", version.versionId);
+    const afterDoc = await h.repo.getDoc("fm", "doc");
+    const afterJob = (await h.repo.listJobs({ tenantId: "fm" }))[0];
+    assert.equal(JSON.stringify(afterVersion?.chunks ?? null), published.chunks);
+    assert.equal(afterVersion?.indexGeneration, published.generation);
+    assert.equal(afterVersion?.status, "READY");
+    assert.equal(afterDoc?.processingStatus, published.docStatus);
+    assert.equal(afterDoc?.activeVersionId, published.activeVersionId);
+    assert.equal(afterJob?.status, "DONE");
+    assert.equal(afterJob?.lastError, published.jobError);
+  } finally {
+    await closeHarness(h);
+  }
+});
+
+test("regression: crash on the last attempt expires to EXHAUSTED", async () => {
+  const h = await createHarness({ limits: { maxAttempts: 1 } });
+  try {
+    await approveText(h);
+    const now = new Date();
+    const claimed = await h.repo.claimNextJob(
+      "fm",
+      "dead-worker",
+      "fence-dead",
+      now,
+      new Date(now.getTime() - 1_000),
+    );
+    assert.equal(claimed?.attempts, 1);
+    assert.equal(claimed?.status, "PROCESSING");
+    const recovered = await h.service.recoverExpiredJobs(serviceCtx);
+    assert.equal(recovered.exhausted, 1);
+    assert.equal(recovered.pending, 0);
+    const job = (await h.repo.listJobs({ tenantId: "fm" }))[0];
+    assert.equal(job?.status, "EXHAUSTED");
+    assert.equal(job?.leaseOwner, null);
+    assert.deepEqual(await h.service.processJobs(serviceCtx), []);
+    assert.equal((await h.repo.listJobs({ tenantId: "fm" }))[0]?.status, "EXHAUSTED");
   } finally {
     await closeHarness(h);
   }
@@ -524,10 +638,11 @@ test("restart: child process reopens file PGlite and reclaims only expired lease
     const line = probe.stdout.split("\n").find((item) => item.startsWith("RESULT "));
     assert.ok(line);
     const parsed = JSON.parse(line.slice("RESULT ".length)) as {
-      reclaimed: number;
+      reclaimed: { pending: number; exhausted: number };
       jobs: { tenantId: string; documentId: string; status: string }[];
     };
-    assert.equal(parsed.reclaimed, 1);
+    assert.equal(parsed.reclaimed.pending, 1);
+    assert.equal(parsed.reclaimed.exhausted, 0);
     assert.equal(
       parsed.jobs.find((job) => job.documentId === "expired")?.status,
       "PENDING",

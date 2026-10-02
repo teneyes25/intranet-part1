@@ -1095,6 +1095,7 @@ model KnowledgeSyncJob {
   nextRetryAt DateTime?
   lastError   String?
   leaseOwner  String?
+  leaseFence  String?
   leaseUntil  DateTime?
   completedAt DateTime?
   createdAt   DateTime          @default(now())

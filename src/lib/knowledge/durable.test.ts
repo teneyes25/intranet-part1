@@ -372,7 +372,8 @@ test("same-process: expired lease is reclaimed for one tenant only", async () =>
     await h.repo.saveJob(otherJobs[0]!);
 
     const recovered = await h.k.recoverExpiredJobs(serviceCtx);
-    assert.equal(recovered, 1);
+    assert.equal(recovered.pending, 1);
+    assert.equal(recovered.exhausted, 0);
     assert.equal(
       (await h.repo.listJobs({ tenantId: "other" }))[0]?.status,
       "PROCESSING",

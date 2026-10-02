@@ -55,6 +55,16 @@ export type KnowledgeJobRow = {
   lastError: string | null;
   nextRetryAt: Date | null;
   leaseOwner: string | null;
+  leaseFence: string | null;
   leaseUntil: Date | null;
   completedAt: Date | null;
+};
+
+/** Claim identity checked again inside the index publish transaction. */
+export type JobLease = {
+  jobId: string;
+  tenantId: string;
+  leaseOwner: string;
+  leaseFence: string;
+  leaseUntil: Date;
 };

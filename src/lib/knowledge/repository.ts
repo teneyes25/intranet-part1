@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { KnowledgeChunk, KnowledgeJobRow } from "./types";
+import type { JobLease, KnowledgeChunk, KnowledgeJobRow } from "./types";
 
 export type DocRow = {
   id: string;
@@ -122,15 +122,17 @@ export interface KnowledgeRepository {
   }): Promise<string>;
   listJobs(filter?: { status?: string; tenantId?: string }): Promise<KnowledgeJobRow[]>;
   saveJob(row: KnowledgeJobRow): Promise<void>;
+  getJobForUpdate(tenantId: string, jobId: string): Promise<KnowledgeJobRow | null>;
   claimNextJob(
     tenantId: string,
     workerId: string,
+    leaseFence: string,
     now: Date,
     leaseUntil: Date,
   ): Promise<KnowledgeJobRow | null>;
   finishJob(
-    jobId: string,
-    leaseOwner: string,
+    lease: JobLease,
+    now: Date,
     patch: {
       status: string;
       attempts: number;
@@ -139,7 +141,10 @@ export interface KnowledgeRepository {
       completedAt: Date | null;
     },
   ): Promise<boolean>;
-  reclaimExpiredJobs(tenantId: string, now: Date): Promise<number>;
+  reclaimExpiredJobs(
+    tenantId: string,
+    now: Date,
+  ): Promise<{ pending: number; exhausted: number }>;
   listDocumentIds(tenantId: string): Promise<string[]>;
   listStaffGroups(tenantId: string, userId: string): Promise<string[]>;
   replaceStaffGroups(
@@ -227,6 +232,7 @@ function mapJob(r: Record<string, unknown>): KnowledgeJobRow {
     lastError: r.lastError ? String(r.lastError) : null,
     nextRetryAt: asDate(r.nextRetryAt),
     leaseOwner: r.leaseOwner ? String(r.leaseOwner) : null,
+    leaseFence: r.leaseFence ? String(r.leaseFence) : null,
     leaseUntil: asDate(r.leaseUntil),
     completedAt: asDate(r.completedAt),
   };
@@ -475,8 +481,8 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     await this.db.execute(
       `UPDATE "knowledge_sync_jobs" SET
          "status"=$2, "attempts"=$3, "nextRetryAt"=$4, "lastError"=$5,
-         "completedAt"=$6, "leaseOwner"=$7, "leaseUntil"=$8, "versionId"=$9,
-         "maxAttempts"=$10
+         "completedAt"=$6, "leaseOwner"=$7, "leaseFence"=$8, "leaseUntil"=$9,
+         "versionId"=$10, "maxAttempts"=$11
        WHERE "id"=$1`,
       [
         row.id,
@@ -486,6 +492,7 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
         row.lastError,
         row.completedAt,
         row.leaseOwner,
+        row.leaseFence,
         row.leaseUntil,
         row.versionId,
         row.maxAttempts,
@@ -493,7 +500,22 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
     );
   }
 
-  async claimNextJob(tenantId: string, workerId: string, now: Date, leaseUntil: Date) {
+  /** Jobs are locked only after the document row. Claim locks the job alone. */
+  async getJobForUpdate(tenantId: string, jobId: string) {
+    const rows = await this.db.query(
+      `SELECT * FROM "knowledge_sync_jobs" WHERE "tenantId"=$1 AND "id"=$2 FOR UPDATE`,
+      [tenantId, jobId],
+    );
+    return rows[0] ? mapJob(rows[0] as Record<string, unknown>) : null;
+  }
+
+  async claimNextJob(
+    tenantId: string,
+    workerId: string,
+    leaseFence: string,
+    now: Date,
+    leaseUntil: Date,
+  ) {
     const rows = await this.db.query(
       `WITH next AS (
          SELECT "id" FROM "knowledge_sync_jobs"
@@ -512,18 +534,19 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
        SET "status"='PROCESSING',
            "attempts"=job."attempts" + 1,
            "leaseOwner"=$3,
-           "leaseUntil"=$4
+           "leaseFence"=$4,
+           "leaseUntil"=$5
        FROM next
        WHERE job."id" = next."id"
        RETURNING job.*`,
-      [tenantId, now, workerId, leaseUntil],
+      [tenantId, now, workerId, leaseFence, leaseUntil],
     );
     return rows[0] ? mapJob(rows[0] as Record<string, unknown>) : null;
   }
 
   async finishJob(
-    jobId: string,
-    leaseOwner: string,
+    lease: JobLease,
+    now: Date,
     patch: {
       status: string;
       attempts: number;
@@ -534,34 +557,51 @@ export class SqlKnowledgeRepository implements KnowledgeRepository {
   ) {
     const rows = await this.db.query(
       `UPDATE "knowledge_sync_jobs" SET
-         "status"=$3, "attempts"=$4, "nextRetryAt"=$5, "lastError"=$6,
-         "completedAt"=$7, "leaseOwner"=NULL, "leaseUntil"=NULL
-       WHERE "id"=$1 AND "leaseOwner"=$2 AND "status"='PROCESSING'
+         "status"=$5, "attempts"=$6, "nextRetryAt"=$7, "lastError"=$8,
+         "completedAt"=$9, "leaseOwner"=NULL, "leaseFence"=NULL, "leaseUntil"=NULL
+       WHERE "id"=$1 AND "tenantId"=$2 AND "leaseOwner"=$3 AND "leaseFence"=$4
+         AND "status"='PROCESSING'
+         AND "leaseUntil" IS NOT NULL AND "leaseUntil" > $10
        RETURNING "id"`,
       [
-        jobId,
-        leaseOwner,
+        lease.jobId,
+        lease.tenantId,
+        lease.leaseOwner,
+        lease.leaseFence,
         patch.status,
         patch.attempts,
         patch.nextRetryAt,
         patch.lastError,
         patch.completedAt,
+        now,
       ],
     );
     return Boolean(rows[0]);
   }
 
   async reclaimExpiredJobs(tenantId: string, now: Date) {
-    const rows = await this.db.query(
+    const exhausted = await this.db.query(
       `UPDATE "knowledge_sync_jobs"
-       SET "status"='PENDING', "leaseOwner"=NULL, "leaseUntil"=NULL
+       SET "status"='EXHAUSTED', "leaseOwner"=NULL, "leaseFence"=NULL, "leaseUntil"=NULL,
+           "completedAt"=$2, "lastError"=COALESCE("lastError", 'attempts exhausted')
        WHERE "tenantId"=$1
          AND "status"='PROCESSING'
          AND ("leaseUntil" IS NULL OR "leaseUntil" <= $2)
+         AND "attempts" >= "maxAttempts"
        RETURNING "id"`,
       [tenantId, now],
     );
-    return rows.length;
+    const pending = await this.db.query(
+      `UPDATE "knowledge_sync_jobs"
+       SET "status"='PENDING', "leaseOwner"=NULL, "leaseFence"=NULL, "leaseUntil"=NULL
+       WHERE "tenantId"=$1
+         AND "status"='PROCESSING'
+         AND ("leaseUntil" IS NULL OR "leaseUntil" <= $2)
+         AND "attempts" < "maxAttempts"
+       RETURNING "id"`,
+      [tenantId, now],
+    );
+    return { pending: pending.length, exhausted: exhausted.length };
   }
 
   async listDocumentIds(tenantId: string) {
