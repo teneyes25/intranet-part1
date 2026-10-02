@@ -27,6 +27,7 @@
     "test:real-usage": "playwright test e2e/real-usage.spec.ts",
     "test:ui-upgrade": "playwright test e2e/ui-upgrade.spec.ts",
     "test:knowledge": "node --test prototypes/knowledge-v1/core.test.mjs && npx tsx --test src/lib/knowledge/auth-context.test.ts src/lib/knowledge/durable.test.ts src/lib/knowledge/regression.test.ts src/lib/knowledge/pg-concurrency.test.ts",
+    "knowledge:phase2-local": "tsx scripts/knowledge-phase2-local-scenario.ts",
     "docker:sync": "node scripts/docker-sync.mjs",
     "postinstall": "prisma generate"
   },
