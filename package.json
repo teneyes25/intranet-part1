@@ -26,6 +26,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:real-usage": "playwright test e2e/real-usage.spec.ts",
     "test:ui-upgrade": "playwright test e2e/ui-upgrade.spec.ts",
+    "test:knowledge": "node --test prototypes/knowledge-v1/core.test.mjs && npx tsx --test src/lib/knowledge/durable.test.ts",
     "docker:sync": "node scripts/docker-sync.mjs",
     "postinstall": "prisma generate"
   },

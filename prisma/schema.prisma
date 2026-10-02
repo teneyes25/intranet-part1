@@ -998,3 +998,102 @@ model DealerTrade {
   @@index([toDealerId, status])
   @@map("dealer_trades")
 }
+
+/// Knowledge v1 catalog (feature-flagged). Additive; no FK to existing tables.
+model KnowledgeDocument {
+  id                 String
+  tenantId           String
+  title              String
+  sourceSystem       String   @default("intranet")
+  sourceId           String?
+  /// Optional map to existing Attachment.id — no FK (non-destructive)
+  attachmentId       String?
+  sequence           Int      @default(0)
+  approvedVersionId  String?
+  activeVersionId    String?
+  revoked            Boolean  @default(false)
+  aclRevision        Int      @default(0)
+  aclAt              DateTime?
+  processingStatus   String   @default("PENDING_UPLOAD")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  versions           KnowledgeDocumentVersion[]
+  acls               KnowledgeDocumentAcl[]
+  events             KnowledgeSyncEvent[]
+  jobs               KnowledgeSyncJob[]
+
+  @@id([tenantId, id])
+  @@map("knowledge_documents")
+}
+
+model KnowledgeDocumentVersion {
+  id              String             @id
+  tenantId        String
+  documentId      String
+  document        KnowledgeDocument  @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Cascade)
+  filename        String
+  mimeType        String
+  size            Int
+  sha256          String
+  storageKey      String
+  previewKey      String?
+  attachmentId    String?
+  status          String             @default("STORED")
+  chunks          Json?
+  indexGeneration Int                @default(0)
+  indexedAt       DateTime?
+  createdAt       DateTime           @default(now())
+
+  @@index([tenantId, documentId])
+  @@map("knowledge_document_versions")
+}
+
+model KnowledgeDocumentAcl {
+  id            String            @id @default(cuid())
+  tenantId      String
+  documentId    String
+  document      KnowledgeDocument @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Cascade)
+  principalType String
+  principalId   String
+  revision      Int
+  createdAt     DateTime          @default(now())
+
+  @@index([tenantId, documentId, revision])
+  @@map("knowledge_document_acls")
+}
+
+model KnowledgeSyncEvent {
+  id          String
+  tenantId    String
+  documentId  String
+  document    KnowledgeDocument @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Cascade)
+  sequence    Int
+  type        String
+  versionId   String?
+  aclRevision Int?
+  fingerprint String
+  payload     Json
+  createdAt   DateTime          @default(now())
+
+  @@id([tenantId, id])
+  @@unique([tenantId, documentId, sequence])
+  @@map("knowledge_sync_events")
+}
+
+model KnowledgeSyncJob {
+  id          String            @id @default(cuid())
+  eventId     String
+  tenantId    String
+  documentId  String
+  document    KnowledgeDocument @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Cascade)
+  type        String
+  status      String            @default("PENDING")
+  attempts    Int               @default(0)
+  nextRetryAt DateTime?
+  lastError   String?
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([status, nextRetryAt])
+  @@map("knowledge_sync_jobs")
+}

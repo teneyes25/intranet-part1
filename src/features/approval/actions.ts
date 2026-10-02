@@ -235,6 +235,12 @@ export async function approveAction(
         data: { status: "COMPLETED", completedAt: new Date() },
       });
       await archiveApprovalToDocuments(docId);
+      void import("@/lib/knowledge/intranet-bridge").then(({ maybeRecordKnowledgeApproval }) =>
+        maybeRecordKnowledgeApproval({
+          sourceId: docId,
+          title: doc.title,
+        }),
+      );
       await createNotification({
         userId: doc.drafterId,
         type: "APPROVAL_RESULT",
