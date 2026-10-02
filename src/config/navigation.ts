@@ -21,6 +21,7 @@ import {
   ServerCog,
   Store,
   Rocket,
+  BookOpen,
   ShoppingCart,
   type LucideIcon,
 } from "lucide-react";
@@ -108,6 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { title: "실시간 모니터링", href: "/admin/monitoring", icon: LineChart, roles: ["ADMIN"] },
       { title: "Pilot 관리", href: "/admin/pilot", icon: FlaskConical, roles: ["ADMIN"] },
       { title: "권한/보안", href: "/admin/security", icon: ShieldCheck, roles: ["ADMIN"] },
+      { title: "Knowledge v1 개발", href: "/admin/knowledge-dev", icon: BookOpen, roles: ["ADMIN"] },
     ],
   },
 ];
