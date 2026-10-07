@@ -8,19 +8,33 @@ export interface StorageAdapter {
   exists(key: string): Promise<boolean>;
 }
 
-function safeKey(key: string) {
-  if (!key || key.includes("..") || path.isAbsolute(key)) {
+export function assertStorageKey(key: string) {
+  if (
+    !key ||
+    key.includes("..") ||
+    key.includes("\\") ||
+    key.startsWith("/") ||
+    path.isAbsolute(key)
+  ) {
     throw new Error("invalid storage key");
   }
   return key;
 }
 
-/** Local development adapter. Cloud provider is not selected yet. */
+export function qualifyStorageKey(prefix: string | undefined, key: string) {
+  const safeKey = assertStorageKey(key);
+  const normalized = prefix?.replace(/^\/+|\/+$/g, "");
+  if (!normalized) return safeKey;
+  assertStorageKey(normalized);
+  return assertStorageKey(`${normalized}/${safeKey}`);
+}
+
+/** Local filesystem adapter. This is the default driver. */
 export class LocalFsStorageAdapter implements StorageAdapter {
   constructor(private readonly root: string) {}
 
   private resolve(key: string) {
-    return path.join(this.root, safeKey(key));
+    return path.join(this.root, assertStorageKey(key));
   }
 
   async put(key: string, bytes: Buffer) {
@@ -41,8 +55,11 @@ export class LocalFsStorageAdapter implements StorageAdapter {
     try {
       await stat(this.resolve(key));
       return true;
-    } catch {
-      return false;
+    } catch (error) {
+      const code =
+        typeof error === "object" && error && "code" in error ? error.code : undefined;
+      if (code === "ENOENT") return false;
+      throw error;
     }
   }
 }

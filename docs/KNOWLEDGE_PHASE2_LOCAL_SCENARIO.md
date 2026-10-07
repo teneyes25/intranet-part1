@@ -38,22 +38,6 @@ npx tsx scripts/knowledge-phase2-local-scenario.ts
 
 철회는 검색과 다운로드를 막는다. 이번 서비스는 철회 때 원본 객체를 지우지 않는다. 실행 중에는 객체가 남아 있었고 해시도 그대로였다. 보관 기간은 아직 정하지 않았다.
 
-## 이후 원격 저장소에 필요한 것
+이 스크립트는 이후 `scripts/knowledge-storage-scenario.ts`의 로컬 경로를 호출한다. 옵션을 주지 않으면 로컬 어댑터만 사용한다.
 
-공급자 SDK를 추가하지 않았고, 유료 가입도 하지 않았다. 원격 연결 전에 정할 항목만 적는다.
-
-`StorageAdapter`는 이미 `put`, `get`, `delete`, `exists`를 가진다. `KnowledgeService`는 `get`이 올린 바이트와 같은 값을 돌려주는지 SHA-256으로 확인한다. 키 형식은 `originals/{tenantId}/{versionId}`, `previews/{tenantId}/{versionId}`이다. 다운로드는 어댑터가 공개 URL을 주는 방식이 아니라, 서비스가 직원·ACL·승인 버전을 확인한 뒤 `get`을 호출한다.
-
-공급자를 고른 뒤에 바꿀 지점:
-
-- `StorageAdapter`를 구현하는 원격 어댑터 한 개. 선택 전이라 클래스는 두지 않았다.
-- 서버에서만 읽는 설정 이름. 값은 설정하지 않았다.
-  - `KNOWLEDGE_STORAGE_DRIVER` (`local`이 기본이어야 한다)
-  - `KNOWLEDGE_STORAGE_ENDPOINT`
-  - `KNOWLEDGE_STORAGE_BUCKET`
-  - `KNOWLEDGE_STORAGE_REGION`
-  - `KNOWLEDGE_STORAGE_ACCESS_KEY_ID`
-  - `KNOWLEDGE_STORAGE_SECRET_ACCESS_KEY`
-- 객체 ACL은 공개로 열지 않는다. 자격 증명은 클라이언트 번들에 넣지 않는다.
-- 업로드 중 DB 기록이 실패하면 지금처럼 `delete`로 그 키만 지운다.
-- 위 시나리오를 같은 어댑터 계약으로 원격 버킷에 한 번 더 실행한다. 그 실행 전에는 연동 완료라고 적지 않는다.
+원격 어댑터, 자격 증명, 첫 연결에 필요한 설정은 `docs/KNOWLEDGE_S3_REMOTE_VERIFY.md`에 있다. 장기 access key는 필수 조건이 아니다. 이 문서를 클라우드 연동 완료로 읽지 않는다.

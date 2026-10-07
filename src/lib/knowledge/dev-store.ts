@@ -1,11 +1,9 @@
-import path from "node:path";
-
 import { prisma } from "@/lib/prisma";
 
 import { knowledgeAclTtlMs } from "./flags";
 import { SqlKnowledgeRepository, type SqlExecutor } from "./repository";
 import { KnowledgeService } from "./service";
-import { LocalFsStorageAdapter } from "./storage";
+import { createServerKnowledgeStorage } from "./storage-factory";
 
 function prismaExecutor(): SqlExecutor {
   return {
@@ -38,8 +36,6 @@ function prismaExecutor(): SqlExecutor {
 /** App-process service using intranet Prisma + local originals directory. */
 export function createAppKnowledgeService() {
   const repo = new SqlKnowledgeRepository(prismaExecutor());
-  const storage = new LocalFsStorageAdapter(
-    path.join(process.cwd(), "uploads", "knowledge"),
-  );
+  const storage = createServerKnowledgeStorage();
   return new KnowledgeService(repo, storage, { aclTtlMs: knowledgeAclTtlMs() });
 }

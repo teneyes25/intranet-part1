@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   serverExternalPackages: [
+    "@aws-sdk/client-s3",
     "@huggingface/transformers",
     "onnxruntime-node",
     "sharp",
