@@ -14,6 +14,8 @@ import { LocalFsStorageAdapter, type StorageAdapter } from "./storage";
 import { createKnowledgeStorage, isLoopbackHost, resolveStorageSettings } from "./storage-create";
 import { finishRehearsalReport, rehearsalExitCode } from "./rehearsal-report";
 import { rehearsalOwnership, TrackingStorageAdapter } from "./tracked-storage";
+import type { S3StorageSettings } from "./storage-create";
+import { executeRemoteRehearsal } from "../../../scripts/knowledge-storage-scenario";
 
 function missing(name: "NotFound" | "NoSuchKey", status = 404) {
   return Object.assign(new Error(name), {
@@ -519,6 +521,99 @@ test("service upload records an uncertain object when confirmation also fails", 
   assert.match(records[0]?.key ?? "", /^originals\/fm\//);
   const storedKey = records[0]?.key ?? "";
   assert.ok(objects.get(storedKey)?.equals(bytes));
+});
+
+const remoteSettings: S3StorageSettings = {
+  driver: "s3",
+  bucket: "private-bucket",
+  region: "ap-northeast-2",
+  forcePathStyle: false,
+};
+
+function rejectingClient(error: Error): ObjectBytesClient {
+  return {
+    async putObject() {
+      throw error;
+    },
+    async getObject() {
+      throw error;
+    },
+    async deleteObject() {
+      throw error;
+    },
+    async headObject() {
+      throw error;
+    },
+  };
+}
+
+test("remoteConnected is false when no object request succeeds", async () => {
+  for (const error of [
+    failed("CredentialsProviderError"),
+    failed("NetworkingError", undefined, "ECONNREFUSED"),
+  ]) {
+    const report = await executeRemoteRehearsal(remoteSettings, rejectingClient(error));
+    assert.equal(report.remoteVerification, "executed");
+    assert.equal(report.remoteConnected, false);
+    assert.equal(report.scenarioPassed, false);
+    assert.equal(rehearsalExitCode(report), 1);
+    assert.equal(JSON.stringify(report).includes("stack"), false);
+    assert.equal(JSON.stringify(report).includes("Credential"), error.name === "CredentialsProviderError");
+  }
+});
+
+test("remoteConnected stays true when a later scenario step fails", async () => {
+  const memory = new MemoryObjectClient();
+  memory.objects.set("existing", Buffer.from("keep"));
+  let reads = 0;
+  const objects: ObjectBytesClient = {
+    putObject: (key, bytes) => memory.putObject(key, bytes),
+    async getObject(key) {
+      reads += 1;
+      if (reads > 1) throw failed("ScenarioInterrupted");
+      return memory.getObject(key);
+    },
+    deleteObject: (key) => memory.deleteObject(key),
+    headObject: (key) => memory.headObject(key),
+  };
+  const report = await executeRemoteRehearsal(remoteSettings, objects);
+  assert.equal(report.remoteConnected, true);
+  assert.equal(report.scenarioPassed, false);
+  assert.equal(report.cleanupPassed, true);
+  assert.deepEqual(report.unresolvedObjects, []);
+  assert.equal(report.scenarioErrorName, "ScenarioInterrupted");
+  assert.equal(rehearsalExitCode(report), 1);
+  assert.equal(JSON.stringify(report).includes("stack"), false);
+  assert.ok(memory.objects.get("existing")?.equals(Buffer.from("keep")));
+});
+
+test("remoteConnected stays true when only cleanup fails", async () => {
+  const memory = new MemoryObjectClient();
+  memory.objects.set("existing", Buffer.from("keep"));
+  memory.objects.set("knowledge-rehearsal/other-run/originals/fm/v1", Buffer.from("other"));
+  const objects: ObjectBytesClient = {
+    putObject: (key, bytes) => memory.putObject(key, bytes),
+    getObject: (key) => memory.getObject(key),
+    headObject: (key) => memory.headObject(key),
+    async deleteObject() {
+      throw failed("AccessDenied", 403);
+    },
+  };
+  const report = await executeRemoteRehearsal(remoteSettings, objects);
+  assert.equal(report.remoteConnected, true);
+  assert.equal(report.scenarioPassed, true);
+  assert.equal(report.cleanupPassed, false);
+  assert.equal(report.unresolvedObjects.length, 1);
+  assert.equal(report.unresolvedObjects[0]?.errorName, "AccessDenied");
+  assert.equal(report.unresolvedObjects[0]?.httpStatus, 403);
+  assert.equal(rehearsalExitCode(report), 1);
+  assert.equal(JSON.stringify(report).includes("stack"), false);
+  assert.ok(memory.objects.get("existing")?.equals(Buffer.from("keep")));
+  assert.ok(
+    memory.objects.get("knowledge-rehearsal/other-run/originals/fm/v1")?.equals(Buffer.from("other")),
+  );
+  const kept = [...memory.objects.keys()].filter((key) => key.startsWith("knowledge-rehearsal/"));
+  assert.equal(kept.length, 2);
 });
 
 test("remote S3 rehearsal is not run without the explicit option", () => {

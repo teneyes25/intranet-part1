@@ -17,7 +17,11 @@ import { sha256 } from "../src/lib/knowledge/hash";
 import { applyKnowledgeMigration, pgliteExecutor } from "../src/lib/knowledge/pglite-executor";
 import { SqlKnowledgeRepository } from "../src/lib/knowledge/repository";
 import { createAwsObjectClient } from "../src/lib/knowledge/s3-client";
-import { S3StorageAdapter } from "../src/lib/knowledge/s3-storage";
+import {
+  observeObjectRequests,
+  S3StorageAdapter,
+  type ObjectBytesClient,
+} from "../src/lib/knowledge/s3-storage";
 import { KnowledgeService } from "../src/lib/knowledge/service";
 import { LocalFsStorageAdapter, originalObjectKey, qualifyStorageKey } from "../src/lib/knowledge/storage";
 import type { StorageAdapter } from "../src/lib/knowledge/storage";
@@ -236,13 +240,16 @@ export async function runLocalRehearsal() {
   );
 }
 
-async function runRemoteRehearsal(settings: S3StorageSettings) {
+export async function executeRemoteRehearsal(
+  settings: S3StorageSettings,
+  objects: ObjectBytesClient,
+) {
   const runPrefix = settings.keyPrefix
     ? `${settings.keyPrefix}/knowledge-rehearsal/${randomUUID()}`
     : `knowledge-rehearsal/${randomUUID()}`;
-  const aws = createAwsObjectClient(settings);
+  const observed = observeObjectRequests(objects);
   const storage = new TrackingStorageAdapter(
-    new S3StorageAdapter(aws.objects, { keyPrefix: runPrefix }),
+    new S3StorageAdapter(observed.client, { keyPrefix: runPrefix }),
     rehearsalOwnership(runPrefix),
   );
   const scenario = await runStorageScenario({
@@ -253,26 +260,32 @@ async function runRemoteRehearsal(settings: S3StorageSettings) {
     },
   });
   const cleanupFailures = await storage.deleteTracked();
-  aws.close();
-  return writeReport(
-    finishRehearsalReport({
-      remoteVerification: "executed",
-      remoteConnected: true,
-      scenarioPassed: scenario.passed,
-      cleanupFailures,
-      scenarioErrorName: scenario.scenarioErrorName,
-      adapter: "S3StorageAdapter",
-      catalog: "PGlite in-memory",
-      tenantId: TENANT,
-      documentId: DOCUMENT_ID,
-      versionId: scenario.versionId,
-      sha256: scenario.sha256,
-      steps: scenario.steps,
-      keyPrefix: runPrefix,
-      bucket: settings.bucket,
-      region: settings.region,
-    }),
-  );
+  return finishRehearsalReport({
+    remoteVerification: "executed",
+    remoteConnected: observed.succeeded(),
+    scenarioPassed: scenario.passed,
+    cleanupFailures,
+    scenarioErrorName: scenario.scenarioErrorName,
+    adapter: "S3StorageAdapter",
+    catalog: "PGlite in-memory",
+    tenantId: TENANT,
+    documentId: DOCUMENT_ID,
+    versionId: scenario.versionId,
+    sha256: scenario.sha256,
+    steps: scenario.steps,
+    keyPrefix: runPrefix,
+    bucket: settings.bucket,
+    region: settings.region,
+  });
+}
+
+async function runRemoteRehearsal(settings: S3StorageSettings) {
+  const aws = createAwsObjectClient(settings);
+  try {
+    return writeReport(await executeRemoteRehearsal(settings, aws.objects));
+  } finally {
+    aws.close();
+  }
 }
 
 function notRun(reason: string) {

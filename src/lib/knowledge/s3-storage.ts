@@ -11,6 +11,23 @@ export interface ObjectBytesClient {
   headObject(key: string): Promise<void>;
 }
 
+/** Counts object calls that returned. A thrown call is not a successful request. */
+export function observeObjectRequests(inner: ObjectBytesClient) {
+  let successes = 0;
+  const record = async <T>(operation: () => Promise<T>) => {
+    const value = await operation();
+    successes += 1;
+    return value;
+  };
+  const client: ObjectBytesClient = {
+    putObject: (key, bytes) => record(() => inner.putObject(key, bytes)),
+    getObject: (key) => record(() => inner.getObject(key)),
+    deleteObject: (key) => record(() => inner.deleteObject(key)),
+    headObject: (key) => record(() => inner.headObject(key)),
+  };
+  return { client, succeeded: () => successes > 0 };
+}
+
 /**
  * S3-compatible original store.
  * Objects are private: this class does not set an ACL and does not create a download URL.
