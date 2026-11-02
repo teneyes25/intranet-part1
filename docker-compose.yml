@@ -72,9 +72,11 @@ services:
       PRISMA_ACCEPT_DATA_LOSS: ${PRISMA_ACCEPT_DATA_LOSS:-false}
       # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED, PILOT_MODE → .env.production (env_file)
       BEHIND_NGINX: "true"
+      ERP_IMPORT_DIR: /app/erp-private
       # CLAMAV_HOST: ${CLAMAV_HOST:-}
     volumes:
       - uploads-data:/app/uploads
+      - erp-private-data:/app/erp-private
     expose:
       - "3000"
     healthcheck:
@@ -120,3 +122,6 @@ volumes:
     name: intranet-uploads-data
   redis-data:
     name: intranet-redis-data
+
+  erp-private-data:
+    name: intranet-erp-private-data

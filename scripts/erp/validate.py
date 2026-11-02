@@ -28,6 +28,8 @@ def read_sheet(path, sheet, kind):
     wb = openpyxl.load_workbook(path, read_only=True, data_only=False)
     try:
         ws = wb[sheet] if sheet else wb.active
+        if (ws.max_row or 0) > 100000 or (ws.max_column or 0) > 100:
+            raise ValueError("Worksheet dimensions exceed validation limits")
         it = ws.iter_rows(values_only=True)
         title = next(it)
         headers = next(it)
