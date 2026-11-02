@@ -35,6 +35,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv \
+  && rm -rf /var/lib/apt/lists/*
+COPY scripts/erp/requirements.txt /tmp/erp-requirements.txt
+RUN python3 -m venv /opt/erp-venv && /opt/erp-venv/bin/pip install --no-cache-dir -r /tmp/erp-requirements.txt
+ENV ERP_PYTHON=/opt/erp-venv/bin/python
+COPY scripts/erp /app/scripts/erp
+
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
 
@@ -64,7 +71,7 @@ COPY --from=builder /app/node_modules/thread-stream ./node_modules/thread-stream
 COPY --from=builder /app/node_modules/sonic-boom ./node_modules/sonic-boom
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 
-RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
+RUN mkdir -p /app/uploads /app/erp-private && chown -R nextjs:nodejs /app/uploads /app/erp-private
 
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
