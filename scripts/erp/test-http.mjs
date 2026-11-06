@@ -87,6 +87,36 @@ try {
   const allocation=await res.json();assert.equal(allocation.result.total,101);assert.equal(allocation.result.difference,0);assert.equal(allocation.result.publishable,false);count++;
   res=await reviewRequest(admin,{...review,expected_review:revision.review_id,review:{status:'hold',reason:'additional invoice review'}});
   assert.equal(res.status,200);state=await reviewState(admin);assert.equal(state.allocations[0].stale,true);count++;
+  const dashboardUrl=base+'/api/erp/dashboard?period=2026-08';
+  assert.equal((await fetch(dashboardUrl)).status,401);count++;
+  for(const role of ['DEALER','HEADQUARTER']) {
+    assert.equal((await fetch(dashboardUrl,{headers:{cookie:await cookie(role)}})).status,403);count++;
+  }
+  assert.equal((await fetch(base+'/api/erp/dashboard?period=2026-99',{headers:{cookie:admin}})).status,422);count++;
+  let dashboard=await fetch(dashboardUrl,{headers:{cookie:admin}});
+  assert.equal(dashboard.status,200);assert.match(dashboard.headers.get('cache-control'),/(^|,\s*)no-store(,|$)/);
+  let report=await dashboard.json();assert.equal(report.metrics.net_sales,'82');assert.equal(report.metrics.profit,null);
+  assert.equal(report.allocation_id,null);assert.equal(report.metrics.stock_quantity,null);assert.equal(report.publishable,false);count++;
+  // Full source→review→allocation→dashboard flow in a separate synthetic month slot.
+  for(const kind of ['sales','purchases','stock']) {
+    const bytes=execFileSync('python3',['-c',`import sys;sys.path.insert(0,'scripts/erp');from test_dashboard import sample_workbook;sys.stdout.buffer.write(sample_workbook('${kind}'))`]);
+    const form=new FormData();form.set('file',new File([bytes],'synthetic.xlsx'));form.set('kind',kind);form.set('period','2026-08');form.set('sheet',kind==='sales'?'판매':kind);
+    if(kind==='sales') {
+      // Rename the generated sales sheet so this is a revision, not a second active sales scope.
+      const revised=execFileSync('python3',['-c',"import sys,io,openpyxl;sys.path.insert(0,'scripts/erp');from test_dashboard import sample_workbook;w=openpyxl.load_workbook(io.BytesIO(sample_workbook()));w.active.title='판매';o=io.BytesIO();w.save(o);sys.stdout.buffer.write(o.getvalue())"]);
+      form.set('file',new File([revised],'synthetic.xlsx'));form.set('expectedActive',first.id);
+    }
+    const uploaded=await fetch(base+'/api/erp/imports',{method:'POST',headers:{cookie:admin,origin:base},body:form});
+    assert.equal(uploaded.status,200);assert.equal((await uploaded.json()).active,true);count++;
+  }
+  state=await reviewState(admin);const latestReview=state.reviews.find(r=>r.batch_id===card.id&&r.source_row===2);
+  res=await reviewRequest(admin,{...review,expected_review:latestReview.id});assert.equal(res.status,200);
+  state=await reviewState(admin);
+  res=await reviewRequest(admin,{action:'allocate',period:'2026-08',fingerprint:state.fingerprint,categories:{A:'EVERYDAY'}});assert.equal(res.status,200);count++;
+  dashboard=await fetch(dashboardUrl,{headers:{cookie:admin}});assert.equal(dashboard.status,200);report=await dashboard.json();
+  assert.equal(report.metrics.net_sales,'200');assert.equal(report.metrics.purchase_cost,'60');assert.equal(report.metrics.profit,'39');
+  assert.equal(report.metrics.stock_quantity,'3');assert.equal(report.metrics.selling_stock_value,'330');assert.equal(report.channels[0].profit,'39');
+  assert.equal(report.products[0].unit_total_cost,'81');assert.equal(report.sale_lines[0].cost_source.date,'2026-08-01');count++;
   if(process.env.ERP_UI_TEST==='1') {
     const {chromium}=await import('@playwright/test');
     const browser=await chromium.launch({headless:true});
@@ -97,13 +127,28 @@ try {
       await page.goto(base+'/admin/erp-imports');
       await page.getByRole('heading',{name:'비용 검토 → 월별 배부'}).waitFor();
       await page.getByLabel('검토 귀속월').fill('2026-08');
-      await page.getByRole('button',{name:'보류',exact:true}).click();
+      await page.getByRole('button',{name:'배부 포함',exact:true}).click();
       await page.getByRole('button',{name:'검토 저장',exact:true}).waitFor();
       await page.screenshot({path:process.env.ERP_UI_SCREENSHOT || '/tmp/erp-review-ui.png',fullPage:true});
-      assert.deepEqual(errors,[]);count++;
+      await page.goto(base+'/admin/erp-dashboard');
+      await page.getByLabel('대시보드 자료월').fill('2026-08');
+      await page.getByRole('heading',{name:'상품별 원가·손익',exact:true}).waitFor();
+      await page.getByLabel('품목 검색').fill('missing');
+      await page.getByText('표시할 품목이 없습니다.').waitFor();
+      await page.getByLabel('품목 검색').fill('A');
+      await page.getByLabel('채널 필터').selectOption('온라인');
+      await page.screenshot({path:'/tmp/erp-dashboard-desktop.png',fullPage:true});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
+      await page.setViewportSize({width:390,height:844});
+      await page.screenshot({path:'/tmp/erp-dashboard-mobile.png',fullPage:true});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
+      await page.getByLabel('대시보드 자료월').fill('2026-09');
+      await page.getByRole('alert').waitFor();
+      assert.equal(await page.getByRole('heading',{name:'상품별 원가·손익',exact:true}).count(),0);
+      assert.deepEqual(errors,[]);count+=6;
     } finally {await browser.close();}
   }
-  console.log(`PASS: ${count} HTTP/UI checks (auth, roles, origin, import, review, actor, allocation, stale revisions)`);
+  console.log(`PASS: ${count} ${process.env.ERP_UI_TEST==='1'?'HTTP/UI':'HTTP'} checks (auth, roles, origin, import, review, actor, allocation, stale revisions)`);
 } finally {
   child.kill('SIGTERM');
   await new Promise(resolve=>{child.once('exit',resolve);setTimeout(resolve,2000);});

@@ -96,6 +96,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "관리자",
     roles: ["ADMIN"],
     items: [
+      { title: "ERP 경영 대시보드", href: "/admin/erp-dashboard", icon: LineChart, roles: ["ADMIN"] },
+      { title: "ERP 자료 검토", href: "/admin/erp-imports", icon: FolderOpen, roles: ["ADMIN"] },
       { title: "사용자 관리", href: "/admin/users", icon: Users, roles: ["ADMIN"] },
       { title: "대리점 관리", href: "/admin/dealers", icon: Store, roles: ["ADMIN"] },
       { title: "Rollout", href: "/admin/rollout", icon: Rocket, roles: ["ADMIN"] },
