@@ -30,6 +30,18 @@ async function upload(auth, data, expected='', origin=base) {
   form.set('kind','sales');form.set('period','2026-08');form.set('sheet','판매');form.set('expectedActive',expected);
   return fetch(base+'/api/erp/imports',{method:'POST',headers:{cookie:auth,origin},body:form});
 }
+async function cardUpload(auth) {
+  const data=execFileSync('python3',['-c',"import sys;sys.path.insert(0,'scripts/erp');from test_review_store import card_workbook;sys.stdout.buffer.write(card_workbook())"]);
+  const form=new FormData();form.set('file',new File([data],'card-test.xlsx'));
+  form.set('kind','cards');form.set('period','2026-09');form.set('sheet','카드');
+  return fetch(base+'/api/erp/imports',{method:'POST',headers:{cookie:auth,origin:base},body:form});
+}
+async function reviewRequest(auth, payload, origin=base) {
+  return fetch(base+'/api/erp/reviews',{method:'POST',headers:{cookie:auth,origin,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+}
+async function reviewState(auth) {
+  const r=await fetch(base+'/api/erp/reviews',{headers:{cookie:auth}});assert.equal(r.status,200);return r.json();
+}
 try {
   let ready=false;
   for(let i=0;i<120;i++) {
@@ -54,7 +66,44 @@ try {
   assert.equal(listing.status,200);
   const rows=(await listing.json()).batches;
   assert.equal(rows.length,2);assert.equal(rows.find(r=>r.active).id,first.id);count++;
-  console.log(`PASS: ${count} HTTP assertions (auth, roles, origin, import, duplicate, quarantine, history)`);
+  assert.equal((await fetch(base+'/api/erp/reviews')).status,401);count++;
+  for(const role of ['DEALER','HEADQUARTER']) {
+    const auth=await cookie(role);
+    assert.equal((await fetch(base+'/api/erp/reviews',{headers:{cookie:auth}})).status,403);count++;
+    assert.equal((await reviewRequest(auth,{action:'save_review'})).status,403);count++;
+  }
+  assert.equal((await reviewRequest(admin,{action:'save_review'},base+'.evil.invalid')).status,403);count++;
+  res=await cardUpload(admin);assert.equal(res.status,200);const card=await res.json();assert.equal(card.active,true);count++;
+  let state=await reviewState(admin);
+  const request=()=>({action:'allocate',period:'2026-08',fingerprint:state.fingerprint,categories:{'001':'EVERYDAY'}});
+  assert.equal((await reviewRequest(admin,request())).status,422);count++;
+  const review={action:'save_review',actor:'forged-actor',batch_id:card.id,source_row:2,expected_review:null,
+    review:{status:'include',reason:'synthetic invoice checked',period:'2026-08',cost_class:'selling_admin',tax_type:'non_deductible',tax_amount:'0',detail_evidence:'invoice checked',duplicate_evidence:'bank entry checked',cancellation_evidence:'no cancellation'}};
+  res=await reviewRequest(admin,review);assert.equal(res.status,200);const revision=await res.json();count++;
+  assert.equal((await reviewRequest(admin,review)).status,409);count++;
+  assert.equal((await reviewRequest(admin,request())).status,409);count++;
+  state=await reviewState(admin);assert.equal(state.reviews[0].actor,'synthetic-test');count++;
+  res=await reviewRequest(admin,request());assert.equal(res.status,200);
+  const allocation=await res.json();assert.equal(allocation.result.total,101);assert.equal(allocation.result.difference,0);assert.equal(allocation.result.publishable,false);count++;
+  res=await reviewRequest(admin,{...review,expected_review:revision.review_id,review:{status:'hold',reason:'additional invoice review'}});
+  assert.equal(res.status,200);state=await reviewState(admin);assert.equal(state.allocations[0].stale,true);count++;
+  if(process.env.ERP_UI_TEST==='1') {
+    const {chromium}=await import('@playwright/test');
+    const browser=await chromium.launch({headless:true});
+    try {
+      const page=await browser.newPage({viewport:{width:1440,height:1000}});
+      await page.context().addCookies([{name:'next-auth.session-token',value:admin.split('=').slice(1).join('='),url:base}]);
+      const errors=[];page.on('pageerror',e=>errors.push(e.message));
+      await page.goto(base+'/admin/erp-imports');
+      await page.getByRole('heading',{name:'비용 검토 → 월별 배부'}).waitFor();
+      await page.getByLabel('검토 귀속월').fill('2026-08');
+      await page.getByRole('button',{name:'보류',exact:true}).click();
+      await page.getByRole('button',{name:'검토 저장',exact:true}).waitFor();
+      await page.screenshot({path:process.env.ERP_UI_SCREENSHOT || '/tmp/erp-review-ui.png',fullPage:true});
+      assert.deepEqual(errors,[]);count++;
+    } finally {await browser.close();}
+  }
+  console.log(`PASS: ${count} HTTP/UI checks (auth, roles, origin, import, review, actor, allocation, stale revisions)`);
 } finally {
   child.kill('SIGTERM');
   await new Promise(resolve=>{child.once('exit',resolve);setTimeout(resolve,2000);});

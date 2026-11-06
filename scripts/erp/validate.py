@@ -53,6 +53,7 @@ def read_sheet(path, sheet, kind):
             if any(isinstance(row[i],str) and row[i].startswith('=') for i in indices.values()):
                 errors.append({'row':rownum,'issue':'formula_cell'}); continue
             record = {'source_row':rownum}
+            if kind == 'sales': record['source_date'] = str(row[0] or '')
             try:
                 for k,i in indices.items():
                     record[k] = number(row[i]) if k in numeric else str(row[i] or '').strip()

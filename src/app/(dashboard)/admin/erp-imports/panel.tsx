@@ -33,6 +33,7 @@ export default function ImportPanel() {
     }}>
       <label className="block">자료 종류 <select name="kind" value={kind} onChange={e => { setKind(e.target.value); setReplace(false); }} className="border p-2">
         <option value="sales">판매</option><option value="purchases">매입</option><option value="master">품목</option><option value="stock">재고</option><option value="movement">입출고</option>
+        <option value="expenses">비용 결산(검토용)</option><option value="cards">법인카드(검토용)</option>
       </select></label>
       <label className="block">기준월 <input required type="month" name="period" value={period} onChange={e => { setPeriod(e.target.value); setReplace(false); }} className="border p-2" /></label>
       <label className="block">원본 시트명 <input required name="sheet" value={sheet} onChange={e => { setSheet(e.target.value); setReplace(false); }} className="border p-2" placeholder="예: 8월말 재고" /></label>
