@@ -52,8 +52,13 @@ def read_sheet(path, sheet, kind):
             if kind in {'stock','movement'} and '/' in first and '오' in first: continue
             if any(isinstance(row[i],str) and row[i].startswith('=') for i in indices.values()):
                 errors.append({'row':rownum,'issue':'formula_cell'}); continue
-            record = {'source_row':rownum}
-            if kind == 'sales': record['source_date'] = str(row[0] or '')
+            record = {'source_row':rownum, 'normalization_version':2}
+            if kind in {'sales','purchases'}: record['source_date'] = str(row[0] or '')
+            if kind == 'sales':
+                channels = [i for i,h in enumerate(headers) if h in {'채널','판매채널'}]
+                if len(channels) > 1: raise ValueError('Ambiguous channel headers')
+                record['channel'] = str(row[channels[0]] or '').strip() if channels else ''
+                if record['channel'].startswith('='): errors.append({'row':rownum,'issue':'formula_channel'})
             try:
                 for k,i in indices.items():
                     record[k] = number(row[i]) if k in numeric else str(row[i] or '').strip()

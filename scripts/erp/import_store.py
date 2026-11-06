@@ -119,6 +119,9 @@ def main():
     with connect(root) as db:
         if payload['action']=='list': result={'batches':history(db)}
         elif payload['action']=='import': result=ingest(db,base64.b64decode(payload['data'],validate=True),payload)
+        elif payload['action']=='dashboard':
+            from dashboard import snapshot
+            result=snapshot(db,payload)
         elif payload['action'] in {'review_state','save_review','allocate'}:
             from review_store import dispatch
             result=dispatch(db,payload)

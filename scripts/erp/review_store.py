@@ -25,11 +25,16 @@ def fingerprint(db):
 
 def records(db, batch):
     saved = db.execute('SELECT records FROM source_rows WHERE batch_id=?', (batch['id'],)).fetchone()
-    if saved: return json.loads(saved[0])
+    if saved:
+        rows = json.loads(saved[0])
+        if batch['kind'] not in {'sales','purchases'} or all(r.get('normalization_version') == 2 for r in rows):
+            return rows
     # Read old staging databases without destroying or re-importing original bytes.
     with tempfile.TemporaryDirectory() as tmp:
         p = Path(tmp)/'source.xlsx'; p.write_bytes(batch['original'])
-        rows, _ = read_sheet(p, batch['sheet'], batch['kind'])
+        rows, report = read_sheet(p, batch['sheet'], batch['kind'])
+        if not report['validated']:
+            raise ImportErrorDetail('보존 원본을 현재 검증 기준으로 읽지 못했습니다. 원본 검토가 필요합니다.',422)
         return json.loads(json.dumps(rows, default=str))
 
 
