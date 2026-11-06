@@ -12,13 +12,10 @@ import tempfile
 import uuid
 import zipfile
 from validate import read_sheet, SCHEMAS
+from expense_sources import read_costs
+from erp_errors import ImportErrorDetail
 
-MAX_BYTES = 10 * 1024 * 1024
-
-class ImportErrorDetail(Exception):
-    def __init__(self, message, status=400):
-        self.status = status
-        super().__init__(message)
+MAX_BYTES = 20 * 1024 * 1024
 
 def connect(root):
     root = Path(root)
@@ -37,6 +34,15 @@ def connect(root):
     CREATE TABLE IF NOT EXISTS active (
       kind TEXT NOT NULL, period TEXT NOT NULL, sheet TEXT NOT NULL,
       batch_id TEXT NOT NULL REFERENCES batches(id), PRIMARY KEY(kind,period,sheet));
+    CREATE TABLE IF NOT EXISTS source_rows (
+      batch_id TEXT PRIMARY KEY, records TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, batch_id TEXT NOT NULL, source_row INTEGER NOT NULL,
+      actor TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, data TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS allocations (
+      id TEXT PRIMARY KEY, period TEXT NOT NULL, actor TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, fingerprint TEXT NOT NULL,
+      inputs TEXT NOT NULL, result TEXT NOT NULL);
     ''')
     os.chmod(root / 'imports.sqlite3', 0o600)
     return db
@@ -50,7 +56,7 @@ def history(db):
 
 def ingest(db, data, payload):
     kind, period, sheet = payload.get('kind'), payload.get('period',''), payload.get('sheet','')
-    if kind not in SCHEMAS or not re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])', period):
+    if kind not in {*SCHEMAS, 'expenses', 'cards'} or not re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])', period):
         raise ImportErrorDetail('자료 종류와 기준월을 확인하십시오.')
     if not isinstance(sheet,str) or len(sheet)>100:
         raise ImportErrorDetail('시트명을 확인하십시오.')
@@ -59,24 +65,31 @@ def ingest(db, data, payload):
         raise ImportErrorDetail('원본의 시트명을 명시하십시오.')
     name = str(payload.get('filename','')).replace('\\','/').split('/')[-1][:200]
     if not name.lower().endswith('.xlsx') or not 0 < len(data) <= MAX_BYTES:
-        raise ImportErrorDetail('10MB 이하의 XLSX 파일만 허용합니다.')
+        raise ImportErrorDetail('20MB 이하의 XLSX 파일만 허용합니다.')
     if not payload.get('actor'): raise ImportErrorDetail('인증이 필요합니다.',401)
     digest = hashlib.sha256(data).hexdigest()
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             entries=archive.infolist()
-            if len(entries)>2000 or sum(e.file_size for e in entries)>50*1024*1024:
+            if len(entries)>2000 or sum(e.file_size for e in entries)>(200 if kind=='expenses' else 50)*1024*1024:
                 raise ImportErrorDetail('압축 해제 크기가 허용 범위를 초과합니다.')
             if any(e.filename.lower().endswith('vbaproject.bin') for e in entries):
                 raise ImportErrorDetail('매크로 파일은 허용하지 않습니다.')
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'input.xlsx'; path.write_bytes(data)
-            _, report = read_sheet(path, sheet, kind)
+            records, report = (read_costs(path, sheet, kind, period) if kind in {'expenses','cards'}
+                               else read_sheet(path, sheet, kind))
     except ImportErrorDetail: raise
     except Exception:
+        records=[]
         report={'validated':False,'errors':[{'issue':'invalid_workbook_or_schema'}]}
     db.execute('BEGIN IMMEDIATE')
     try:
+        if kind in {'cards','expenses'}:
+            prior=db.execute('SELECT id FROM batches WHERE kind=? AND digest=? AND valid=1', (kind,digest)).fetchone()
+            if prior:
+                db.rollback()
+                return {'id':prior['id'],'duplicate':True}
         same=db.execute('SELECT id FROM batches WHERE kind=? AND period=? AND sheet=? AND digest=?',
                         (kind,period,sheet,digest)).fetchone()
         if same:
@@ -90,6 +103,7 @@ def ingest(db, data, payload):
         batch=str(uuid.uuid4())
         db.execute('INSERT INTO batches(id,kind,period,sheet,digest,filename,actor,supersedes,valid,report,original) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
                    (batch,kind,period,sheet,digest,name,payload['actor'],parent,int(report['validated']),json.dumps(report,ensure_ascii=False),data))
+        db.execute('INSERT INTO source_rows VALUES(?,?)', (batch,json.dumps(records,ensure_ascii=False,default=str)))
         if report['validated']:
             db.execute('INSERT INTO active VALUES(?,?,?,?) ON CONFLICT(kind,period,sheet) DO UPDATE SET batch_id=excluded.batch_id',
                        (kind,period,sheet,batch))
@@ -99,12 +113,15 @@ def ingest(db, data, payload):
         db.rollback(); raise
 
 def main():
-    payload=json.loads(sys.stdin.read(15*1024*1024))
+    payload=json.loads(sys.stdin.read(30*1024*1024))
     root=os.environ.get('ERP_IMPORT_DIR')
     if not root: raise ImportErrorDetail('ERP 전용 보관 경로가 설정되지 않았습니다.',503)
     with connect(root) as db:
         if payload['action']=='list': result={'batches':history(db)}
         elif payload['action']=='import': result=ingest(db,base64.b64decode(payload['data'],validate=True),payload)
+        elif payload['action'] in {'review_state','save_review','allocate'}:
+            from review_store import dispatch
+            result=dispatch(db,payload)
         else: raise ImportErrorDetail('지원하지 않는 작업입니다.')
     print(json.dumps(result,ensure_ascii=False))
 

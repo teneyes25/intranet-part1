@@ -16,7 +16,7 @@ export const POST = withApiGuard(options, async (req, { session }) => {
     return NextResponse.json({ error: "허용되지 않은 요청 출처입니다." }, { status: 403 });
   }
   const size = Number(req.headers.get("content-length"));
-  if (!size || size > 11 * 1024 * 1024) return NextResponse.json({ error: "요청 크기를 확인하십시오." }, { status: 413 });
+  if (!size || size > 21 * 1024 * 1024) return NextResponse.json({ error: "요청 크기를 확인하십시오." }, { status: 413 });
   try {
     const reader = req.body?.getReader();
     if (!reader) return NextResponse.json({ error: "파일이 필요합니다." }, { status: 400 });
@@ -26,7 +26,7 @@ export const POST = withApiGuard(options, async (req, { session }) => {
       const { done, value } = await reader.read();
       if (done) break;
       bytes += value.byteLength;
-      if (bytes > 11 * 1024 * 1024) {
+      if (bytes > 21 * 1024 * 1024) {
         await reader.cancel();
         return NextResponse.json({ error: "요청이 너무 큽니다." }, { status: 413 });
       }
@@ -34,7 +34,7 @@ export const POST = withApiGuard(options, async (req, { session }) => {
     }
     const form = await new Response(new Blob(chunks), { headers: { "Content-Type": req.headers.get("content-type") ?? "" } }).formData();
     const file = form.get("file");
-    if (!(file instanceof File) || file.size > 10 * 1024 * 1024) return NextResponse.json({ error: "10MB 이하 XLSX 파일이 필요합니다." }, { status: 400 });
+    if (!(file instanceof File) || file.size > 20 * 1024 * 1024) return NextResponse.json({ error: "20MB 이하 XLSX 파일이 필요합니다." }, { status: 400 });
     const result = await importWorker({ action: "import", actor: session!.user.id,
       kind: form.get("kind"), period: form.get("period"), sheet: form.get("sheet"),
       expectedActive: form.get("expectedActive") || null, filename: file.name,
