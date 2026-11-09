@@ -117,6 +117,33 @@ try {
   assert.equal(report.metrics.net_sales,'200');assert.equal(report.metrics.purchase_cost,'60');assert.equal(report.metrics.profit,'39');
   assert.equal(report.metrics.stock_quantity,'3');assert.equal(report.metrics.selling_stock_value,'330');assert.equal(report.channels[0].profit,'39');
   assert.equal(report.products[0].unit_total_cost,'81');assert.equal(report.sale_lines[0].cost_source.date,'2026-08-01');count++;
+  execFileSync('python3',['-c',`import sys,base64
+sys.path.insert(0,'scripts/erp')
+from preview_history import select_preview
+from import_store import connect
+db=connect(sys.argv[1])
+args=dict(actor='test',period='2026-08',expectedRevision=0,inputs=[])
+for kind in ('sales','purchases'):
+    row=db.execute('select sheet,batch_id from active where period=? and kind=?',('2026-08',kind)).fetchone()
+    data=db.execute('select original from batches where id=?',(row['batch_id'],)).fetchone()[0]
+    args['inputs'].append(dict(period='2026-08',kind=kind,sheet=row['sheet'],filename='test.xlsx',data=base64.b64encode(data).decode()))
+assert select_preview(db,args)['revision']==1
+`,root]);
+  const read=async(url,auth)=>fetch(url,{headers:{cookie:auth}});
+  const selectedResponse=await read(dashboardUrl,admin);
+  assert.equal(selectedResponse.status,200);
+  const chosen=await selectedResponse.json();
+  assert.equal(chosen.selection_revision,1);assert.ok(chosen.sources.length>=2);
+  const ids=new Set(chosen.sources.map(s=>s.id));
+  assert.ok(chosen.sale_lines.every(row=>ids.has(row.source.batch_id)));
+  for(const role of ['DEALER','HEADQUARTER']){
+    const denied=await read(dashboardUrl,await cookie(role));
+    assert.equal(denied.status,403);assert.equal((await denied.json()).sources,undefined);
+  }
+  const other=await read(base+'/api/erp/dashboard?period=2026-10',admin);
+  assert.equal(other.status,422);assert.equal((await other.json()).sources,undefined);
+  assert.deepEqual(await (await read(dashboardUrl,admin)).json(),chosen);
+  count+=5;
   if(process.env.ERP_UI_TEST==='1') {
     const {chromium}=await import('@playwright/test');
     const browser=await chromium.launch({headless:true});
