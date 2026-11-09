@@ -13,6 +13,7 @@ from contextlib import closing
 
 import openpyxl
 from import_store import connect
+from preview_history import read_dashboard
 from test_dashboard import sample_workbook
 
 
@@ -38,6 +39,65 @@ class MonthlyInputTests(unittest.TestCase):
                               capture_output=True, text=True, timeout=30)
         self.assertFalse(proc.stderr)
         return proc.returncode, json.loads(proc.stdout)
+
+    def replace_closed_file(self, path, data):
+        pending = path.with_suffix(".part")
+        pending.write_bytes(data)
+        os.replace(pending, path)
+
+    def selected_state(self):
+        with closing(connect(self.store)) as db:
+            count = db.execute("SELECT count(*) FROM monthly_previews").fetchone()[0]
+            return count, read_dashboard(db, self.job)
+
+    def exercise_pair_delivery(self, manifest_first):
+        files = {kind: self.root / self.job[kind]["path"] for kind in ("sales", "purchases")}
+        for kind, path in files.items():
+            self.job[kind]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        self.replace_closed_file(self.jobfile, json.dumps(self.job).encode())
+        self.assertEqual(self.invoke()[1]["revision"], 1)
+        baseline = self.selected_state()
+        self.assertEqual(baseline[0], 1)
+
+        # Change a cell in each workbook so the two generations have distinct digests.
+        purchases = openpyxl.load_workbook(files["purchases"])
+        purchases.active["A3"] = "2026-08-02"
+        output = io.BytesIO()
+        purchases.save(output)
+        purchases.close()
+        new_files = {"sales": sample_workbook("sales", amount=440), "purchases": output.getvalue()}
+        self.job["expectedRevision"] = 1
+        for kind, data in new_files.items():
+            self.job[kind]["sha256"] = hashlib.sha256(data).hexdigest()
+        new_manifest = json.dumps(self.job).encode()
+        if manifest_first:
+            self.replace_closed_file(self.jobfile, new_manifest)
+            self.assertEqual(self.invoke(), (1, {"outcome": "rejected", "status": 422}))
+            self.assertEqual(self.selected_state(), baseline)
+
+        self.replace_closed_file(files["sales"], new_files["sales"])
+        self.assertEqual(self.invoke(), (1, {"outcome": "rejected", "status": 422}))
+        self.assertEqual(self.selected_state(), baseline)
+        self.replace_closed_file(files["purchases"], new_files["purchases"])
+
+        if not manifest_first:
+            self.assertEqual(self.invoke(), (1, {"outcome": "rejected", "status": 422}))
+            self.assertEqual(self.selected_state(), baseline)
+            self.replace_closed_file(self.jobfile, new_manifest)
+        self.assertEqual(self.invoke(), (0, {"outcome": "selected", "period": "2026-08", "revision": 2}))
+        count, report = self.selected_state()
+        self.assertEqual(count, 2)
+        self.assertEqual(report["selection_revision"], 2)
+        self.assertEqual({src["kind"]: src["digest"] for src in report["sources"]},
+                         {kind: self.job[kind]["sha256"] for kind in files})
+        self.assertEqual(self.invoke()[1]["outcome"], "already_selected")
+        self.assertEqual(self.selected_state(), (count, report))
+
+    def test_manifest_delivered_last(self):
+        self.exercise_pair_delivery(manifest_first=False)
+
+    def test_manifest_delivered_first(self):
+        self.exercise_pair_delivery(manifest_first=True)
 
     def test_wrong_month_or_year(self):
         for kind, date in [("sales", "2026-09-01"), ("purchases", "2025-08-01"),
