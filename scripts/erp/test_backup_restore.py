@@ -29,6 +29,39 @@ def state(db):
 
 
 class BackupTests(unittest.TestCase):
+    def test_logical_corruption_in_separate_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            candidate_path = root / "candidate.sqlite3"
+            with closing(connect(root / "source")) as source:
+                sales = dict(kind="sales", sheet="판매", filename="sales.xlsx",
+                             period="2026-08", actor="test")
+                batch = ingest(source, workbook(), sales)["id"]
+                baseline = state(source)
+                with closing(sqlite3.connect(candidate_path)) as candidate:
+                    source.backup(candidate)
+                    changed = workbook(200)
+                    candidate.execute("UPDATE batches SET original=? WHERE id=?", (changed, batch))
+                    candidate.commit()
+                read_only = candidate_path.as_uri() + "?mode=ro"
+                with closing(sqlite3.connect(read_only, uri=True)) as candidate:
+                    self.assertEqual(candidate.execute("PRAGMA integrity_check").fetchone(), ("ok",))
+                    with self.assertRaisesRegex(ValueError, "original digest mismatch"):
+                        state(candidate)
+                self.assertEqual(state(source), baseline)
+
+                # An internally consistent digest still needs a trusted backup-time reference.
+                with closing(sqlite3.connect(candidate_path)) as candidate:
+                    candidate.execute("UPDATE batches SET digest=? WHERE id=?",
+                                      (hashlib.sha256(changed).hexdigest(), batch))
+                    candidate.commit()
+                with closing(sqlite3.connect(read_only, uri=True)) as candidate:
+                    candidate.row_factory = sqlite3.Row
+                    self.assertEqual(candidate.execute("PRAGMA integrity_check").fetchone()[0], "ok")
+                    candidate_state = state(candidate)
+                    self.assertNotEqual(candidate_state[0], baseline[0])
+                self.assertEqual(state(source), baseline)
+
     def test_restore_and_reject_damaged_copy(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
