@@ -19,8 +19,9 @@ def date_value(raw, period):
     for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d', '%Y%m%d', '%Y-%m-%d %H:%M:%S'):
         try: return datetime.strptime(raw, fmt).date().isoformat()
         except ValueError: pass
-    if re.fullmatch(r'\d{2}/\d{2}', raw):
-        try: return datetime.strptime(period[:4]+'/'+raw, '%Y/%m/%d').date().isoformat()
+    short_date = re.fullmatch(r'(\d{2}/\d{2})(?:-[0-9]+)?', raw)
+    if short_date:
+        try: return datetime.strptime(period[:4]+'/'+short_date.group(1), '%Y/%m/%d').date().isoformat()
         except ValueError: pass
     raise ImportErrorDetail('거래일을 확인할 수 없습니다. 원본 날짜를 확인하십시오.', 422)
 

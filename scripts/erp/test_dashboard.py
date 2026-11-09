@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from decimal import Decimal
 import openpyxl
-from dashboard import estimate, snapshot
+from dashboard import date_value, estimate, snapshot
 from import_store import connect, ingest
 from review_store import dispatch, fingerprint
 from erp_errors import ImportErrorDetail
@@ -41,6 +41,13 @@ def sample_workbook(kind='sales', amount=220, channel='온라인', date='2026-08
 
 
 class EstimateTests(unittest.TestCase):
+    def test_export_date_with_numeric_suffix(self):
+        for raw in ("08/01", "08/01-1", "08/01-12"):
+            self.assertEqual(date_value(raw, "2026-08"), "2026-08-01")
+        for raw in ("08/32-1", "08/01-", "08/01-X", "08/01-1-2"):
+            with self.assertRaises(ImportErrorDetail):
+                date_value(raw, "2026-08")
+
     def run_case(self, sales=None, purchases=None, stocks=None, history=None, alloc=None):
         return estimate('2026-08', sales if sales is not None else [sale()], purchases if purchases is not None else [purchase()],
                         stocks if stocks is not None else [stock()], history or [], alloc)
