@@ -2,12 +2,13 @@
 
 Set ERP_IMPORT_DIR to the existing staging directory. A job gives period, actor,
 expectedRevision, and sales and purchases objects with path, sheet and optional
-expectedActive. Relative input paths resolve beside the job. Retry with the
+expectedActive. Set sha256 to the completed export digest when available. Relative input paths resolve beside the job. Retry with the
 same job and files. Exit 0 means the preview was selected or already selected.
 """
 import argparse
 import base64
 from contextlib import closing
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -34,6 +35,8 @@ def execute(job_path, storage):
             raw = stream.read(MAX_BYTES + 1)
         if not 0 < len(raw) <= MAX_BYTES:
             raise ValueError("invalid workbook size")
+        if "sha256" in spec and hashlib.sha256(raw).hexdigest() != spec["sha256"]:
+            raise ImportErrorDetail("입력 파일이 작업 명세의 해시와 일치하지 않습니다.", 422)
         inputs.append(dict(kind=kind, period=period, sheet=spec["sheet"],
                            filename=file.name, expectedActive=spec.get("expectedActive"),
                            data=base64.b64encode(raw).decode("ascii")))

@@ -3,7 +3,8 @@ from contextlib import closing
 import sqlite3
 
 from checked_import import stage
-from dashboard import snapshot
+from dashboard import date_value, snapshot
+from review_store import records
 from erp_errors import ImportErrorDetail
 
 
@@ -26,10 +27,15 @@ def monthly_candidate(source_db, period, actor, inputs):
             outcome = stage(candidate, {**item, "action": "import", "actor": actor})
             if outcome not in {"activated", "already_active"}:
                 raise ImportErrorDetail("후보 원본의 활성 상태를 확인할 수 없습니다.", 422)
-            count = candidate.execute(
-                "SELECT count(*) FROM active WHERE period=? AND kind=?",
+            batches = candidate.execute(
+                """SELECT b.* FROM batches b JOIN active a ON b.id = a.batch_id
+                   WHERE a.period = ? AND a.kind = ?""",
                 (period, item["kind"]),
-            ).fetchone()[0]
-            if count != 1:
+            ).fetchall()
+            if len(batches) != 1:
                 raise ImportErrorDetail("같은 자료월에 원본 범위가 중복됩니다.", 422)
+            if item["kind"] == "purchases":
+                for row in records(candidate, batches[0]):
+                    if date_value(row.get("source_date"), period)[:7] != period:
+                        raise ImportErrorDetail("매입 거래월과 선택 월이 다릅니다.", 422)
         return snapshot(candidate, {"period": period, "actor": actor})
