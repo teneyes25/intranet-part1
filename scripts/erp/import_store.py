@@ -24,6 +24,9 @@ def connect(root):
     db.row_factory = sqlite3.Row
     db.execute('PRAGMA synchronous=FULL')
     db.executescript('''
+    CREATE TABLE IF NOT EXISTS monthly_previews (
+      period TEXT NOT NULL, revision INTEGER NOT NULL, request_hash TEXT NOT NULL,
+      report TEXT NOT NULL, PRIMARY KEY(period, revision));
     CREATE TABLE IF NOT EXISTS batches (
       id TEXT PRIMARY KEY, kind TEXT NOT NULL, period TEXT NOT NULL,
       sheet TEXT NOT NULL, digest TEXT NOT NULL, filename TEXT NOT NULL,
@@ -120,8 +123,11 @@ def main():
         if payload['action']=='list': result={'batches':history(db)}
         elif payload['action']=='import': result=ingest(db,base64.b64decode(payload['data'],validate=True),payload)
         elif payload['action']=='dashboard':
-            from dashboard import snapshot
-            result=snapshot(db,payload)
+            from preview_history import read_dashboard
+            result=read_dashboard(db,payload)
+        elif payload['action']=='select_monthly_preview':
+            from preview_history import select_preview
+            result=select_preview(db,payload)
         elif payload['action'] in {'review_state','save_review','allocate'}:
             from review_store import dispatch
             result=dispatch(db,payload)
