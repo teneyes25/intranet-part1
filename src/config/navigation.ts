@@ -21,6 +21,11 @@ import {
   Rocket,
   ShoppingCart,
   CalendarDays,
+  Target,
+  Scale,
+  TrendingUp,
+  Sparkles,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/auth/roles";
@@ -59,9 +64,19 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: "문서함",
+    items: [
+      { title: "문서함 홈", href: "/documents", icon: FolderOpen },
+      { title: "경영 목표 및 실적", href: "/boards/goals", icon: Target },
+      { title: "사규", href: "/boards/regulations", icon: Scale },
+      { title: "시장 트렌드", href: "/boards/market-trends", icon: TrendingUp },
+      { title: "홍보실", href: "/boards/pr", icon: Sparkles, minRole: "HEADQUARTER" },
+      { title: "상품자료실", href: "/boards/products", icon: Package },
+    ],
+  },
+  {
     label: "업무",
     items: [
-      { title: "문서함", href: "/documents", icon: FolderOpen },
       { title: "근태관리", href: "/attendance", icon: Clock, minRole: "HEADQUARTER" },
       { title: "전자결재", href: "/approval", icon: FileCheck2 },
     ],
