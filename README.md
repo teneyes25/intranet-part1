@@ -69,8 +69,8 @@ intranet-part1/
 | 이메일 | 비밀번호 | 권한 |
 |--------|----------|------|
 | admin@intranet.local | password1234 | ADMIN (최초 비밀번호 변경) |
-| hq@intranet.local | password1234 | HEADQUARTER |
-| dealer@intranet.local | password1234 | DEALER (강남대리점) |
+
+일반 사용자는 **/signup** 으로 가입 신청 후 관리자 승인으로 로그인합니다.
 
 ## Rollout (100 대리점)
 

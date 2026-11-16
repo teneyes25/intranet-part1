@@ -53,9 +53,8 @@ export default async function AdminSystemPage() {
 
       <div className="flex flex-wrap gap-2">
         <Badge variant={overview.mode.production ? "default" : "secondary"}>
-          {overview.mode.production ? "정식 배포 모드" : "Pilot 모드"}
+          {overview.mode.production ? "프로덕션" : "개발"}
         </Badge>
-        {overview.mode.pilotEnv && <Badge variant="outline">PILOT_MODE=true</Badge>}
         {overview.mode.demoSeed && (
           <Badge variant="outline" className="border-amber-500 text-amber-700">
             RUN_DEMO_SEED=true

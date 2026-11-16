@@ -123,7 +123,7 @@ export function SystemAdminPanel({
               데모 데이터 (관리자 전용)
             </CardTitle>
             <CardDescription>
-              Pilot 데모 콘텐츠 {demoPostCount}건. RUN_DEMO_SEED=
+              데모 콘텐츠 {demoPostCount}건. RUN_DEMO_SEED=
               {demoSeedEnabled ? "true" : "false"}
             </CardDescription>
           </CardHeader>

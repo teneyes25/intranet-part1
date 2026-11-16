@@ -8,8 +8,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-intranet}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-intranet_pw}
       POSTGRES_DB: ${POSTGRES_DB:-intranet}
+    # 호스트 루프백만 — 인트라넷에는 HTTP(Nginx)만 공개
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -29,7 +30,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -70,7 +71,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PRISMA_MIGRATE_DEPLOY: ${PRISMA_MIGRATE_DEPLOY:-true}
       PRISMA_ACCEPT_DATA_LOSS: ${PRISMA_ACCEPT_DATA_LOSS:-false}
-      # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED, PILOT_MODE → .env.production (env_file)
+      # RUN_SEED, RUN_DEMO_SEED, RUN_DEALER_DEMO_SEED → .env.production (env_file)
       BEHIND_NGINX: "true"
       # CLAMAV_HOST: ${CLAMAV_HOST:-}
     volumes:
@@ -92,9 +93,10 @@ services:
       resources:
         limits:
           memory: 1536M
-    # App 직접 접근이 필요할 때만 아래 주석 해제 (APP_PORT 기본 3001)
+    # App 직접 접근이 필요할 때만 아래 주석 해제.
+    # 호스트 3000은 다른 서비스와 충돌하기 쉬우므로 기본 3001 사용.
     # ports:
-    #   - "${APP_PORT:-3001}:3000"
+    #   - "127.0.0.1:${APP_PORT:-3001}:3000"
 
   nginx:
     image: nginx:1.27-alpine
@@ -103,8 +105,9 @@ services:
     depends_on:
       app:
         condition: service_healthy
+    # 사내망 다른 PC 접속용 — 0.0.0.0 바인딩 (기본 포트 8080, 3000 사용 안 함)
     ports:
-      - "${HTTP_PORT:-8080}:80"
+      - "0.0.0.0:${HTTP_PORT:-8080}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/security-headers.conf:/etc/nginx/conf.d/security-headers.conf:ro

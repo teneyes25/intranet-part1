@@ -84,6 +84,5 @@ export const config = {
     "/dealer-portal/:path*",
     "/settings/:path*",
     "/help/:path*",
-    "/feedback/:path*",
   ],
 };

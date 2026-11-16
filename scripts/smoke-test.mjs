@@ -47,13 +47,17 @@ async function main() {
     process.exit(1);
   }
 
-  const { res: metricsRes } = await get("/api/pilot/metrics");
-  if (metricsRes.status !== 401) {
-    console.error(`[smoke] pilot metrics unauth expected 401, got ${metricsRes.status}`);
+  const { res: registerRes } = await post("/api/auth/register", {
+    name: "smoke",
+    email: "not-an-email",
+    password: "short",
+  });
+  if (registerRes.status !== 400) {
+    console.error(`[smoke] register validation expected 400, got ${registerRes.status}`);
     process.exit(1);
   }
 
-  console.log("[smoke] OK — health, branding guard, ai ingest auth, pilot metrics auth");
+  console.log("[smoke] OK — health, branding guard, ai ingest auth, register validation");
 }
 
 main().catch((e) => {

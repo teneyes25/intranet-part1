@@ -40,8 +40,8 @@ export default async function SignupPage() {
           <CardHeader>
             <CardTitle>회원가입</CardTitle>
             <CardDescription>
-              소속을 선택하고 정보를 입력하세요. 대리점은 발급받은 코드가
-              필요합니다.
+              이름·이메일·비밀번호만 입력하면 됩니다. 관리자 승인 후
+              로그인할 수 있습니다.
             </CardDescription>
           </CardHeader>
           <CardContent>

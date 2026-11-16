@@ -8,10 +8,7 @@ import type { RegisterInput } from "@/features/auth/schemas";
 
 export class RegisterError extends Error {
   constructor(
-    public readonly code:
-      | "EMAIL_TAKEN"
-      | "INVALID_DEALER_CODE"
-      | "DEALER_CODE_REQUIRED",
+    public readonly code: "EMAIL_TAKEN",
     message: string,
   ) {
     super(message);
@@ -19,12 +16,10 @@ export class RegisterError extends Error {
   }
 }
 
-function mapAffiliationToRole(affiliation: RegisterInput["affiliation"]): Role {
-  if (affiliation === "DEALER") return Role.DEALER;
-  if (affiliation === "ADMIN") return Role.ADMIN;
-  return Role.HEADQUARTER;
-}
-
+/**
+ * 일반 회원가입 — 소속/역할은 관리자 승인 시 지정.
+ * 신청 시점에는 HEADQUARTER 로 대기(비활성) 상태로 생성한다.
+ */
 export async function registerUser(input: RegisterInput) {
   const existing = await prisma.user.findUnique({
     where: { email: input.email },
@@ -34,30 +29,6 @@ export async function registerUser(input: RegisterInput) {
     throw new RegisterError("EMAIL_TAKEN", "이미 가입된 이메일입니다.");
   }
 
-  let dealerId: string | null = null;
-
-  if (input.affiliation === "DEALER") {
-    const code = input.dealerCode?.trim();
-    if (!code) {
-      throw new RegisterError(
-        "DEALER_CODE_REQUIRED",
-        "대리점 코드를 입력하세요.",
-      );
-    }
-
-    const dealer = await prisma.dealer.findFirst({
-      where: { code, isActive: true },
-      select: { id: true },
-    });
-    if (!dealer) {
-      throw new RegisterError(
-        "INVALID_DEALER_CODE",
-        "유효하지 않은 대리점 코드입니다.",
-      );
-    }
-    dealerId = dealer.id;
-  }
-
   const passwordHash = await bcrypt.hash(input.password, 10);
 
   const user = await prisma.user.create({
@@ -65,8 +36,8 @@ export async function registerUser(input: RegisterInput) {
       name: input.name,
       email: input.email,
       passwordHash,
-      role: mapAffiliationToRole(input.affiliation),
-      dealerId,
+      role: Role.HEADQUARTER,
+      dealerId: null,
       isActive: false,
       approvalStatus: UserApprovalStatus.PENDING,
     },

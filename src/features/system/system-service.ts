@@ -3,7 +3,6 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getRedis } from "@/lib/redis/client";
 import { isDemoSeedEnabled, isProductionMode } from "@/lib/production/config";
-import { isPilotModeEnv } from "@/lib/pilot/config";
 
 export async function getActiveEmergencyNotice() {
   const now = new Date();
@@ -78,7 +77,6 @@ export async function getSystemOverview() {
   return {
     mode: {
       production: isProductionMode(),
-      pilotEnv: isPilotModeEnv(),
       demoSeed: isDemoSeedEnabled(),
     },
     counts: {

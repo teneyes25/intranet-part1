@@ -4,27 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Loader2, Shield, Store } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import {
   registerSchema,
-  type Affiliation,
   type RegisterInput,
 } from "@/features/auth/schemas";
-
-const AFFILIATION_OPTIONS: {
-  value: Affiliation;
-  label: string;
-  icon: typeof Building2;
-}[] = [
-  { value: "HEADQUARTER", label: "본사", icon: Building2 },
-  { value: "DEALER", label: "대리점", icon: Store },
-  { value: "ADMIN", label: "관리자", icon: Shield },
-];
 
 export function SignupForm() {
   const router = useRouter();
@@ -34,8 +22,6 @@ export function SignupForm() {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -43,12 +29,8 @@ export function SignupForm() {
       name: "",
       email: "",
       password: "",
-      affiliation: "DEALER",
-      dealerCode: "",
     },
   });
-
-  const affiliation = watch("affiliation");
 
   async function onSubmit(values: RegisterInput) {
     setServerError(null);
@@ -99,7 +81,7 @@ export function SignupForm() {
           id="email"
           type="email"
           autoComplete="email"
-          placeholder="you@intranet.local"
+          placeholder="you@company.com"
           {...register("email")}
         />
         {errors.email && (
@@ -120,52 +102,6 @@ export function SignupForm() {
           <p className="text-xs text-destructive">{errors.password.message}</p>
         )}
       </div>
-
-      <div className="space-y-2">
-        <Label>소속 (관리자 승인 필요)</Label>
-        <div className="grid grid-cols-3 gap-2">
-          {AFFILIATION_OPTIONS.map((opt) => {
-            const Icon = opt.icon;
-            const active = affiliation === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() =>
-                  setValue("affiliation", opt.value, {
-                    shouldValidate: true,
-                  })
-                }
-                className={cn(
-                  "flex flex-col items-center justify-center gap-1 rounded-md border px-2 py-2 text-xs font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-input bg-background hover:bg-accent",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {affiliation === "DEALER" && (
-        <div className="space-y-2">
-          <Label htmlFor="dealerCode">대리점 코드</Label>
-          <Input
-            id="dealerCode"
-            placeholder="예: GANGNAM001"
-            {...register("dealerCode")}
-          />
-          {errors.dealerCode && (
-            <p className="text-xs text-destructive">
-              {errors.dealerCode.message}
-            </p>
-          )}
-        </div>
-      )}
 
       {serverError && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
