@@ -3,8 +3,6 @@ import {
   Megaphone,
   MessageSquare,
   Newspaper,
-  Sparkles,
-  Package,
   Clock,
   FileCheck2,
   FolderOpen,
@@ -22,6 +20,7 @@ import {
   Store,
   Rocket,
   ShoppingCart,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/auth/roles";
@@ -53,16 +52,10 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: "홈", href: "/dashboard", icon: Home },
       { title: "대리점 포털", href: "/dealer-portal", icon: Store, roles: ["DEALER", "ADMIN"] },
+      { title: "일정", href: "/boards/schedule", icon: CalendarDays },
       { title: "공지사항", href: "/boards/notices", icon: Megaphone },
       { title: "게시판", href: "/boards/general", icon: MessageSquare },
       { title: "뉴스", href: "/boards/news", icon: Newspaper },
-    ],
-  },
-  {
-    label: "자료실",
-    items: [
-      { title: "홍보실", href: "/boards/pr", icon: Sparkles, minRole: "HEADQUARTER" },
-      { title: "상품자료실", href: "/boards/products", icon: Package },
     ],
   },
   {
@@ -100,7 +93,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { title: "대리점 관리", href: "/admin/dealers", icon: Store, roles: ["ADMIN"] },
       { title: "Rollout", href: "/admin/rollout", icon: Rocket, roles: ["ADMIN"] },
       { title: "뉴스 키워드", href: "/admin/news-keywords", icon: Newspaper, roles: ["ADMIN"] },
-      { title: "문서함 카테고리", href: "/admin/document-categories", icon: FolderOpen, roles: ["ADMIN"] },
+      { title: "문서함 관리", href: "/admin/document-categories", icon: FolderOpen, roles: ["ADMIN"] },
       { title: "활동 로그", href: "/admin/activity", icon: Activity, roles: ["ADMIN"] },
       { title: "포털 커스터마이징", href: "/admin/customize", icon: Settings, roles: ["ADMIN"] },
       { title: "Visual Page Builder", href: "/admin/customize/page-builder", icon: LayoutPanelLeft, roles: ["ADMIN"] },

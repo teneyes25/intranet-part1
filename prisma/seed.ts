@@ -91,13 +91,20 @@ async function main() {
     console.log(`✅ seeded user: ${u.email} (${u.role})`);
   }
 
-  // 게시판 (베이스 보드 시스템)
-  const boards = [
+  // 워크스페이스 게시판 (공지·일정·일반·뉴스)
+  const workspaceBoards = [
     {
       key: "notices",
       name: "공지사항",
       description: "사내 전체 공지",
       categories: ["전사", "인사", "재무", "IT", "총무"],
+      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
+    },
+    {
+      key: "schedule",
+      name: "일정",
+      description: "사내 일정·행사",
+      categories: ["회의", "행사", "교육", "휴무"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
     },
     {
@@ -114,23 +121,9 @@ async function main() {
       categories: ["자동수집", "건설", "유통", "소비재", "프랜차이즈", "AI", "경제"],
       writeRoles: [Role.HEADQUARTER, Role.ADMIN],
     },
-    {
-      key: "pr",
-      name: "홍보실",
-      description: "브랜드/홍보 콘텐츠",
-      categories: ["보도자료", "캠페인", "이벤트"],
-      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
-    },
-    {
-      key: "products",
-      name: "상품자료실",
-      description: "상품 카탈로그 및 판매 자료",
-      categories: ["카탈로그", "사양서", "가격표", "교육자료"],
-      writeRoles: [Role.HEADQUARTER, Role.ADMIN],
-    },
   ];
 
-  for (const b of boards) {
+  for (const b of workspaceBoards) {
     const board = await prisma.board.upsert({
       where: { key: b.key },
       update: {
@@ -141,8 +134,110 @@ async function main() {
       },
       create: b,
     });
-    console.log(`✅ seeded board: ${board.key} (${board.name})`);
+    console.log(`✅ seeded workspace board: ${board.key} (${board.name})`);
   }
+
+  // 문서함 하위 게시판 — 기안문/자료, 누구나 작성 가능
+  const docPostCategories = ["기안문", "자료"];
+  const documentBoards = [
+    {
+      key: "goals",
+      name: "경영 목표 및 실적",
+      description: "경영 목표·실적·KPI 관련 문서",
+      slug: "goals",
+      classification: "경영",
+      classificationCode: "MG-01",
+      retentionDays: 2555,
+    },
+    {
+      key: "regulations",
+      name: "사규",
+      description: "사내 규정·지침·세칙",
+      slug: "regulations",
+      classification: "인사·총무",
+      classificationCode: "HR-01",
+      retentionDays: null as number | null,
+    },
+    {
+      key: "market-trends",
+      name: "시장 트렌드",
+      description: "시장·경쟁·트렌드 분석 자료",
+      slug: "market-trends",
+      classification: "기획",
+      classificationCode: "PL-01",
+      retentionDays: 1095,
+    },
+    {
+      key: "pr",
+      name: "홍보실",
+      description: "브랜드·홍보·보도 자료",
+      slug: "pr",
+      classification: "홍보",
+      classificationCode: "PR-01",
+      retentionDays: 1825,
+    },
+    {
+      key: "products",
+      name: "상품자료실",
+      description: "상품 카탈로그 및 판매 자료",
+      slug: "products",
+      classification: "상품",
+      classificationCode: "PD-01",
+      retentionDays: 1825,
+    },
+  ];
+
+  for (const [i, def] of documentBoards.entries()) {
+    const board = await prisma.board.upsert({
+      where: { key: def.key },
+      update: {
+        name: def.name,
+        description: def.description,
+        categories: docPostCategories,
+        writeRoles: [],
+      },
+      create: {
+        key: def.key,
+        name: def.name,
+        description: def.description,
+        categories: docPostCategories,
+        writeRoles: [],
+      },
+    });
+
+    await prisma.documentBox.upsert({
+      where: { slug: def.slug },
+      update: {
+        name: def.name,
+        description: def.description,
+        classification: def.classification,
+        classificationCode: def.classificationCode,
+        retentionDays: def.retentionDays,
+        sortOrder: i,
+        boardId: board.id,
+        isActive: true,
+      },
+      create: {
+        name: def.name,
+        slug: def.slug,
+        description: def.description,
+        classification: def.classification,
+        classificationCode: def.classificationCode,
+        retentionDays: def.retentionDays,
+        sortOrder: i,
+        boardId: board.id,
+      },
+    });
+    console.log(`✅ seeded document box: ${def.slug} → board ${board.key}`);
+  }
+
+  // 레거시 문서 카테고리(정책/보안 등) 정리 — 문서함으로 이전된 항목만 유지
+  await prisma.documentBox.deleteMany({
+    where: {
+      slug: { in: ["policy", "security", "operations", "approval"] },
+      boardId: null,
+    },
+  });
 
   // 전자결재 기안서 템플릿
   const templates = [
@@ -203,22 +298,6 @@ async function main() {
     console.log("✅ seeded product category tree");
   }
 
-  // 문서함 카테고리
-  const docCats = [
-    { name: "정책", slug: "policy", description: "사내 정책·지침" },
-    { name: "보안", slug: "security", description: "보안·개인정보" },
-    { name: "운영", slug: "operations", description: "운영·업무 매뉴얼" },
-    { name: "전자결재", slug: "approval", description: "결재 완료 문서" },
-  ];
-  for (const c of docCats) {
-    await prisma.documentCategory.upsert({
-      where: { slug: c.slug },
-      update: { name: c.name, description: c.description },
-      create: c,
-    });
-  }
-  console.log("✅ seeded document categories");
-
   // 뉴스 키워드 (업종·분야)
   const newsKeywords = [
     { keyword: "건설", category: "건설" },
@@ -238,29 +317,40 @@ async function main() {
   }
   console.log("✅ seeded news keywords");
 
-  // 문서함 샘플
+  // 문서함 샘플 (자료)
   const docCount = await prisma.sharedDocument.count();
   if (docCount === 0) {
+    const regs = await prisma.documentBox.findUnique({ where: { slug: "regulations" } });
+    const goals = await prisma.documentBox.findUnique({ where: { slug: "goals" } });
     await prisma.sharedDocument.createMany({
       data: [
         {
           title: "행정안전부 공문 작성 지침",
           description: "전자결재 기안 시 참고하는 공문 작성 기준 자료",
-          category: "정책",
+          category: "사규",
+          documentCategoryId: regs?.id,
+          docType: "자료",
+          boardKey: "regulations",
           url: "https://www.mois.go.kr",
-          tags: ["행정", "공문", "결재"],
+          tags: ["행정", "공문", "결재", "자료"],
         },
         {
           title: "사내 보안 정책 안내",
           description: "정보 보안 및 개인정보 처리 지침",
-          category: "보안",
-          tags: ["보안", "정책"],
+          category: "사규",
+          documentCategoryId: regs?.id,
+          docType: "자료",
+          boardKey: "regulations",
+          tags: ["보안", "정책", "자료"],
         },
         {
-          title: "대리점 운영 매뉴얼",
-          description: "대리점 일일 업무 및 보고 절차",
-          category: "운영",
-          tags: ["대리점", "매뉴얼"],
+          title: "2026 경영 목표 요약",
+          description: "연간 경영 목표 및 KPI 개요",
+          category: "경영 목표 및 실적",
+          documentCategoryId: goals?.id,
+          docType: "자료",
+          boardKey: "goals",
+          tags: ["경영", "KPI", "자료"],
         },
       ],
     });

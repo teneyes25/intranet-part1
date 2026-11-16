@@ -71,6 +71,22 @@ export async function saveDocumentAction(
   if (submit) {
     if (plainLen(content) === 0) return { error: "본문 내용을 입력하세요." };
     if (steps.length === 0) return { error: "결재선을 1명 이상 지정하세요." };
+    if (!documentCategoryId) {
+      return {
+        error:
+          "보관할 문서함을 지정하세요. 문서함이 없으면 문서함 관리에서 먼저 생성하세요.",
+      };
+    }
+    const box = await prisma.documentBox.findFirst({
+      where: { id: documentCategoryId, isActive: true, boardId: { not: null } },
+      select: { id: true },
+    });
+    if (!box) {
+      return {
+        error:
+          "유효한 문서함(하위 게시판 포함)이 아닙니다. 문서함을 확인한 뒤 다시 상신하세요.",
+      };
+    }
     const ids = [...new Set(steps.map((s) => s.approverId))];
     const found = await prisma.user.count({ where: { id: { in: ids } } });
     if (found !== ids.length) {

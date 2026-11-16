@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PenSquare } from "lucide-react";
+import { FolderOpen, PenSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/layout/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { canWriteBoard } from "@/features/board/permissions";
@@ -21,6 +22,7 @@ import {
   getCategoryTree,
   resolveCategoryFilter,
 } from "@/features/products/queries";
+import { prisma } from "@/lib/prisma";
 
 interface PageProps {
   params: Promise<{ key: string }>;
@@ -46,15 +48,26 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
   const sp = await searchParams;
 
   const user = await requireUser();
-  const [board, settings, boardLayout] = await Promise.all([
+  const [board, settings, boardLayout, documentBox] = await Promise.all([
     getBoardByKey(key),
     getSiteSettings(),
     getBoardPageLayout(key, user.dealerId),
+    prisma.documentBox.findFirst({
+      where: { board: { key } },
+      select: {
+        id: true,
+        name: true,
+        classification: true,
+        classificationCode: true,
+        retentionDays: true,
+      },
+    }),
   ]);
   const pageBuilder = parsePageBuilderConfig(settings.pageBuilderConfig);
   if (!board) notFound();
   if (!canAccessBoard(user.role, key)) notFound();
 
+  const isDocumentBoard = Boolean(documentBox);
   const isProducts = key === "products";
   const categoryTree = isProducts ? await getCategoryTree(key) : [];
   const categoryNames = isProducts && sp.cat
@@ -112,18 +125,48 @@ export default async function BoardListPage({ params, searchParams }: PageProps)
         <PageLayoutRenderer html={boardLayout.html} css={boardLayout.css} />
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <PageHeader
-          title={
-            key === "pr" && !boardLayout?.html && pageBuilder.prHeader?.title
-              ? pageBuilder.prHeader.title
-              : board.name
-          }
-          description={
-            key === "pr" && !boardLayout?.html && pageBuilder.prHeader?.subtitle
-              ? pageBuilder.prHeader.subtitle
-              : board.description ?? undefined
-          }
-        />
+        <div className="space-y-2">
+          {isDocumentBoard && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Link
+                href="/documents"
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                문서함
+              </Link>
+              <span>/</span>
+              <span>{documentBox!.name}</span>
+              {documentBox!.classification && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {documentBox!.classification}
+                  {documentBox!.classificationCode
+                    ? ` · ${documentBox!.classificationCode}`
+                    : ""}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-[10px]">
+                {documentBox!.retentionDays
+                  ? `${documentBox!.retentionDays}일 보존`
+                  : "영구 보존"}
+              </Badge>
+            </div>
+          )}
+          <PageHeader
+            title={
+              key === "pr" && !boardLayout?.html && pageBuilder.prHeader?.title
+                ? pageBuilder.prHeader.title
+                : board.name
+            }
+            description={
+              isDocumentBoard
+                ? `${board.description ?? "문서함 하위 게시판"} · 기안문/자료로 구분하여 작성합니다.`
+                : key === "pr" && !boardLayout?.html && pageBuilder.prHeader?.subtitle
+                  ? pageBuilder.prHeader.subtitle
+                  : board.description ?? undefined
+            }
+          />
+        </div>
         <div className="flex flex-wrap gap-2">
           {canWrite && (
             <Button asChild>

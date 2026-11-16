@@ -91,13 +91,20 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
 
       {categories.length > 0 && (
         <div className="space-y-2">
-          <Label>카테고리</Label>
+          <Label>
+            카테고리
+            {categories.includes("기안문") && categories.includes("자료") ? (
+              <span className="text-destructive"> *</span>
+            ) : null}
+          </Label>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="w-full sm:w-64">
               <SelectValue placeholder="카테고리 선택" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE}>선택 안 함</SelectItem>
+              {!(categories.includes("기안문") && categories.includes("자료")) && (
+                <SelectItem value={NONE}>선택 안 함</SelectItem>
+              )}
               {categories.map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
@@ -105,6 +112,11 @@ export function PostForm({ mode, boardKey, categories, initial }: PostFormProps)
               ))}
             </SelectContent>
           </Select>
+          {categories.includes("기안문") && categories.includes("자료") && (
+            <p className="text-xs text-muted-foreground">
+              문서함 하위 게시판은 기안문과 자료로 구분해 저장합니다.
+            </p>
+          )}
         </div>
       )}
 

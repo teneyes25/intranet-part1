@@ -85,6 +85,12 @@ export async function createPostAction(
   const rawCat = String(formData.get("category") ?? "");
   const category = rawCat && board.categories.includes(rawCat) ? rawCat : null;
 
+  const isDocumentBoard =
+    board.categories.includes("기안문") && board.categories.includes("자료");
+  if (isDocumentBoard && !category) {
+    return { error: "문서함 게시글은 기안문 또는 자료를 선택하세요." };
+  }
+
   const files = pickFiles(formData);
   if (files.length > MAX_FILES) {
     return { error: `첨부파일은 최대 ${MAX_FILES}개까지 가능합니다.` };
@@ -119,6 +125,33 @@ export async function createPostAction(
     });
     postId = post.id;
 
+    // 문서함 하위 게시판 글은 문서함 인덱스에도 등록
+    if (isDocumentBoard && category) {
+      const box = await prisma.documentBox.findFirst({
+        where: { boardId: board.id },
+        select: { id: true, name: true },
+      });
+      if (box) {
+        const plain = contentRaw
+          .replace(/<[^>]*>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        await prisma.sharedDocument.create({
+          data: {
+            title,
+            description: plain.slice(0, 160) || null,
+            documentCategoryId: box.id,
+            category: box.name,
+            boardKey: board.key,
+            postId,
+            url: `/boards/${board.key}/${postId}`,
+            docType: category,
+            tags: [category],
+          },
+        });
+      }
+    }
+
     // 첨부파일 v1 버전 이력 기록
     if (saved.length > 0) {
       const attachments = await prisma.attachment.findMany({
@@ -147,6 +180,7 @@ export async function createPostAction(
 
   reindexPost(postId);
   revalidatePath(`/boards/${boardKey}`);
+  revalidatePath("/documents");
   redirect(`/boards/${boardKey}/${postId}`);
 }
 
@@ -182,6 +216,13 @@ export async function updatePostAction(
   const rawCat = String(formData.get("category") ?? "");
   const category =
     rawCat && post.board.categories.includes(rawCat) ? rawCat : null;
+
+  const isDocumentBoard =
+    post.board.categories.includes("기안문") &&
+    post.board.categories.includes("자료");
+  if (isDocumentBoard && !category) {
+    return { error: "문서함 게시글은 기안문 또는 자료를 선택하세요." };
+  }
 
   const removeIds = new Set(
     formData.getAll("removeAttachmentIds").map((v) => String(v)),
@@ -264,6 +305,7 @@ export async function deletePostAction(formData: FormData): Promise<void> {
     redirect(`/boards/${post.board.key}/${post.id}`);
   }
 
+  await prisma.sharedDocument.deleteMany({ where: { postId: post.id } });
   await prisma.post.delete({ where: { id: post.id } });
   await Promise.all(post.attachments.map((a) => deleteStoredFile(a.storageKey)));
 
@@ -271,6 +313,7 @@ export async function deletePostAction(formData: FormData): Promise<void> {
     console.error("[ai/ingest] 게시글 색인 삭제 실패:", post.id, e),
   );
   revalidatePath(`/boards/${post.board.key}`);
+  revalidatePath("/documents");
   redirect(`/boards/${post.board.key}`);
 }
 

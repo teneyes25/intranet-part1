@@ -63,6 +63,8 @@ export default async function EditApprovalPage({
             documentCategories={documentCategories.map((c) => ({
               id: c.id,
               name: c.name,
+              classification: c.classification,
+              classificationCode: c.classificationCode,
             }))}
             candidates={candidates}
             initial={{

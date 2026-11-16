@@ -8,7 +8,7 @@
 |------|------|------|
 | 사용자 관리 | `/admin/users` | 승인/거절, **CSV 대량 등록** |
 | 뉴스 키워드 | `/admin/news-keywords` | 최대 50개, AI/경제/미래 |
-| 문서함 카테고리 | `/admin/document-categories` | 분류 관리 |
+| 문서함 관리 | `/admin/document-categories` | 문서함 CRUD, 보존기간·분류·분류번호·지정 관리자 |
 | 활동 로그 | `/admin/activity` | AuditLog 100건 |
 | **포털 커스터마이징** | **`/admin/customize`** | **화면·AI·결재·SNS 설정** |
 | **Pilot 관리** | **`/admin/pilot`** | **Pilot 그룹·모니터링·체크리스트 (Day 32)** |
@@ -265,7 +265,7 @@ npm run load-test -- http://localhost:8080 150 30
 
 | 기능 | 본사 | 대리점 |
 |------|------|--------|
-| 홍보실 (`/boards/pr`) | ✅ | ❌ |
+| 홍보실 (`/boards/pr`, 문서함) | ✅ | ❌ |
 | 근태관리 | ✅ | ❌ |
 | 상품자료실 | ✅ | ✅ |
 | Part 2 API | 전체 | 소속 대리점만 |
