@@ -57,6 +57,7 @@ model User {
   postFolders     PostFolder[]
   postLabels      PostLabel[]
   postMailItems   PostMailItem[]
+  managedDocumentBoxes DocumentBoxManager[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -66,7 +67,8 @@ model User {
 }
 
 /// 게시판 정의. 하나의 베이스 시스템으로 여러 게시판을 운영한다.
-/// (예: notices=공지사항, general=일반게시판, pr=홍보실, products=상품자료실)
+/// 워크스페이스: notices/schedule/general/news
+/// 문서함 하위: goals/regulations/market-trends/pr/products 등
 model Board {
   id            String   @id @default(cuid())
   key           String   @unique
@@ -77,6 +79,8 @@ model Board {
   /// 작성 허용 권한. 비어 있으면 모든 인증 사용자가 작성 가능.
   writeRoles    Role[]   @default([])
   allowComments Boolean  @default(true)
+  /// 문서함 하위 게시판이면 DocumentBox 와 1:1 연결
+  documentBox   DocumentBox?
   posts         Post[]
   postFolders   PostFolder[]
   postLabels    PostLabel[]
@@ -258,22 +262,48 @@ model ProductCategory {
   @@map("product_categories")
 }
 
-/// 문서함 카테고리 (관리자 관리)
-model DocumentCategory {
-  id          String             @id @default(cuid())
-  name        String
-  slug        String             @unique
-  description String?
-  sortOrder   Int                @default(0)
-  documents   SharedDocument[]
-  approvals   ApprovalDocument[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+/// 문서함 — 관리자 및 지정 관리자만 생성·수정·삭제
+/// 하위 게시판(Board)과 1:1로 연결되며, 게시글은 기안문/자료 카테고리로 운영
+model DocumentBox {
+  id                 String               @id @default(cuid())
+  name               String
+  slug               String               @unique
+  description        String?
+  /// 보존기간(일). null = 영구 보존
+  retentionDays      Int?
+  /// 분류 (예: 경영, 인사, 홍보)
+  classification     String?
+  /// 분류번호 (예: MG-01)
+  classificationCode String?
+  sortOrder          Int                  @default(0)
+  isActive           Boolean              @default(true)
+  /// 하위 게시판
+  boardId            String?              @unique
+  board              Board?               @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  managers           DocumentBoxManager[]
+  documents          SharedDocument[]
+  approvals          ApprovalDocument[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@map("document_categories")
 }
 
-/// 사내 공용 문서함
+/// 문서함 지정 관리자 (ADMIN 이 지정)
+model DocumentBoxManager {
+  id            String      @id @default(cuid())
+  documentBoxId String
+  documentBox   DocumentBox @relation(fields: [documentBoxId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([documentBoxId, userId])
+  @@index([userId])
+  @@map("document_box_managers")
+}
+
+/// 사내 공용 문서함 인덱스(결재 보관·검색용)
 model SharedDocument {
   id                 String            @id @default(cuid())
   title              String
@@ -281,19 +311,22 @@ model SharedDocument {
   /// 레거시 문자열 카테고리 (마이그레이션 호환)
   category           String?
   documentCategoryId String?
-  documentCategory   DocumentCategory? @relation(fields: [documentCategoryId], references: [id])
+  documentBox        DocumentBox?      @relation(fields: [documentCategoryId], references: [id])
   /// 외부 URL 또는 내부 게시글/결재 링크
   url                String?
   boardKey           String?
   postId             String?
   approvalDocumentId String?           @unique
   approvalDocument   ApprovalDocument? @relation(fields: [approvalDocumentId], references: [id])
+  /// 기안문 | 자료
+  docType            String?
   tags               String[]          @default([])
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
   @@index([category])
   @@index([documentCategoryId])
+  @@index([docType])
   @@map("shared_documents")
 }
 
@@ -384,8 +417,9 @@ model ApprovalDocument {
   drafter            User               @relation("ApprovalDrafter", fields: [drafterId], references: [id])
   templateId         String?
   template           ApprovalTemplate?  @relation(fields: [templateId], references: [id])
+  /// 결재 완료 시 보관될 문서함 (상신 시 필수)
   documentCategoryId String?
-  documentCategory   DocumentCategory?  @relation(fields: [documentCategoryId], references: [id])
+  documentBox        DocumentBox?       @relation(fields: [documentCategoryId], references: [id])
   archivedDocument   SharedDocument?
   linkedOrder        Order?
   /// 현재 진행 중인 결재 단계 순서(같은 순서=병렬)

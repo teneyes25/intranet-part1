@@ -28,6 +28,8 @@ interface Template {
 interface DocCategory {
   id: string;
   name: string;
+  classification?: string | null;
+  classificationCode?: string | null;
 }
 interface Candidate {
   id: string;
@@ -263,22 +265,27 @@ export function ApprovalForm({
       </div>
 
       <div>
-        <Label htmlFor="docCat">문서함 카테고리</Label>
+        <Label htmlFor="docCat">
+          보관 문서함 <span className="text-destructive">*</span>
+        </Label>
         <select
           id="docCat"
           value={documentCategoryId}
           onChange={(e) => setDocumentCategoryId(e.target.value)}
+          required
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring sm:max-w-md"
         >
-          <option value="">카테고리 선택 (선택)</option>
+          <option value="">문서함 선택 (상신 시 필수)</option>
           {documentCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+              {c.classificationCode ? ` (${c.classificationCode})` : ""}
             </option>
           ))}
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          결재 완료 시 선택한 카테고리로 문서함에 자동 보관됩니다.
+          결재 완료 시 선택한 문서함 하위 게시판의 &quot;기안문&quot;으로 자동
+          이동합니다. 문서함이 없으면 먼저 생성한 뒤 기안하세요.
         </p>
       </div>
 
