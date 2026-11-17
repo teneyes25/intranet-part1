@@ -43,15 +43,21 @@ cp .env.production.example .env.production
 ### Step 3 — Docker 빌드 & 기동
 
 ```powershell
-# Windows PowerShell
+# Windows PowerShell — 반드시 --env-file .env.production
 Set-Location "C:\path\to\intranet-part1"
+Copy-Item .env.production .env -Force   # Compose 변수 치환용 (권장)
 docker compose --env-file .env.production up -d --build
 ```
 
 ```bash
-# Linux
+# Linux — 반드시 --env-file .env.production
+cp -f .env.production .env   # Compose 변수 치환용 (권장)
 docker compose --env-file .env.production up -d --build
 ```
+
+> **502 + `Authentication failed ... intranet`**: `.env.production` 의 `POSTGRES_PASSWORD` 와
+> 기존 Postgres 볼륨 비밀번호가 다르거나, `--env-file` 없이 기동해 기본값(`intranet_pw`)이 들어간 경우입니다.
+> 아래 「DB 비밀번호 불일치」 절을 참고하세요.
 
 ### Step 4 — 헬스체크
 
@@ -297,7 +303,9 @@ npm run test:e2e
 | 증상 | 조치 |
 |------|------|
 | App Restarting | `docker compose logs app` — migrate 실패 시 baseline 등록 |
-| 502 Bad Gateway | app healthcheck 대기, `docker compose ps` |
+| 502 Bad Gateway | App 재생성 후 Nginx가 옛 IP를 캐시한 경우 많음 → `docker compose up -d --force-recreate nginx`. App 자체 장애면 `docker compose logs app` |
+| Nginx upstream `172.x.x.x:3000` Connection refused (app는 healthy) | Nginx 기동 시 해석한 App IP가 바뀜. `force-recreate nginx` 또는 최신 `nginx.conf`(Docker DNS resolver) |
+| **Authentication failed ... intranet** | DB 비밀번호 불일치. `--env-file .env.production` 로 재기동하거나 아래 「DB 비밀번호 불일치」 절 |
 | CORS 오류 | `ALLOWED_ORIGINS`에 브라우저 origin 추가 |
 | Rate limit 429 | Redis 연결 확인 `REDIS_URL` |
 | **접속 안 됨** | Docker Desktop 실행 확인, **`http://`** 사용 (https 아님), `8080` 포트 |
@@ -311,6 +319,33 @@ npm run test:e2e
 | **데모 게시물 노출** | `PILOT_MODE=false` 시 일반 사용자 숨김 — ADMIN `/admin/system`에서 삭제 |
 | **Load test 실패** | `npm run load-test -- http://localhost:8080 150 30` — app/nginx 메모리 확인 |
 | **CSV import 오류** | 헤더 `email,name,role,dealerCode,password` · DEALER 는 dealerCode 필수 |
+
+### DB 비밀번호 불일치 (502 / Authentication failed)
+
+Postgres 데이터 볼륨은 **최초 생성 시** 비밀번호를 고정합니다. 이후 `.env.production` 만 바꿔도 DB 안의 비밀번호는 그대로입니다.
+
+**PowerShell 복구 (데이터 유지):**
+
+```powershell
+# 1) .env.production 의 POSTGRES_PASSWORD 값을 확인 (예: MySecretPass)
+# 2) DB 사용자 비밀번호를 그 값으로 맞춤 (컨테이너 내부 로컬 접속)
+docker compose exec db psql -U intranet -d intranet -c "ALTER USER intranet WITH PASSWORD 'MySecretPass';"
+
+# 3) Compose 변수 치환용 .env 동기화 후 재기동
+Copy-Item .env.production .env -Force
+docker compose --env-file .env.production up -d --force-recreate app
+docker compose --env-file .env.production up -d nginx
+curl http://127.0.0.1:8080/api/health
+```
+
+비밀번호를 모르겠고 **데이터를 버려도 되면** 볼륨 초기화:
+
+```powershell
+docker compose down
+docker volume rm intranet-postgres-data
+Copy-Item .env.production .env -Force
+docker compose --env-file .env.production up -d --build
+```
 
 ---
 

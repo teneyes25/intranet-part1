@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
 import { DocumentBoxManager } from "@/features/documents/components/document-box-manager";
 import {
-  ensureDefaultDocumentBoxes,
+  ensureFrenchMaisonTree,
   isDocumentBoxManager,
   listDocumentBoxes,
 } from "@/features/documents/box-service";
@@ -21,7 +21,7 @@ export default async function AdminDocumentBoxesPage() {
     redirect("/documents");
   }
 
-  await ensureDefaultDocumentBoxes();
+  await ensureFrenchMaisonTree();
 
   const [boxes, candidates] = await Promise.all([
     listDocumentBoxes(),

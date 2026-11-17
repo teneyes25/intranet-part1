@@ -48,6 +48,7 @@ export async function addDocumentBoxAction(formData: FormData) {
   const classification = String(formData.get("classification") ?? "").trim();
   const classificationCode = String(formData.get("classificationCode") ?? "").trim();
   const retentionDays = parseOptionalInt(formData.get("retentionDays"));
+  const parentId = String(formData.get("parentId") ?? "").trim() || null;
   const managerIds = canAssignDocumentBoxManagers(user.role)
     ? parseManagerIds(formData)
     : [];
@@ -62,6 +63,7 @@ export async function addDocumentBoxAction(formData: FormData) {
       classification,
       classificationCode,
       retentionDays,
+      parentId,
       managerIds,
     });
     revalidatePath("/admin/document-categories");
@@ -92,20 +94,28 @@ export async function updateDocumentBoxAction(id: string, formData: FormData) {
   }
 
   const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { error: "이름을 입력하세요." };
+
   const description = String(formData.get("description") ?? "").trim() || null;
   const classification = String(formData.get("classification") ?? "").trim() || null;
   const classificationCode =
     String(formData.get("classificationCode") ?? "").trim() || null;
   const retentionDays = parseOptionalInt(formData.get("retentionDays"));
   const isActive = String(formData.get("isActive") ?? "true") !== "false";
+  const parentRaw = formData.get("parentId");
+  const parentId =
+    parentRaw === null
+      ? undefined
+      : String(parentRaw).trim() || null;
 
   const patch: Parameters<typeof updateDocumentBox>[1] = {
-    name: name || undefined,
+    name,
     description,
     classification,
     classificationCode,
     retentionDays,
     isActive,
+    ...(parentId !== undefined ? { parentId } : {}),
   };
 
   if (canAssignDocumentBoxManagers(user.role)) {
@@ -113,9 +123,12 @@ export async function updateDocumentBoxAction(id: string, formData: FormData) {
   }
 
   try {
-    await updateDocumentBox(id, patch);
+    const updated = await updateDocumentBox(id, patch);
     revalidatePath("/admin/document-categories");
     revalidatePath("/documents");
+    if (updated.slug) {
+      revalidatePath(`/documents/${updated.slug}`);
+    }
     return { ok: true };
   } catch (e) {
     console.error("[documents] update failed:", e);

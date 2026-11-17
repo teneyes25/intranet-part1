@@ -6,10 +6,12 @@ export {
   listDocumentBoxes,
   getDocumentBoxById,
   getDocumentBoxBySlug,
+  getDocumentBoxTree,
   createDocumentBox,
   updateDocumentBox,
   deleteDocumentBox,
   ensureDefaultDocumentBoxes,
+  ensureFrenchMaisonTree,
   isDocumentBoxManager,
   isManagerOfDocumentBox,
 } from "@/features/documents/box-service";

@@ -3,24 +3,37 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
   DOCUMENT_POST_CATEGORIES,
-  DEFAULT_DOCUMENT_BOXES,
 } from "@/features/documents/constants";
+import { ensureFrenchMaisonTree } from "@/features/documents/folder-seed";
+
+export { ensureFrenchMaisonTree };
 
 const boxInclude = {
   board: { select: { id: true, key: true, name: true, categories: true } },
   managers: {
     include: { user: { select: { id: true, name: true, email: true, role: true } } },
   },
-  _count: { select: { documents: true, approvals: true } },
+  parent: { select: { id: true, name: true, slug: true } },
+  _count: { select: { documents: true, approvals: true, children: true } },
 } as const;
 
 export type DocumentBoxWithRelations = Awaited<
   ReturnType<typeof listDocumentBoxes>
 >[number];
 
-export function listDocumentBoxes(opts?: { activeOnly?: boolean }) {
+export type DocumentBoxTreeNode = DocumentBoxWithRelations & {
+  children: DocumentBoxTreeNode[];
+};
+
+export function listDocumentBoxes(opts?: {
+  activeOnly?: boolean;
+  parentId?: string | null;
+}) {
   return prisma.documentBox.findMany({
-    where: opts?.activeOnly ? { isActive: true } : undefined,
+    where: {
+      ...(opts?.activeOnly ? { isActive: true } : {}),
+      ...(opts && "parentId" in opts ? { parentId: opts.parentId ?? null } : {}),
+    },
     include: boxInclude,
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
@@ -36,8 +49,53 @@ export function getDocumentBoxById(id: string) {
 export function getDocumentBoxBySlug(slug: string) {
   return prisma.documentBox.findUnique({
     where: { slug },
-    include: boxInclude,
+    include: {
+      ...boxInclude,
+      children: {
+        where: { isActive: true },
+        include: boxInclude,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      },
+    },
   });
+}
+
+/** 루트부터 전체 트리 */
+export async function getDocumentBoxTree(opts?: { activeOnly?: boolean }) {
+  const all = await listDocumentBoxes({ activeOnly: opts?.activeOnly ?? true });
+  const byParent = new Map<string | null, DocumentBoxWithRelations[]>();
+  for (const box of all) {
+    const key = box.parentId ?? null;
+    const list = byParent.get(key) ?? [];
+    list.push(box);
+    byParent.set(key, list);
+  }
+
+  function build(parentId: string | null): DocumentBoxTreeNode[] {
+    return (byParent.get(parentId) ?? []).map((box) => ({
+      ...box,
+      children: build(box.id),
+    }));
+  }
+
+  return build(null);
+}
+
+export async function getFolderBreadcrumb(slug: string) {
+  const chain: { id: string; name: string; slug: string }[] = [];
+  let current = await prisma.documentBox.findUnique({
+    where: { slug },
+    select: { id: true, name: true, slug: true, parentId: true },
+  });
+  while (current) {
+    chain.unshift({ id: current.id, name: current.name, slug: current.slug });
+    if (!current.parentId) break;
+    current = await prisma.documentBox.findUnique({
+      where: { id: current.parentId },
+      select: { id: true, name: true, slug: true, parentId: true },
+    });
+  }
+  return chain;
 }
 
 export async function isDocumentBoxManager(userId: string): Promise<boolean> {
@@ -61,7 +119,32 @@ function normalizeSlug(slug: string) {
   return slug.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-/** 문서함 생성 — 하위 게시판을 함께 만든다 */
+async function ensureBoardForFolder(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any,
+  data: { slug: string; name: string; description?: string | null },
+) {
+  const boardKey = `doc-${data.slug}`;
+  return tx.board.upsert({
+    where: { key: boardKey },
+    update: {
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      categories: [...DOCUMENT_POST_CATEGORIES],
+      writeRoles: [],
+    },
+    create: {
+      key: boardKey,
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      categories: [...DOCUMENT_POST_CATEGORIES],
+      writeRoles: [],
+      allowComments: true,
+    },
+  });
+}
+
+/** 문서함 폴더 생성 — 하위 게시판을 함께 만든다 */
 export async function createDocumentBox(data: {
   name: string;
   slug: string;
@@ -70,15 +153,16 @@ export async function createDocumentBox(data: {
   classification?: string | null;
   classificationCode?: string | null;
   managerIds?: string[];
-  /** 기존 게시판에 연결 (없으면 신규 생성) */
+  parentId?: string | null;
   existingBoardKey?: string;
 }) {
   const slug = normalizeSlug(data.slug);
-  const count = await prisma.documentBox.count();
+  const siblings = await prisma.documentBox.count({
+    where: { parentId: data.parentId ?? null },
+  });
 
   return prisma.$transaction(async (tx) => {
     let boardId: string;
-    let boardKey: string;
 
     if (data.existingBoardKey) {
       const existing = await tx.board.findUnique({
@@ -86,7 +170,6 @@ export async function createDocumentBox(data: {
       });
       if (!existing) throw new Error("게시판을 찾을 수 없습니다.");
       boardId = existing.id;
-      boardKey = existing.key;
       await tx.board.update({
         where: { id: boardId },
         data: {
@@ -97,21 +180,15 @@ export async function createDocumentBox(data: {
         },
       });
     } else {
-      boardKey = `doc-${slug}`;
-      const board = await tx.board.create({
-        data: {
-          key: boardKey,
-          name: data.name.trim(),
-          description: data.description?.trim() || null,
-          categories: [...DOCUMENT_POST_CATEGORIES],
-          writeRoles: [],
-          allowComments: true,
-        },
+      const board = await ensureBoardForFolder(tx, {
+        slug,
+        name: data.name,
+        description: data.description,
       });
       boardId = board.id;
     }
 
-    const box = await tx.documentBox.create({
+    return tx.documentBox.create({
       data: {
         name: data.name.trim(),
         slug,
@@ -119,18 +196,15 @@ export async function createDocumentBox(data: {
         retentionDays: data.retentionDays ?? null,
         classification: data.classification?.trim() || null,
         classificationCode: data.classificationCode?.trim() || null,
-        sortOrder: count,
+        sortOrder: siblings,
+        parentId: data.parentId ?? null,
         boardId,
         managers: data.managerIds?.length
-          ? {
-              create: data.managerIds.map((userId) => ({ userId })),
-            }
+          ? { create: data.managerIds.map((userId) => ({ userId })) }
           : undefined,
       },
       include: boxInclude,
     });
-
-    return box;
   });
 }
 
@@ -144,6 +218,7 @@ export async function updateDocumentBox(
     classificationCode: string | null;
     sortOrder: number;
     isActive: boolean;
+    parentId: string | null;
     managerIds: string[];
   }>,
 ) {
@@ -185,6 +260,7 @@ export async function updateDocumentBox(
             : data.classificationCode?.trim() || null,
         sortOrder: data.sortOrder,
         isActive: data.isActive,
+        parentId: data.parentId === undefined ? undefined : data.parentId,
       },
       include: boxInclude,
     });
@@ -210,11 +286,13 @@ export async function deleteDocumentBox(id: string) {
   return prisma.$transaction(async (tx) => {
     const box = await tx.documentBox.findUnique({
       where: { id },
-      select: { boardId: true, board: { select: { key: true } } },
+      select: { boardId: true, board: { select: { key: true } }, _count: { select: { children: true } } },
     });
     if (!box) throw new Error("문서함을 찾을 수 없습니다.");
+    if (box._count.children > 0) {
+      throw new Error("하위 폴더가 있어 삭제할 수 없습니다. 하위 폴더를 먼저 삭제하세요.");
+    }
 
-    // 결재·공유문서 연결 해제
     await tx.approvalDocument.updateMany({
       where: { documentCategoryId: id },
       data: { documentCategoryId: null },
@@ -226,83 +304,15 @@ export async function deleteDocumentBox(id: string) {
 
     await tx.documentBox.delete({ where: { id } });
 
-    // 문서함 전용으로 생성된 게시판(doc-*)만 삭제. 기존 pr/products 등은 유지.
     if (box.boardId && box.board?.key.startsWith("doc-")) {
-      await tx.board.delete({ where: { id: box.boardId } });
-    } else if (box.boardId) {
-      // 연결만 해제된 상태 — board 는 남김
+      await tx.board.delete({ where: { id: box.boardId } }).catch(() => undefined);
     }
   });
 }
 
-/** 시드/마이그레이션용 — 기본 문서함·게시판 보장 */
+/** @deprecated use ensureFrenchMaisonTree */
 export async function ensureDefaultDocumentBoxes() {
-  for (const [i, def] of DEFAULT_DOCUMENT_BOXES.entries()) {
-    const existingBox = await prisma.documentBox.findUnique({
-      where: { slug: def.slug },
-    });
-    if (existingBox) {
-      if (!existingBox.boardId) {
-        const board = await prisma.board.upsert({
-          where: { key: def.key },
-          update: {
-            name: def.name,
-            description: def.description,
-            categories: [...DOCUMENT_POST_CATEGORIES],
-            writeRoles: [],
-          },
-          create: {
-            key: def.key,
-            name: def.name,
-            description: def.description,
-            categories: [...DOCUMENT_POST_CATEGORIES],
-            writeRoles: [],
-          },
-        });
-        await prisma.documentBox.update({
-          where: { id: existingBox.id },
-          data: {
-            boardId: board.id,
-            retentionDays: def.retentionDays,
-            classification: def.classification,
-            classificationCode: def.classificationCode,
-            sortOrder: i,
-          },
-        });
-      }
-      continue;
-    }
-
-    const board = await prisma.board.upsert({
-      where: { key: def.key },
-      update: {
-        name: def.name,
-        description: def.description,
-        categories: [...DOCUMENT_POST_CATEGORIES],
-        writeRoles: [],
-      },
-      create: {
-        key: def.key,
-        name: def.name,
-        description: def.description,
-        categories: [...DOCUMENT_POST_CATEGORIES],
-        writeRoles: [],
-      },
-    });
-
-    await prisma.documentBox.create({
-      data: {
-        name: def.name,
-        slug: def.slug,
-        description: def.description,
-        retentionDays: def.retentionDays,
-        classification: def.classification,
-        classificationCode: def.classificationCode,
-        sortOrder: i,
-        boardId: board.id,
-      },
-    });
-  }
+  return ensureFrenchMaisonTree();
 }
 
 /** 전자결재 보관 대상 — 하위 게시판이 연결된 활성 문서함만 */

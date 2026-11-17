@@ -1,12 +1,19 @@
+# ⚠️ 변수 치환은 호스트 `.env` 또는 `--env-file` 기준입니다.
+# 본사 서버에서는 반드시 아래처럼 실행하세요:
+#   docker compose --env-file .env.production up -d --build
+# `.env.production` 만 있고 `.env` 가 없으면 POSTGRES_PASSWORD 가 기본값(intranet_pw)으로
+# 들어가 App↔DB 인증 실패 → 502 가 납니다.
+
 services:
   db:
     image: pgvector/pgvector:pg16
     container_name: intranet-db
     restart: unless-stopped
     env_file: .env.production
+    # env_file 값을 유지한다. 호스트 기본값(intranet_pw)으로 덮어쓰지 말 것.
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-intranet}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-intranet_pw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or pass --env-file .env.production}
       POSTGRES_DB: ${POSTGRES_DB:-intranet}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -17,7 +24,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-intranet} -d ${POSTGRES_DB:-intranet}",
+          "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"",
         ]
       interval: 5s
       timeout: 5s
@@ -53,7 +60,11 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-intranet}:${POSTGRES_PASSWORD:-intranet_pw}@db:5432/${POSTGRES_DB:-intranet}?schema=public"
+      # DATABASE_URL 은 entrypoint 가 POSTGRES_* (env_file) 로 재조립한다.
+      # 호스트 기본값 intranet_pw 로 덮어쓰면 기존 DB 볼륨과 불일치 → 인증 실패/502.
+      POSTGRES_USER: ${POSTGRES_USER:-intranet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or pass --env-file .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-intranet}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:8080}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-in-production}
@@ -79,10 +90,11 @@ services:
       - "3000"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
+      interval: 15s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 8
+      # migrate + seed 후 Next 기동까지 여유 (502 방지)
+      start_period: 180s
     logging:
       driver: json-file
       options:
