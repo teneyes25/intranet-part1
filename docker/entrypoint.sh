@@ -1,6 +1,23 @@
 #!/bin/sh
 set -e
 
+# Compose 호스트 치환과 env_file 불일치 방지: POSTGRES_* 로 DATABASE_URL 재조립
+POSTGRES_USER="${POSTGRES_USER:-intranet}"
+POSTGRES_DB="${POSTGRES_DB:-intranet}"
+if [ -n "${POSTGRES_PASSWORD:-}" ]; then
+  # URL 특수문자 인코딩 (@ : / # ? & 등)
+  ENC_PW=$(
+    POSTGRES_PASSWORD="$POSTGRES_PASSWORD" node -e \
+      "process.stdout.write(encodeURIComponent(process.env.POSTGRES_PASSWORD || ''))"
+  )
+  export DATABASE_URL="postgresql://${POSTGRES_USER}:${ENC_PW}@db:5432/${POSTGRES_DB}?schema=public"
+  echo "[entrypoint] DATABASE_URL set from POSTGRES_* (user=${POSTGRES_USER}, db=${POSTGRES_DB})"
+elif [ -z "${DATABASE_URL:-}" ]; then
+  echo "[entrypoint] FATAL: POSTGRES_PASSWORD and DATABASE_URL are both empty"
+  echo "[entrypoint] Use: docker compose --env-file .env.production up -d"
+  exit 1
+fi
+
 echo "[entrypoint] waiting for database..."
 i=0
 until node <<'NODE'
@@ -19,6 +36,10 @@ do
   i=$((i + 1))
   if [ "$i" -ge 60 ]; then
     echo "[entrypoint] database not reachable after 60 attempts — abort"
+    echo "[entrypoint] Hint: DB password mismatch is common."
+    echo "[entrypoint]   1) Ensure .env.production POSTGRES_PASSWORD matches the existing volume"
+    echo "[entrypoint]   2) Or reset: docker compose exec db psql -U intranet -d intranet -c \"ALTER USER intranet WITH PASSWORD 'YOUR_PASSWORD';\""
+    echo "[entrypoint]   3) Always start with: docker compose --env-file .env.production up -d"
     exit 1
   fi
   echo "[entrypoint] db retry $i/60..."

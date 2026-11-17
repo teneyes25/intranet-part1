@@ -27,18 +27,28 @@ echo "=== host :8080 ==="
 curl -sS -m 5 -i "http://127.0.0.1:${HTTP_PORT:-8080}/api/health" 2>&1 | head -30 || true
 
 echo
+echo
+echo "=== credential check (password values redacted) ==="
+docker compose exec -T app sh -c 'echo "POSTGRES_USER=$POSTGRES_USER"; echo "POSTGRES_DB=$POSTGRES_DB"; echo "DATABASE_URL_HOST=$(echo "$DATABASE_URL" | sed -E "s#://([^:]+):[^@]+@#://\1:***@#")"' \
+  2>/dev/null || echo "app env unavailable"
+docker compose exec -T db sh -c 'echo "POSTGRES_USER=$POSTGRES_USER"; echo "POSTGRES_DB=$POSTGRES_DB"; echo "POSTGRES_PASSWORD_SET=$([ -n "$POSTGRES_PASSWORD" ] && echo yes || echo no)"' \
+  2>/dev/null || echo "db env unavailable"
+
+echo
 echo "=== suggested recovery ==="
 cat <<'EOF'
-# 1) 앱 로그에서 migrate/FATAL 확인 후
-docker compose up -d --build --force-recreate app
+# Authentication failed / 502 이면 비밀번호 불일치가 1순위입니다.
+
+# A) .env.production 의 POSTGRES_PASSWORD 로 DB 사용자 맞추기 (데이터 유지)
+docker compose exec db psql -U intranet -d intranet -c "ALTER USER intranet WITH PASSWORD 'YOUR_PASSWORD_FROM_ENV_PRODUCTION';"
+cp -f .env.production .env
+docker compose --env-file .env.production up -d --force-recreate app
+docker compose --env-file .env.production up -d nginx
+
+# B) 앱 로그에서 migrate/FATAL 확인 후 재빌드
+docker compose --env-file .env.production up -d --build --force-recreate app
 docker compose logs -f app
 
-# 2) migrate만 수동 재시도 (app이 떠 있을 때)
-docker compose exec app node /app/node_modules/prisma/build/index.js migrate deploy
-
-# 3) nginx 재기동 (app healthy 후)
-docker compose up -d nginx
-
-# 4) 시드는 앱이 healthy 된 뒤에만
+# C) 시드는 앱이 healthy 된 뒤에만
 docker compose exec app node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed.ts
 EOF
