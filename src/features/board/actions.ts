@@ -129,7 +129,7 @@ export async function createPostAction(
     if (isDocumentBoard && category) {
       const box = await prisma.documentBox.findFirst({
         where: { boardId: board.id },
-        select: { id: true, name: true },
+        select: { id: true, name: true, slug: true },
       });
       if (box) {
         const plain = contentRaw
@@ -181,6 +181,10 @@ export async function createPostAction(
   reindexPost(postId);
   revalidatePath(`/boards/${boardKey}`);
   revalidatePath("/documents");
+  if (boardKey.startsWith("doc-")) {
+    const folderSlug = boardKey.slice(4);
+    revalidatePath(`/documents/${folderSlug}`);
+  }
   redirect(`/boards/${boardKey}/${postId}`);
 }
 

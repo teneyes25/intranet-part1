@@ -137,107 +137,12 @@ async function main() {
     console.log(`✅ seeded workspace board: ${board.key} (${board.name})`);
   }
 
-  // 문서함 하위 게시판 — 기안문/자료, 누구나 작성 가능
-  const docPostCategories = ["기안문", "자료"];
-  const documentBoards = [
-    {
-      key: "goals",
-      name: "경영 목표 및 실적",
-      description: "경영 목표·실적·KPI 관련 문서",
-      slug: "goals",
-      classification: "경영",
-      classificationCode: "MG-01",
-      retentionDays: 2555,
-    },
-    {
-      key: "regulations",
-      name: "사규",
-      description: "사내 규정·지침·세칙",
-      slug: "regulations",
-      classification: "인사·총무",
-      classificationCode: "HR-01",
-      retentionDays: null as number | null,
-    },
-    {
-      key: "market-trends",
-      name: "시장 트렌드",
-      description: "시장·경쟁·트렌드 분석 자료",
-      slug: "market-trends",
-      classification: "기획",
-      classificationCode: "PL-01",
-      retentionDays: 1095,
-    },
-    {
-      key: "pr",
-      name: "홍보실",
-      description: "브랜드·홍보·보도 자료",
-      slug: "pr",
-      classification: "홍보",
-      classificationCode: "PR-01",
-      retentionDays: 1825,
-    },
-    {
-      key: "products",
-      name: "상품자료실",
-      description: "상품 카탈로그 및 판매 자료",
-      slug: "products",
-      classification: "상품",
-      classificationCode: "PD-01",
-      retentionDays: 1825,
-    },
-  ];
-
-  for (const [i, def] of documentBoards.entries()) {
-    const board = await prisma.board.upsert({
-      where: { key: def.key },
-      update: {
-        name: def.name,
-        description: def.description,
-        categories: docPostCategories,
-        writeRoles: [],
-      },
-      create: {
-        key: def.key,
-        name: def.name,
-        description: def.description,
-        categories: docPostCategories,
-        writeRoles: [],
-      },
-    });
-
-    await prisma.documentBox.upsert({
-      where: { slug: def.slug },
-      update: {
-        name: def.name,
-        description: def.description,
-        classification: def.classification,
-        classificationCode: def.classificationCode,
-        retentionDays: def.retentionDays,
-        sortOrder: i,
-        boardId: board.id,
-        isActive: true,
-      },
-      create: {
-        name: def.name,
-        slug: def.slug,
-        description: def.description,
-        classification: def.classification,
-        classificationCode: def.classificationCode,
-        retentionDays: def.retentionDays,
-        sortOrder: i,
-        boardId: board.id,
-      },
-    });
-    console.log(`✅ seeded document box: ${def.slug} → board ${board.key}`);
-  }
-
-  // 레거시 문서 카테고리(정책/보안 등) 정리 — 문서함으로 이전된 항목만 유지
-  await prisma.documentBox.deleteMany({
-    where: {
-      slug: { in: ["policy", "security", "operations", "approval"] },
-      boardId: null,
-    },
-  });
+  // 프렌치메종 문서함 폴더 트리
+  const { ensureFrenchMaisonTree } = await import(
+    "../src/features/documents/folder-seed"
+  );
+  await ensureFrenchMaisonTree();
+  console.log("✅ seeded French Maison document folder tree");
 
   // 전자결재 기안서 템플릿
   const templates = [
@@ -320,8 +225,12 @@ async function main() {
   // 문서함 샘플 (자료)
   const docCount = await prisma.sharedDocument.count();
   if (docCount === 0) {
-    const regs = await prisma.documentBox.findUnique({ where: { slug: "regulations" } });
-    const goals = await prisma.documentBox.findUnique({ where: { slug: "goals" } });
+    const regs = await prisma.documentBox.findUnique({
+      where: { slug: "planning-regulations" },
+    });
+    const goals = await prisma.documentBox.findUnique({
+      where: { slug: "planning-goals" },
+    });
     await prisma.sharedDocument.createMany({
       data: [
         {
@@ -330,7 +239,7 @@ async function main() {
           category: "사규",
           documentCategoryId: regs?.id,
           docType: "자료",
-          boardKey: "regulations",
+          boardKey: "doc-planning-regulations",
           url: "https://www.mois.go.kr",
           tags: ["행정", "공문", "결재", "자료"],
         },
@@ -340,7 +249,7 @@ async function main() {
           category: "사규",
           documentCategoryId: regs?.id,
           docType: "자료",
-          boardKey: "regulations",
+          boardKey: "doc-planning-regulations",
           tags: ["보안", "정책", "자료"],
         },
         {
@@ -349,7 +258,7 @@ async function main() {
           category: "경영 목표 및 실적",
           documentCategoryId: goals?.id,
           docType: "자료",
-          boardKey: "goals",
+          boardKey: "doc-planning-goals",
           tags: ["경영", "KPI", "자료"],
         },
       ],

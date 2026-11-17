@@ -66,12 +66,14 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "문서함",
     items: [
-      { title: "문서함 홈", href: "/documents", icon: FolderOpen },
-      { title: "경영 목표 및 실적", href: "/boards/goals", icon: Target },
-      { title: "사규", href: "/boards/regulations", icon: Scale },
-      { title: "시장 트렌드", href: "/boards/market-trends", icon: TrendingUp },
-      { title: "홍보실", href: "/boards/pr", icon: Sparkles, minRole: "HEADQUARTER" },
-      { title: "상품자료실", href: "/boards/products", icon: Package },
+      { title: "프렌치메종", href: "/documents", icon: FolderOpen },
+      { title: "총무", href: "/documents/general-affairs", icon: Scale },
+      { title: "회계", href: "/documents/accounting", icon: Target },
+      { title: "영업", href: "/documents/sales", icon: TrendingUp },
+      { title: "디자인", href: "/documents/design", icon: Sparkles },
+      { title: "물류", href: "/documents/logistics", icon: Package },
+      { title: "기획", href: "/documents/planning", icon: FileCheck2 },
+      { title: "합니다", href: "/documents/hamnida", icon: FolderOpen },
     ],
   },
   {

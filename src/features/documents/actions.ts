@@ -48,6 +48,7 @@ export async function addDocumentBoxAction(formData: FormData) {
   const classification = String(formData.get("classification") ?? "").trim();
   const classificationCode = String(formData.get("classificationCode") ?? "").trim();
   const retentionDays = parseOptionalInt(formData.get("retentionDays"));
+  const parentId = String(formData.get("parentId") ?? "").trim() || null;
   const managerIds = canAssignDocumentBoxManagers(user.role)
     ? parseManagerIds(formData)
     : [];
@@ -62,6 +63,7 @@ export async function addDocumentBoxAction(formData: FormData) {
       classification,
       classificationCode,
       retentionDays,
+      parentId,
       managerIds,
     });
     revalidatePath("/admin/document-categories");
@@ -98,6 +100,11 @@ export async function updateDocumentBoxAction(id: string, formData: FormData) {
     String(formData.get("classificationCode") ?? "").trim() || null;
   const retentionDays = parseOptionalInt(formData.get("retentionDays"));
   const isActive = String(formData.get("isActive") ?? "true") !== "false";
+  const parentRaw = formData.get("parentId");
+  const parentId =
+    parentRaw === null
+      ? undefined
+      : String(parentRaw).trim() || null;
 
   const patch: Parameters<typeof updateDocumentBox>[1] = {
     name: name || undefined,
@@ -106,6 +113,7 @@ export async function updateDocumentBoxAction(id: string, formData: FormData) {
     classificationCode,
     retentionDays,
     isActive,
+    ...(parentId !== undefined ? { parentId } : {}),
   };
 
   if (canAssignDocumentBoxManagers(user.role)) {

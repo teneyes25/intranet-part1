@@ -262,8 +262,8 @@ model ProductCategory {
   @@map("product_categories")
 }
 
-/// 문서함 — 관리자 및 지정 관리자만 생성·수정·삭제
-/// 하위 게시판(Board)과 1:1로 연결되며, 게시글은 기안문/자료 카테고리로 운영
+/// 문서함 폴더 — 관리자 및 지정 관리자만 생성·수정·삭제
+/// 트리(parentId)로 계층 운영. 각 폴더는 Board 와 1:1 연결되어 기안문/자료 게시.
 model DocumentBox {
   id                 String               @id @default(cuid())
   name               String
@@ -277,7 +277,11 @@ model DocumentBox {
   classificationCode String?
   sortOrder          Int                  @default(0)
   isActive           Boolean              @default(true)
-  /// 하위 게시판
+  /// 상위 폴더 (null = 루트, 예: 프렌치메종)
+  parentId           String?
+  parent             DocumentBox?         @relation("DocumentBoxTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children           DocumentBox[]        @relation("DocumentBoxTree")
+  /// 하위 게시판 (폴더 글 저장)
   boardId            String?              @unique
   board              Board?               @relation(fields: [boardId], references: [id], onDelete: SetNull)
   managers           DocumentBoxManager[]
@@ -286,6 +290,7 @@ model DocumentBox {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
+  @@index([parentId, sortOrder])
   @@map("document_categories")
 }
 

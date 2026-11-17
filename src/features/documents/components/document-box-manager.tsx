@@ -29,9 +29,11 @@ export interface DocumentBoxRow {
   classification: string | null;
   classificationCode: string | null;
   isActive: boolean;
+  parentId: string | null;
+  parent: { id: string; name: string; slug: string } | null;
   board: { id: string; key: string; name: string } | null;
   managers: { user: ManagerCandidate }[];
-  _count: { documents: number; approvals: number };
+  _count: { documents: number; approvals: number; children?: number };
 }
 
 export function DocumentBoxManager({
@@ -130,6 +132,24 @@ export function DocumentBoxManager({
             <Label htmlFor="description">설명</Label>
             <Input id="description" name="description" placeholder="선택" className="mt-1" />
           </div>
+          <div>
+            <Label htmlFor="parentId">상위 폴더</Label>
+            <select
+              id="parentId"
+              name="parentId"
+              defaultValue=""
+              className="mt-1 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+              <option value="">없음 (최상위)</option>
+              {boxes
+                .filter((b) => b.isActive)
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.parent ? `${b.parent.name} / ${b.name}` : b.name}
+                  </option>
+                ))}
+            </select>
+          </div>
           {canAssignManagers && (
             <div className="sm:col-span-2 lg:col-span-3">
               <Label>지정 관리자</Label>
@@ -161,6 +181,7 @@ export function DocumentBoxManager({
           <thead className="border-b bg-muted/50 text-left text-muted-foreground">
             <tr>
               <th className="px-4 py-3">문서함</th>
+              <th className="px-4 py-3">상위</th>
               <th className="px-4 py-3">분류</th>
               <th className="px-4 py-3">보존</th>
               <th className="px-4 py-3">하위 게시판</th>
@@ -179,6 +200,9 @@ export function DocumentBoxManager({
                       {b.description}
                     </div>
                   )}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  {b.parent?.name ?? "—"}
                 </td>
                 <td className="px-4 py-3">
                   <div>{b.classification ?? "-"}</div>
@@ -321,6 +345,23 @@ export function DocumentBoxManager({
               >
                 <option value="true">활성</option>
                 <option value="false">비활성</option>
+              </select>
+            </div>
+            <div>
+              <Label>상위 폴더</Label>
+              <select
+                name="parentId"
+                defaultValue={editing.parentId ?? ""}
+                className="mt-1 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="">없음 (최상위)</option>
+                {boxes
+                  .filter((b) => b.isActive && b.id !== editing.id)
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.parent ? `${b.parent.name} / ${b.name}` : b.name}
+                    </option>
+                  ))}
               </select>
             </div>
             {canAssignManagers && (
