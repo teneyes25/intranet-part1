@@ -297,7 +297,7 @@ npm run test:e2e
 | 증상 | 조치 |
 |------|------|
 | App Restarting | `docker compose logs app` — migrate 실패 시 baseline 등록 |
-| 502 Bad Gateway | app healthcheck 대기, `docker compose ps` |
+| 502 Bad Gateway | Nginx는 떴는데 App(:3000)이 죽은 상태. `bash scripts/diagnose-502.sh` → `docker compose logs app` 에서 migrate/FATAL 확인 후 `docker compose up -d --force-recreate app` |
 | CORS 오류 | `ALLOWED_ORIGINS`에 브라우저 origin 추가 |
 | Rate limit 429 | Redis 연결 확인 `REDIS_URL` |
 | **접속 안 됨** | Docker Desktop 실행 확인, **`http://`** 사용 (https 아님), `8080` 포트 |
