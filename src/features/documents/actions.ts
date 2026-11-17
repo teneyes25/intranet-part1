@@ -94,6 +94,8 @@ export async function updateDocumentBoxAction(id: string, formData: FormData) {
   }
 
   const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { error: "이름을 입력하세요." };
+
   const description = String(formData.get("description") ?? "").trim() || null;
   const classification = String(formData.get("classification") ?? "").trim() || null;
   const classificationCode =
@@ -107,7 +109,7 @@ export async function updateDocumentBoxAction(id: string, formData: FormData) {
       : String(parentRaw).trim() || null;
 
   const patch: Parameters<typeof updateDocumentBox>[1] = {
-    name: name || undefined,
+    name,
     description,
     classification,
     classificationCode,
@@ -121,9 +123,12 @@ export async function updateDocumentBoxAction(id: string, formData: FormData) {
   }
 
   try {
-    await updateDocumentBox(id, patch);
+    const updated = await updateDocumentBox(id, patch);
     revalidatePath("/admin/document-categories");
     revalidatePath("/documents");
+    if (updated.slug) {
+      revalidatePath(`/documents/${updated.slug}`);
+    }
     return { ok: true };
   } catch (e) {
     console.error("[documents] update failed:", e);
