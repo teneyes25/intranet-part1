@@ -303,7 +303,8 @@ npm run test:e2e
 | 증상 | 조치 |
 |------|------|
 | App Restarting | `docker compose logs app` — migrate 실패 시 baseline 등록 |
-| 502 Bad Gateway | Nginx는 떴는데 App(:3000)이 죽은 상태. `docker compose logs app` 확인 |
+| 502 Bad Gateway | App 재생성 후 Nginx가 옛 IP를 캐시한 경우 많음 → `docker compose up -d --force-recreate nginx`. App 자체 장애면 `docker compose logs app` |
+| Nginx upstream `172.x.x.x:3000` Connection refused (app는 healthy) | Nginx 기동 시 해석한 App IP가 바뀜. `force-recreate nginx` 또는 최신 `nginx.conf`(Docker DNS resolver) |
 | **Authentication failed ... intranet** | DB 비밀번호 불일치. `--env-file .env.production` 로 재기동하거나 아래 「DB 비밀번호 불일치」 절 |
 | CORS 오류 | `ALLOWED_ORIGINS`에 브라우저 origin 추가 |
 | Rate limit 429 | Redis 연결 확인 `REDIS_URL` |
